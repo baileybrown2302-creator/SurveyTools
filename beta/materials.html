@@ -19,10 +19,12 @@
             --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
             --accent-green:#22c55e;--accent-green-hover:#16a34a;
             --accent-red:#ef4444;--accent-red-hover:#dc2626;
-            --accent-orange:#f97316;--accent-purple:#8b5cf6;--accent-gray:#6b7280;
+            --accent-orange:#f97316;--accent-purple:#8b5cf6;
             --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
             --input-bg:#ffffff;--input-border:#d1d5db;
             --modal-overlay:rgba(0,0,0,0.65);
+            --grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;
+            --cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;
         }
         [data-theme="high-contrast"]{
             --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
@@ -31,10 +33,12 @@
             --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
             --accent-green:#4ade80;--accent-green-hover:#86efac;
             --accent-red:#f87171;--accent-red-hover:#fca5a5;
-            --accent-orange:#fb923c;--accent-purple:#a78bfa;--accent-gray:#9ca3af;
+            --accent-orange:#fb923c;--accent-purple:#a78bfa;
             --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
             --input-bg:#1a1a1a;--input-border:#555555;
             --modal-overlay:rgba(0,0,0,0.85);
+            --grade-bg:#052e16;--grade-border:#166534;--grade-text:#4ade80;
+            --cut-bg:#431407;--cut-border:#9a3412;--cut-text:#fb923c;
         }
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
@@ -42,7 +46,6 @@
         .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
         .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
         .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
-        /* Contracts list view */
         .view{padding:12px 16px;}
         .view-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
         .view-title{font-size:1.1em;font-weight:800;color:var(--text-primary);}
@@ -54,62 +57,54 @@
         .btn-success:hover{background:var(--accent-green-hover);}
         .btn-danger{background:var(--accent-red);}
         .btn-danger:hover{background:var(--accent-red-hover);}
-        .btn-warning{background:var(--accent-orange);}
+        .btn-warning{background:var(--accent-orange);color:white;}
         .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
         .btn-secondary:hover{background:var(--border-primary);}
         .btn-ghost{background:none;color:var(--accent-blue);border:1.5px solid var(--accent-blue);padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;font-weight:700;cursor:pointer;}
         .btn-small{padding:6px 12px;font-size:0.78em;min-height:34px;border-radius:8px;}
-        /* Contract cards */
         .contract-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);cursor:pointer;transition:border-color 0.15s;}
         .contract-card:hover{border-color:var(--accent-blue);}
         .contract-card.archived{opacity:0.55;}
         .contract-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
         .contract-number{font-size:1em;font-weight:800;color:var(--text-primary);}
         .contract-desc{font-size:0.8em;color:var(--text-muted);margin-top:2px;}
-        .status-badge{font-size:0.65em;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:20px;letter-spacing:0.5px;}
+        .status-badge{font-size:0.65em;font-weight:800;text-transform:uppercase;padding:3px 8px;border-radius:20px;letter-spacing:0.5px;flex-shrink:0;}
         .badge-active{background:#dcfce7;color:#166534;}
         .badge-archived{background:#f3f4f6;color:#6b7280;}
         [data-theme="high-contrast"] .badge-active{background:#052e16;color:#4ade80;}
         [data-theme="high-contrast"] .badge-archived{background:#1f2937;color:#9ca3af;}
         .contract-meta{padding:0 16px 14px;display:flex;gap:8px;flex-wrap:wrap;}
         .meta-chip{font-size:0.7em;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--bg-tertiary);color:var(--text-tertiary);border:1px solid var(--border-primary);}
-        /* Empty state */
         .empty-state{text-align:center;padding:48px 16px;color:var(--text-muted);}
         .empty-icon{font-size:3em;margin-bottom:12px;}
         .empty-title{font-size:1em;font-weight:700;color:var(--text-secondary);margin-bottom:6px;}
         .empty-sub{font-size:0.85em;}
-        /* Category tabs */
-        .cat-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px 0;margin-bottom:0;scrollbar-width:none;}
+        .cat-tabs{display:flex;gap:6px;overflow-x:auto;padding:0 16px;scrollbar-width:none;}
         .cat-tabs::-webkit-scrollbar{display:none;}
         .cat-tab{flex-shrink:0;padding:8px 14px;border-radius:20px;border:1.5px solid var(--border-primary);background:var(--bg-secondary);color:var(--text-secondary);font-weight:700;font-size:0.8em;cursor:pointer;transition:all 0.15s;white-space:nowrap;}
         .cat-tab.active{border-color:var(--accent-blue);background:var(--accent-blue);color:white;}
-        /* Material cards */
         .material-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;margin-bottom:8px;box-shadow:var(--shadow);overflow:hidden;}
         .material-header{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;}
         .material-name{font-size:0.95em;font-weight:800;color:var(--text-primary);}
         .material-sub{font-size:0.75em;color:var(--text-muted);margin-top:2px;}
         .material-body{padding:0 14px 12px;border-top:1px solid var(--border-primary);}
         .data-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-        .data-field{}
         .data-label{font-size:0.65em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);}
         .data-value{font-size:0.92em;font-weight:700;color:var(--text-primary);margin-top:2px;font-variant-numeric:tabular-nums;}
         .data-full{grid-column:1/-1;}
-        .description-block{margin-top:10px;padding:10px;background:var(--bg-tertiary);border-radius:8px;font-size:0.82em;color:var(--text-secondary);line-height:1.5;}
+        .description-block{margin-top:6px;padding:10px;background:var(--bg-tertiary);border-radius:8px;font-size:0.82em;color:var(--text-secondary);line-height:1.5;}
         .cat-badge{font-size:0.62em;font-weight:800;text-transform:uppercase;padding:2px 7px;border-radius:5px;color:white;margin-left:6px;}
         .cat-hma{background:#f97316;}
         .cat-concrete{background:#3b82f6;}
         .cat-granular{background:#22c55e;}
         .cat-other{background:#8b5cf6;}
-        /* Card action row */
         .card-actions{display:flex;gap:6px;margin-top:10px;}
-        /* Filter row */
         .filter-row{display:flex;gap:8px;margin:10px 16px 0;align-items:center;}
         .search-input{flex:1;padding:9px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:0.9em;outline:none;}
         .search-input:focus{border-color:var(--accent-blue);}
-        /* Archive toggle */
         .archive-toggle{display:flex;align-items:center;gap:6px;font-size:0.8em;color:var(--text-muted);cursor:pointer;padding:4px 0;margin-bottom:8px;}
         .archive-toggle input{accent-color:var(--accent-blue);}
-        /* Modal */
+        /* Modals */
         .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--modal-overlay);display:flex;align-items:flex-end;justify-content:center;z-index:1000;padding:0;}
         .modal.hidden{display:none!important;}
         .modal-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:92vh;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
@@ -125,7 +120,7 @@
         .modal-actions{display:flex;gap:10px;margin-top:6px;}
         .modal-actions .btn{flex:1;}
         .section-divider{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border-primary);}
-        /* Confirm modal */
+        /* Confirm */
         .confirm-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--modal-overlay);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px;}
         .confirm-modal.hidden{display:none!important;}
         .confirm-box{background:var(--bg-secondary);border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:var(--shadow-lg);}
@@ -133,14 +128,40 @@
         .confirm-msg{font-size:0.85em;color:var(--text-tertiary);margin-bottom:16px;line-height:1.5;}
         .confirm-actions{display:flex;gap:10px;}
         .confirm-actions .btn{flex:1;}
-        /* Export row */
-        .mgmt-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+        /* Select modal (export/import chooser) */
+        .select-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--modal-overlay);display:flex;align-items:flex-end;justify-content:center;z-index:1500;padding:0;}
+        .select-modal.hidden{display:none!important;}
+        .select-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:95vh;display:flex;flex-direction:column;}
+        .select-sheet-header{padding:16px 20px 12px;border-bottom:1px solid var(--border-primary);flex-shrink:0;}
+        .select-sheet-body{overflow-y:auto;flex:1;padding:12px 20px;-webkit-overflow-scrolling:touch;}
+        .select-sheet-footer{padding:12px 20px;border-top:1px solid var(--border-primary);flex-shrink:0;display:flex;gap:10px;}
+        .select-sheet-footer .btn{flex:1;}
+        /* Contract group in select modal */
+        .sel-contract-group{margin-bottom:12px;border:1.5px solid var(--border-primary);border-radius:12px;overflow:hidden;}
+        .sel-contract-header{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-tertiary);cursor:pointer;}
+        .sel-contract-toggle{font-size:0.75em;color:var(--text-muted);margin-left:auto;}
+        .sel-contract-name{font-weight:800;font-size:0.92em;flex:1;}
+        .sel-contract-desc{font-size:0.75em;color:var(--text-muted);}
+        .sel-materials-list{padding:6px 14px 10px;}
+        .sel-material-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border-primary);}
+        .sel-material-row:last-child{border-bottom:none;}
+        .sel-material-info{flex:1;min-width:0;}
+        .sel-material-name{font-size:0.85em;font-weight:700;color:var(--text-primary);}
+        .sel-material-meta{font-size:0.72em;color:var(--text-muted);margin-top:1px;}
+        .sel-all-row{display:flex;gap:8px;margin-bottom:8px;}
+        .sel-count{font-size:0.8em;color:var(--text-muted);margin-top:6px;}
+        /* Conflict badge */
+        .conflict-badge{font-size:0.62em;font-weight:800;padding:2px 6px;border-radius:5px;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;flex-shrink:0;}
+        [data-theme="high-contrast"] .conflict-badge{background:#422006;color:#fbbf24;border-color:#f59e0b;}
+        .new-badge{font-size:0.62em;font-weight:800;padding:2px 6px;border-radius:5px;background:#dcfce7;color:#166534;flex-shrink:0;}
+        [data-theme="high-contrast"] .new-badge{background:#052e16;color:#4ade80;}
         /* Breadcrumb */
         .breadcrumb{display:flex;align-items:center;gap:6px;font-size:0.82em;color:var(--text-muted);margin-bottom:12px;flex-wrap:wrap;}
-        .breadcrumb-sep{color:var(--text-muted);}
         .breadcrumb-link{color:var(--accent-blue);font-weight:700;cursor:pointer;}
+        .mgmt-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
         .hidden{display:none!important;}
         .no-materials{text-align:center;padding:32px 16px;color:var(--text-muted);font-size:0.9em;}
+        input[type="checkbox"]{accent-color:var(--accent-blue);width:18px;height:18px;flex-shrink:0;cursor:pointer;}
     </style>
 </head>
 <body>
@@ -162,8 +183,8 @@
     </label>
     <div id="contractsList"></div>
     <div class="mgmt-row">
-        <button class="btn btn-success btn-small" onclick="exportData()">⬇ Export JSON</button>
-        <label class="btn btn-success btn-small" style="cursor:pointer;">⬆ Import JSON<input type="file" id="importInput" accept=".json" class="hidden" onchange="importData(event)"></label>
+        <button class="btn btn-success btn-small" onclick="openExportChooser()">⬇ Export JSON</button>
+        <label class="btn btn-success btn-small" style="cursor:pointer;">⬆ Import JSON<input type="file" id="importInput" accept=".json" class="hidden" onchange="loadImportFile(event)"></label>
     </div>
 </div>
 
@@ -171,7 +192,7 @@
 <div id="contractView" class="view hidden">
     <div class="breadcrumb">
         <span class="breadcrumb-link" onclick="showContractsView()">Contracts</span>
-        <span class="breadcrumb-sep">›</span>
+        <span style="color:var(--text-muted);">›</span>
         <span id="breadcrumbContract"></span>
     </div>
     <div class="view-header">
@@ -184,7 +205,6 @@
             <button class="btn btn-danger btn-small" onclick="deleteCurrentContract()">Delete</button>
         </div>
     </div>
-    <!-- Category tabs -->
     <div class="cat-tabs" id="catTabs">
         <button class="cat-tab active" data-cat="all" onclick="setCat('all')">All</button>
         <button class="cat-tab" data-cat="HMA" onclick="setCat('HMA')">HMA</button>
@@ -199,7 +219,7 @@
     <div style="padding:0 16px;margin-top:12px;" id="materialsList"></div>
 </div>
 
-<!-- ADD / EDIT CONTRACT MODAL -->
+<!-- ADD/EDIT CONTRACT MODAL -->
 <div id="contractModal" class="modal hidden">
     <div class="modal-sheet">
         <div class="modal-handle"></div>
@@ -219,13 +239,11 @@
     </div>
 </div>
 
-<!-- ADD / EDIT MATERIAL MODAL -->
+<!-- ADD/EDIT MATERIAL MODAL -->
 <div id="materialModal" class="modal hidden">
     <div class="modal-sheet">
         <div class="modal-handle"></div>
         <div class="modal-title" id="materialModalTitle">Add Material</div>
-
-        <!-- Category selector -->
         <div class="field-group">
             <label class="label">Category</label>
             <select class="select-input" id="mm_cat" onchange="updateModalFields()">
@@ -235,8 +253,7 @@
                 <option value="Other">Other</option>
             </select>
         </div>
-
-        <!-- HMA fields -->
+        <!-- HMA -->
         <div id="fields_HMA">
             <div class="section-divider">Mix Design Info</div>
             <div class="field-group"><label class="label">Mix Design ID / Number</label><input class="input" type="text" id="hma_id" placeholder="e.g., SM-9.5A"></div>
@@ -246,8 +263,7 @@
             </div>
             <div class="field-group"><label class="label">Notes <span class="optional">(optional)</span></label><textarea class="textarea-input" id="hma_notes" placeholder="Additional notes…"></textarea></div>
         </div>
-
-        <!-- Concrete fields -->
+        <!-- Concrete -->
         <div id="fields_Concrete" class="hidden">
             <div class="section-divider">Mix Design Info</div>
             <div class="field-group"><label class="label">Mix Design ID / Number</label><input class="input" type="text" id="conc_id" placeholder="e.g., A4-4000"></div>
@@ -257,8 +273,7 @@
             </div>
             <div class="field-group"><label class="label">Notes <span class="optional">(optional)</span></label><textarea class="textarea-input" id="conc_notes" placeholder="Additional notes…"></textarea></div>
         </div>
-
-        <!-- Granular fields -->
+        <!-- Granular -->
         <div id="fields_Granular" class="hidden">
             <div class="section-divider">Material Info</div>
             <div class="field-group"><label class="label">Material Name</label><input class="input" type="text" id="gran_name" placeholder="e.g., 21A Aggregate Base"></div>
@@ -274,18 +289,78 @@
             </div>
             <div class="field-group"><label class="label">Description <span class="optional">(optional)</span></label><textarea class="textarea-input" id="gran_desc" placeholder="Material description, gradation notes, color, etc."></textarea></div>
         </div>
-
-        <!-- Other fields -->
+        <!-- Other -->
         <div id="fields_Other" class="hidden">
             <div class="section-divider">Material Info</div>
             <div class="field-group"><label class="label">Material Name</label><input class="input" type="text" id="other_name" placeholder="e.g., Class I Riprap"></div>
             <div class="field-group"><label class="label">Unit Weight (pcf) <span class="optional">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="other_uw" placeholder="e.g., 110.0" step="0.1"></div>
             <div class="field-group"><label class="label">Notes <span class="optional">(optional)</span></label><textarea class="textarea-input" id="other_notes" placeholder="Additional notes…"></textarea></div>
         </div>
-
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
             <button class="btn btn-primary" onclick="saveMaterial()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- EXPORT CHOOSER MODAL -->
+<div id="exportModal" class="select-modal hidden">
+    <div class="select-sheet">
+        <div class="select-sheet-header">
+            <div class="modal-handle"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div class="modal-title" style="margin-bottom:0;">Select Items to Export</div>
+                <div class="sel-count" id="exportCount">0 materials selected</div>
+            </div>
+            <div class="sel-all-row" style="margin-top:10px;">
+                <button class="btn btn-secondary btn-small" onclick="setAllExport(true)">Select All</button>
+                <button class="btn btn-secondary btn-small" onclick="setAllExport(false)">Select None</button>
+            </div>
+        </div>
+        <div class="select-sheet-body" id="exportChooserBody"></div>
+        <div class="select-sheet-footer">
+            <button class="btn btn-secondary" onclick="closeModal('exportModal')">Cancel</button>
+            <button class="btn btn-success" onclick="doExport()">⬇ Export Selected</button>
+        </div>
+    </div>
+</div>
+
+<!-- IMPORT CHOOSER MODAL -->
+<div id="importModal" class="select-modal hidden">
+    <div class="select-sheet">
+        <div class="select-sheet-header">
+            <div class="modal-handle"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div class="modal-title" style="margin-bottom:0;">Select Items to Import</div>
+                <div class="sel-count" id="importCount">0 selected</div>
+            </div>
+            <div style="font-size:0.78em;color:var(--text-muted);margin-top:6px;">
+                <span style="background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:4px;font-weight:700;">Conflict</span> = material ID already exists locally &nbsp;
+                <span style="background:#dcfce7;color:#166534;padding:1px 6px;border-radius:4px;font-weight:700;">New</span> = not in your data
+            </div>
+            <div class="sel-all-row" style="margin-top:10px;">
+                <button class="btn btn-secondary btn-small" onclick="setAllImport(true)">Select All</button>
+                <button class="btn btn-secondary btn-small" onclick="setAllImport(false)">Select None</button>
+                <button class="btn btn-secondary btn-small" onclick="setAllImport(true,'new')">New Only</button>
+            </div>
+        </div>
+        <div class="select-sheet-body" id="importChooserBody"></div>
+        <div class="select-sheet-footer">
+            <button class="btn btn-secondary" onclick="closeModal('importModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="doImport()">⬆ Import Selected</button>
+        </div>
+    </div>
+</div>
+
+<!-- CONFLICT RESOLUTION MODAL -->
+<div id="conflictModal" class="confirm-modal hidden">
+    <div class="confirm-box" style="max-width:380px;">
+        <div class="confirm-title">⚠️ Conflict</div>
+        <div class="confirm-msg" id="conflictMsg"></div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-warning" id="conflictKeepBtn" style="width:100%;">Keep My Version</button>
+            <button class="btn btn-primary" id="conflictOverwriteBtn" style="width:100%;">Overwrite with Import</button>
+            <button class="btn btn-secondary" id="conflictSkipAllBtn" style="width:100%;">Keep All My Versions (Skip Remaining Conflicts)</button>
         </div>
     </div>
 </div>
@@ -316,26 +391,22 @@ let currentContractId=null;
 let currentCat='all';
 let editingMaterialId=null;
 let editingContractId=null;
+let pendingImportData=null; // holds parsed import JSON
 
-function loadData(){
-    try{const s=localStorage.getItem(STORAGE_KEY);if(s)data=JSON.parse(s);}catch(e){}
-    if(!data.contracts)data.contracts=[];
-}
-function saveData(){
-    try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){alert('Storage error: '+e.message);}
-}
+function loadData(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)data=JSON.parse(s);}catch(e){}if(!data.contracts)data.contracts=[];}
+function saveData(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){alert('Storage error: '+e.message);}}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+function escHtml(str){if(!str)return'';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function parseNum(id){const v=parseFloat(document.getElementById(id).value);return isNaN(v)?null:v;}
 
 // ── Navigation ─────────────────────────────────────────
 function showContractsView(){
     document.getElementById('contractsView').classList.remove('hidden');
     document.getElementById('contractView').classList.add('hidden');
-    currentContractId=null;
-    renderContracts();
+    currentContractId=null;renderContracts();
 }
 function showContractView(id){
-    currentContractId=id;
-    currentCat='all';
+    currentContractId=id;currentCat='all';
     document.getElementById('contractsView').classList.add('hidden');
     document.getElementById('contractView').classList.remove('hidden');
     const c=getContract(id);
@@ -344,7 +415,6 @@ function showContractView(id){
     document.getElementById('contractViewDesc').textContent=c.description||'';
     document.getElementById('archiveToggleBtn').textContent=c.archived?'Restore':'Archive';
     setCat('all');
-    renderMaterials();
 }
 function getContract(id){return data.contracts.find(c=>c.id===id);}
 
@@ -352,28 +422,53 @@ function getContract(id){return data.contracts.find(c=>c.id===id);}
 function renderContracts(){
     const showArch=document.getElementById('showArchived').checked;
     const list=document.getElementById('contractsList');
+
+    // Last exported banner
+    const lastExp=localStorage.getItem('materialRefLastExport');
+    const existing=document.getElementById('exportBanner');
+    if(existing)existing.remove();
+    const banner=document.createElement('div');
+    banner.id='exportBanner';
+    if(lastExp){
+        const d=new Date(lastExp);
+        const now=new Date();
+        const daysSince=Math.floor((now-d)/(1000*60*60*24));
+        const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+        const timeStr=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        const isStale=daysSince>=7;
+        banner.style.cssText=`margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.8em;display:flex;align-items:center;justify-content:space-between;gap:8px;border:1.5px solid ${isStale?'var(--accent-orange)':'var(--accent-green)'};background:${isStale?'var(--cut-bg)':'var(--grade-bg)'};`;
+        banner.innerHTML=`<div>
+            <div style="font-weight:700;color:${isStale?'var(--cut-text)':'var(--grade-text)'};">${isStale?'⚠️ Export overdue':'✓ Last exported'}</div>
+            <div style="color:var(--text-muted);margin-top:1px;">${dateStr} at ${timeStr}${daysSince>0?` (${daysSince} day${daysSince!==1?'s':''} ago)`:' (today)'}</div>
+        </div>
+        <button class="btn btn-success btn-small" onclick="openExportChooser()" style="flex-shrink:0;">Export Now</button>`;
+    } else {
+        banner.style.cssText=`margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.8em;border:1.5px solid var(--accent-orange);background:var(--cut-bg);display:flex;align-items:center;justify-content:space-between;gap:8px;`;
+        banner.innerHTML=`<div>
+            <div style="font-weight:700;color:var(--cut-text);">⚠️ Never exported</div>
+            <div style="color:var(--text-muted);margin-top:1px;">Export a JSON backup to protect your data</div>
+        </div>
+        <button class="btn btn-success btn-small" onclick="openExportChooser()" style="flex-shrink:0;">Export Now</button>`;
+    }
+    list.parentNode.insertBefore(banner,list);
+
+    // Contracts list
     const visible=data.contracts.filter(c=>showArch||!c.archived);
     if(visible.length===0){
-        list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No contracts yet</div><div class="empty-sub">Tap "+ Contract" to add your first contract</div></div>`;
+        list.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No contracts yet</div><div class="empty-sub">Tap "+ Contract" to get started</div></div>`;
         return;
     }
     list.innerHTML='';
     visible.forEach(c=>{
-        const matCount=c.materials?c.materials.length:0;
-        const cats=[...new Set((c.materials||[]).map(m=>m.category))];
-        const catChips=cats.map(cat=>`<span class="meta-chip">${cat} (${(c.materials||[]).filter(m=>m.category===cat).length})</span>`).join('');
+        const mats=c.materials||[];
+        const cats=[...new Set(mats.map(m=>m.category))];
+        const chips=cats.map(cat=>`<span class="meta-chip">${cat} (${mats.filter(m=>m.category===cat).length})</span>`).join('');
         const div=document.createElement('div');
         div.className='contract-card'+(c.archived?' archived':'');
-        div.innerHTML=`
-            <div class="contract-header" onclick="showContractView('${c.id}')">
-                <div>
-                    <div class="contract-number">${escHtml(c.number)}</div>
-                    ${c.description?`<div class="contract-desc">${escHtml(c.description)}</div>`:''}
-                </div>
-                <span class="status-badge ${c.archived?'badge-archived':'badge-active'}">${c.archived?'Archived':'Active'}</span>
-            </div>
-            ${matCount>0?`<div class="contract-meta">${catChips}<span class="meta-chip">${matCount} material${matCount!==1?'s':''}</span></div>`:''}
-        `;
+        div.innerHTML=`<div class="contract-header" onclick="showContractView('${c.id}')">
+            <div><div class="contract-number">${escHtml(c.number)}</div>${c.description?`<div class="contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <span class="status-badge ${c.archived?'badge-archived':'badge-active'}">${c.archived?'Archived':'Active'}</span>
+        </div>${mats.length>0?`<div class="contract-meta">${chips}<span class="meta-chip">${mats.length} material${mats.length!==1?'s':''}</span></div>`:''}`;
         list.appendChild(div);
     });
 }
@@ -386,35 +481,24 @@ function openAddContract(){
     openModal('contractModal');
     setTimeout(()=>document.getElementById('cm_number').focus(),200);
 }
-function openEditContract(id){
-    editingContractId=id;
-    const c=getContract(id);
-    document.getElementById('contractModalTitle').textContent='Edit Contract';
-    document.getElementById('cm_number').value=c.number;
-    document.getElementById('cm_desc').value=c.description||'';
-    openModal('contractModal');
-}
 function saveContract(){
     const num=document.getElementById('cm_number').value.trim();
     if(!num){alert('Enter a contract number.');return;}
     if(editingContractId){
-        const c=getContract(editingContractId);
-        c.number=num;c.description=document.getElementById('cm_desc').value.trim();
+        const c=getContract(editingContractId);c.number=num;c.description=document.getElementById('cm_desc').value.trim();
     }else{
         data.contracts.push({id:uid(),number:num,description:document.getElementById('cm_desc').value.trim(),archived:false,materials:[]});
     }
     saveData();closeModal('contractModal');renderContracts();
 }
 function toggleArchiveContract(){
-    const c=getContract(currentContractId);
-    c.archived=!c.archived;
-    saveData();
+    const c=getContract(currentContractId);c.archived=!c.archived;saveData();
     document.getElementById('archiveToggleBtn').textContent=c.archived?'Restore':'Archive';
     renderContracts();
 }
 function deleteCurrentContract(){
     const c=getContract(currentContractId);
-    showConfirm(`Delete Contract ${escHtml(c.number)}?`,`This will permanently delete all ${(c.materials||[]).length} material entries. This cannot be undone.`,'Delete',()=>{
+    showConfirm(`Delete Contract ${escHtml(c.number)}?`,`Permanently deletes all ${(c.materials||[]).length} material entries. Cannot be undone.`,'Delete',()=>{
         data.contracts=data.contracts.filter(x=>x.id!==currentContractId);
         saveData();showContractsView();
     });
@@ -426,33 +510,23 @@ function setCat(cat){
     document.querySelectorAll('.cat-tab').forEach(t=>t.classList.toggle('active',t.dataset.cat===cat));
     renderMaterials();
 }
-
 function renderMaterials(){
     const c=getContract(currentContractId);
     const search=document.getElementById('materialSearch').value.trim().toLowerCase();
     let mats=(c.materials||[]).filter(m=>{
         if(currentCat!=='all'&&m.category!==currentCat)return false;
-        if(search){
-            const hay=JSON.stringify(m).toLowerCase();
-            return hay.includes(search);
-        }
+        if(search)return JSON.stringify(m).toLowerCase().includes(search);
         return true;
     });
     const list=document.getElementById('materialsList');
-    if(mats.length===0){
-        list.innerHTML=`<div class="no-materials">${search?'No materials match your search.':'No materials in this category yet. Tap "+ Add" to get started.'}</div>`;
-        return;
-    }
+    if(mats.length===0){list.innerHTML=`<div class="no-materials">${search?'No materials match your search.':'No materials here yet. Tap "+ Add" to get started.'}</div>`;return;}
     list.innerHTML='';
     mats.forEach(m=>{
-        const card=document.createElement('div');
-        card.className='material-card';
-        card.innerHTML=`<div class="material-header" onclick="toggleMaterialCard('${m.id}')">
-            <div>
-                <div class="material-name">${escHtml(getMaterialTitle(m))}<span class="cat-badge cat-${m.category.toLowerCase()}">${m.category}</span></div>
-                <div class="material-sub">${escHtml(getMaterialSubtitle(m))}</div>
-            </div>
-            <span style="color:var(--text-muted);font-size:1.1em;">›</span>
+        const card=document.createElement('div');card.className='material-card';
+        card.innerHTML=`<div class="material-header" onclick="toggleCard('${m.id}')">
+            <div><div class="material-name">${escHtml(getMaterialTitle(m))}<span class="cat-badge cat-${m.category.toLowerCase()}">${m.category}</span></div>
+            <div class="material-sub">${escHtml(getMaterialSubtitle(m))}</div></div>
+            <span style="color:var(--text-muted);font-size:1.1em;" id="arr-${m.id}">›</span>
         </div>
         <div class="material-body hidden" id="body-${m.id}">
             ${renderMaterialBody(m)}
@@ -464,12 +538,10 @@ function renderMaterials(){
         list.appendChild(card);
     });
 }
-
-function toggleMaterialCard(id){
-    const body=document.getElementById('body-'+id);
-    if(body)body.classList.toggle('hidden');
+function toggleCard(id){
+    const b=document.getElementById('body-'+id),a=document.getElementById('arr-'+id);
+    if(b){const h=b.classList.toggle('hidden');if(a)a.textContent=h?'›':'⌄';}
 }
-
 function getMaterialTitle(m){
     if(m.category==='HMA')return m.hma_id||'Unnamed Mix';
     if(m.category==='Concrete')return m.conc_id||'Unnamed Mix';
@@ -477,221 +549,351 @@ function getMaterialTitle(m){
     return m.other_name||'Unnamed Material';
 }
 function getMaterialSubtitle(m){
-    if(m.category==='HMA')return m.hma_density?`JMF: ${m.hma_density} pcf  |  AC: ${m.hma_ac}%`:'';
-    if(m.category==='Concrete')return m.conc_uw?`${m.conc_uw} pcf  |  f'c: ${m.conc_fc} psi`:'';
+    if(m.category==='HMA')return[m.hma_density?`JMF: ${m.hma_density} pcf`:'',m.hma_ac?`AC: ${m.hma_ac}%`:''].filter(Boolean).join('  |  ');
+    if(m.category==='Concrete')return[m.conc_uw?`${m.conc_uw} pcf`:'',m.conc_fc?`f'c: ${m.conc_fc} psi`:''].filter(Boolean).join('  |  ');
     if(m.category==='Granular')return m.gran_source?`Source: ${m.gran_source}`:'';
     return m.other_uw?`${m.other_uw} pcf`:'';
 }
-
 function renderMaterialBody(m){
-    if(m.category==='HMA'){
-        return `<div class="data-grid">
-            <div class="data-field"><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.hma_id||'—')}</div></div>
-            <div class="data-field"><div class="data-label">JMF Density</div><div class="data-value">${m.hma_density?m.hma_density+' pcf':'—'}</div></div>
-            <div class="data-field"><div class="data-label">Bitumen Ratio</div><div class="data-value">${m.hma_ac?m.hma_ac+'%':'—'}</div></div>
-            ${m.hma_notes?`<div class="data-field data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.hma_notes)}</div></div>`:''}
-        </div>`;
-    }
-    if(m.category==='Concrete'){
-        return `<div class="data-grid">
-            <div class="data-field"><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.conc_id||'—')}</div></div>
-            <div class="data-field"><div class="data-label">Unit Weight</div><div class="data-value">${m.conc_uw?m.conc_uw+' pcf':'—'}</div></div>
-            <div class="data-field"><div class="data-label">f'c</div><div class="data-value">${m.conc_fc?m.conc_fc+' psi':'—'}</div></div>
-            ${m.conc_notes?`<div class="data-field data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.conc_notes)}</div></div>`:''}
-        </div>`;
-    }
-    if(m.category==='Granular'){
-        return `<div class="data-grid">
-            <div class="data-field"><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.gran_name||'—')}</div></div>
-            <div class="data-field"><div class="data-label">Source / Pit</div><div class="data-value">${escHtml(m.gran_source||'—')}</div></div>
-            <div class="data-field"><div class="data-label">Max Dry Density</div><div class="data-value">${m.gran_mdd?m.gran_mdd+' pcf':'—'}</div></div>
-            <div class="data-field"><div class="data-label">Opt. Moisture</div><div class="data-value">${m.gran_omc?m.gran_omc+'%':'—'}</div></div>
-            ${m.gran_mdd_corr?`<div class="data-field"><div class="data-label">Corrected MDD</div><div class="data-value">${m.gran_mdd_corr} pcf</div></div>`:''}
-            ${m.gran_omc_corr?`<div class="data-field"><div class="data-label">Corrected OMC</div><div class="data-value">${m.gran_omc_corr}%</div></div>`:''}
-            <div class="data-field data-full"><div class="data-label">Test Method</div><div class="data-value">AASHTO T180 (Modified Proctor)</div></div>
-            ${m.gran_desc?`<div class="data-field data-full"><div class="data-label">Description</div><div class="description-block">${escHtml(m.gran_desc)}</div></div>`:''}
-        </div>`;
-    }
-    // Other
-    return `<div class="data-grid">
-        <div class="data-field"><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.other_name||'—')}</div></div>
-        <div class="data-field"><div class="data-label">Unit Weight</div><div class="data-value">${m.other_uw?m.other_uw+' pcf':'—'}</div></div>
-        ${m.other_notes?`<div class="data-field data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.other_notes)}</div></div>`:''}
+    if(m.category==='HMA')return`<div class="data-grid">
+        <div><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.hma_id||'—')}</div></div>
+        <div><div class="data-label">JMF Density</div><div class="data-value">${m.hma_density!=null?m.hma_density+' pcf':'—'}</div></div>
+        <div><div class="data-label">Bitumen Ratio</div><div class="data-value">${m.hma_ac!=null?m.hma_ac+'%':'—'}</div></div>
+        ${m.hma_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.hma_notes)}</div></div>`:''}
+    </div>`;
+    if(m.category==='Concrete')return`<div class="data-grid">
+        <div><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.conc_id||'—')}</div></div>
+        <div><div class="data-label">Unit Weight</div><div class="data-value">${m.conc_uw!=null?m.conc_uw+' pcf':'—'}</div></div>
+        <div><div class="data-label">f'c</div><div class="data-value">${m.conc_fc!=null?m.conc_fc+' psi':'—'}</div></div>
+        ${m.conc_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.conc_notes)}</div></div>`:''}
+    </div>`;
+    if(m.category==='Granular')return`<div class="data-grid">
+        <div><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.gran_name||'—')}</div></div>
+        <div><div class="data-label">Source / Pit</div><div class="data-value">${escHtml(m.gran_source||'—')}</div></div>
+        <div><div class="data-label">Max Dry Density</div><div class="data-value">${m.gran_mdd!=null?m.gran_mdd+' pcf':'—'}</div></div>
+        <div><div class="data-label">Opt. Moisture</div><div class="data-value">${m.gran_omc!=null?m.gran_omc+'%':'—'}</div></div>
+        ${m.gran_mdd_corr!=null?`<div><div class="data-label">Corrected MDD</div><div class="data-value">${m.gran_mdd_corr} pcf</div></div>`:''}
+        ${m.gran_omc_corr!=null?`<div><div class="data-label">Corrected OMC</div><div class="data-value">${m.gran_omc_corr}%</div></div>`:''}
+        <div class="data-full"><div class="data-label">Test Method</div><div class="data-value">AASHTO T180 (Modified Proctor)</div></div>
+        ${m.gran_desc?`<div class="data-full"><div class="data-label">Description</div><div class="description-block">${escHtml(m.gran_desc)}</div></div>`:''}
+    </div>`;
+    return`<div class="data-grid">
+        <div><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.other_name||'—')}</div></div>
+        <div><div class="data-label">Unit Weight</div><div class="data-value">${m.other_uw!=null?m.other_uw+' pcf':'—'}</div></div>
+        ${m.other_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.other_notes)}</div></div>`:''}
     </div>`;
 }
 
 // ── Material Modal ─────────────────────────────────────
 function updateModalFields(){
     const cat=document.getElementById('mm_cat').value;
-    ['HMA','Concrete','Granular','Other'].forEach(c=>{
-        document.getElementById('fields_'+c).classList.toggle('hidden',c!==cat);
-    });
+    ['HMA','Concrete','Granular','Other'].forEach(c=>document.getElementById('fields_'+c).classList.toggle('hidden',c!==cat));
 }
-
 function openAddMaterial(){
     editingMaterialId=null;
     document.getElementById('materialModalTitle').textContent='Add Material';
     clearMaterialForm();
-    // Pre-select current category tab if not 'all'
-    if(currentCat!=='all'){
-        document.getElementById('mm_cat').value=currentCat;
-        updateModalFields();
-    } else {
-        document.getElementById('mm_cat').value='HMA';
-        updateModalFields();
-    }
+    document.getElementById('mm_cat').value=currentCat!=='all'?currentCat:'HMA';
+    updateModalFields();
     openModal('materialModal');
 }
-
 function openEditMaterial(id){
     editingMaterialId=id;
-    const c=getContract(currentContractId);
-    const m=c.materials.find(x=>x.id===id);
+    const m=getContract(currentContractId).materials.find(x=>x.id===id);
     if(!m)return;
     document.getElementById('materialModalTitle').textContent='Edit Material';
     clearMaterialForm();
     document.getElementById('mm_cat').value=m.category;
     updateModalFields();
-    if(m.category==='HMA'){
-        document.getElementById('hma_id').value=m.hma_id||'';
-        document.getElementById('hma_density').value=m.hma_density||'';
-        document.getElementById('hma_ac').value=m.hma_ac||'';
-        document.getElementById('hma_notes').value=m.hma_notes||'';
-    } else if(m.category==='Concrete'){
-        document.getElementById('conc_id').value=m.conc_id||'';
-        document.getElementById('conc_uw').value=m.conc_uw||'';
-        document.getElementById('conc_fc').value=m.conc_fc||'';
-        document.getElementById('conc_notes').value=m.conc_notes||'';
-    } else if(m.category==='Granular'){
-        document.getElementById('gran_name').value=m.gran_name||'';
-        document.getElementById('gran_source').value=m.gran_source||'';
-        document.getElementById('gran_mdd').value=m.gran_mdd||'';
-        document.getElementById('gran_omc').value=m.gran_omc||'';
-        document.getElementById('gran_mdd_corr').value=m.gran_mdd_corr||'';
-        document.getElementById('gran_omc_corr').value=m.gran_omc_corr||'';
-        document.getElementById('gran_desc').value=m.gran_desc||'';
-    } else {
-        document.getElementById('other_name').value=m.other_name||'';
-        document.getElementById('other_uw').value=m.other_uw||'';
-        document.getElementById('other_notes').value=m.other_notes||'';
-    }
+    if(m.category==='HMA'){document.getElementById('hma_id').value=m.hma_id||'';document.getElementById('hma_density').value=m.hma_density??'';document.getElementById('hma_ac').value=m.hma_ac??'';document.getElementById('hma_notes').value=m.hma_notes||'';}
+    else if(m.category==='Concrete'){document.getElementById('conc_id').value=m.conc_id||'';document.getElementById('conc_uw').value=m.conc_uw??'';document.getElementById('conc_fc').value=m.conc_fc??'';document.getElementById('conc_notes').value=m.conc_notes||'';}
+    else if(m.category==='Granular'){document.getElementById('gran_name').value=m.gran_name||'';document.getElementById('gran_source').value=m.gran_source||'';document.getElementById('gran_mdd').value=m.gran_mdd??'';document.getElementById('gran_omc').value=m.gran_omc??'';document.getElementById('gran_mdd_corr').value=m.gran_mdd_corr??'';document.getElementById('gran_omc_corr').value=m.gran_omc_corr??'';document.getElementById('gran_desc').value=m.gran_desc||'';}
+    else{document.getElementById('other_name').value=m.other_name||'';document.getElementById('other_uw').value=m.other_uw??'';document.getElementById('other_notes').value=m.other_notes||'';}
     openModal('materialModal');
 }
-
 function clearMaterialForm(){
     ['hma_id','hma_density','hma_ac','hma_notes','conc_id','conc_uw','conc_fc','conc_notes',
      'gran_name','gran_source','gran_mdd','gran_omc','gran_mdd_corr','gran_omc_corr','gran_desc',
-     'other_name','other_uw','other_notes'].forEach(id=>{
-        const el=document.getElementById(id);if(el)el.value='';
-    });
+     'other_name','other_uw','other_notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
-
 function saveMaterial(){
     const cat=document.getElementById('mm_cat').value;
     const c=getContract(currentContractId);
     if(!c.materials)c.materials=[];
-
     let m={id:editingMaterialId||uid(),category:cat};
-
-    if(cat==='HMA'){
-        const id=document.getElementById('hma_id').value.trim();
-        if(!id){alert('Enter a mix design ID.');return;}
-        m.hma_id=id;
-        m.hma_density=parseNum('hma_density');
-        m.hma_ac=parseNum('hma_ac');
-        m.hma_notes=document.getElementById('hma_notes').value.trim();
-    } else if(cat==='Concrete'){
-        const id=document.getElementById('conc_id').value.trim();
-        if(!id){alert('Enter a mix design ID.');return;}
-        m.conc_id=id;
-        m.conc_uw=parseNum('conc_uw');
-        m.conc_fc=parseNum('conc_fc');
-        m.conc_notes=document.getElementById('conc_notes').value.trim();
-    } else if(cat==='Granular'){
-        const name=document.getElementById('gran_name').value.trim();
-        if(!name){alert('Enter a material name.');return;}
-        m.gran_name=name;
-        m.gran_source=document.getElementById('gran_source').value.trim();
-        m.gran_mdd=parseNum('gran_mdd');
-        m.gran_omc=parseNum('gran_omc');
-        m.gran_mdd_corr=parseNum('gran_mdd_corr');
-        m.gran_omc_corr=parseNum('gran_omc_corr');
-        m.gran_desc=document.getElementById('gran_desc').value.trim();
-    } else {
-        const name=document.getElementById('other_name').value.trim();
-        if(!name){alert('Enter a material name.');return;}
-        m.other_name=name;
-        m.other_uw=parseNum('other_uw');
-        m.other_notes=document.getElementById('other_notes').value.trim();
-    }
-
-    if(editingMaterialId){
-        const idx=c.materials.findIndex(x=>x.id===editingMaterialId);
-        if(idx>=0)c.materials[idx]=m;
-    } else {
-        c.materials.push(m);
-    }
-
+    if(cat==='HMA'){const id=document.getElementById('hma_id').value.trim();if(!id){alert('Enter a mix design ID.');return;}m.hma_id=id;m.hma_density=parseNum('hma_density');m.hma_ac=parseNum('hma_ac');m.hma_notes=document.getElementById('hma_notes').value.trim();}
+    else if(cat==='Concrete'){const id=document.getElementById('conc_id').value.trim();if(!id){alert('Enter a mix design ID.');return;}m.conc_id=id;m.conc_uw=parseNum('conc_uw');m.conc_fc=parseNum('conc_fc');m.conc_notes=document.getElementById('conc_notes').value.trim();}
+    else if(cat==='Granular'){const name=document.getElementById('gran_name').value.trim();if(!name){alert('Enter a material name.');return;}m.gran_name=name;m.gran_source=document.getElementById('gran_source').value.trim();m.gran_mdd=parseNum('gran_mdd');m.gran_omc=parseNum('gran_omc');m.gran_mdd_corr=parseNum('gran_mdd_corr');m.gran_omc_corr=parseNum('gran_omc_corr');m.gran_desc=document.getElementById('gran_desc').value.trim();}
+    else{const name=document.getElementById('other_name').value.trim();if(!name){alert('Enter a material name.');return;}m.other_name=name;m.other_uw=parseNum('other_uw');m.other_notes=document.getElementById('other_notes').value.trim();}
+    if(editingMaterialId){const idx=c.materials.findIndex(x=>x.id===editingMaterialId);if(idx>=0)c.materials[idx]=m;}
+    else c.materials.push(m);
     saveData();closeModal('materialModal');renderMaterials();
 }
-
 function deleteMaterial(id){
     const c=getContract(currentContractId);
     const m=c.materials.find(x=>x.id===id);
-    showConfirm(`Delete ${escHtml(getMaterialTitle(m))}?`,'This cannot be undone.','Delete',()=>{
-        c.materials=c.materials.filter(x=>x.id!==id);
-        saveData();renderMaterials();
-    });
+    showConfirm(`Delete ${escHtml(getMaterialTitle(m))}?`,'This cannot be undone.','Delete',()=>{c.materials=c.materials.filter(x=>x.id!==id);saveData();renderMaterials();});
 }
 
-function parseNum(id){
-    const v=parseFloat(document.getElementById(id).value);
-    return isNaN(v)?null:v;
+// ── Export Chooser ─────────────────────────────────────
+// Build a flat index of all material IDs for quick lookup
+function getAllLocalMaterialIds(){
+    const ids=new Set();
+    data.contracts.forEach(c=>(c.materials||[]).forEach(m=>ids.add(m.id)));
+    return ids;
 }
 
-// ── Export / Import ────────────────────────────────────
-function exportData(){
+function openExportChooser(){
     if(data.contracts.length===0){alert('No contracts to export.');return;}
-    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const body=document.getElementById('exportChooserBody');
+    body.innerHTML='';
+    data.contracts.forEach(c=>{
+        const mats=c.materials||[];
+        const group=document.createElement('div');group.className='sel-contract-group';
+        // Contract header checkbox
+        const contractCheckId='exp_c_'+c.id;
+        group.innerHTML=`<div class="sel-contract-header">
+            <input type="checkbox" id="${contractCheckId}" checked onchange="onExportContractCheck('${c.id}')">
+            <div><div class="sel-contract-name">${escHtml(c.number)}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <span class="sel-contract-toggle">${mats.length} material${mats.length!==1?'s':''}</span>
+        </div>
+        <div class="sel-materials-list" id="exp_mats_${c.id}">
+            ${mats.length===0?'<div style="font-size:0.8em;color:var(--text-muted);padding:6px 0;">No materials</div>':
+            mats.map(m=>`<div class="sel-material-row">
+                <input type="checkbox" id="exp_m_${m.id}" data-contract="${c.id}" checked onchange="updateExportCount()">
+                <div class="sel-material-info">
+                    <div class="sel-material-name">${escHtml(getMaterialTitle(m))}</div>
+                    <div class="sel-material-meta">${m.category} · ${escHtml(getMaterialSubtitle(m))}</div>
+                </div>
+            </div>`).join('')}
+        </div>`;
+        body.appendChild(group);
+    });
+    updateExportCount();
+    openModal('exportModal');
+}
+
+function onExportContractCheck(contractId){
+    const checked=document.getElementById('exp_c_'+contractId).checked;
+    const c=getContract(contractId);
+    (c.materials||[]).forEach(m=>{const el=document.getElementById('exp_m_'+m.id);if(el)el.checked=checked;});
+    updateExportCount();
+}
+
+function updateExportCount(){
+    const checked=document.querySelectorAll('#exportChooserBody input[type="checkbox"][id^="exp_m_"]:checked').length;
+    document.getElementById('exportCount').textContent=`${checked} material${checked!==1?'s':''} selected`;
+}
+
+function setAllExport(val){
+    document.querySelectorAll('#exportChooserBody input[type="checkbox"]').forEach(cb=>cb.checked=val);
+    updateExportCount();
+}
+
+function doExport(){
+    // Build export object with only selected materials
+    const result={contracts:[]};
+    data.contracts.forEach(c=>{
+        const selMats=(c.materials||[]).filter(m=>{
+            const cb=document.getElementById('exp_m_'+m.id);
+            return cb&&cb.checked;
+        });
+        // Only include contract if it has at least one selected material OR the contract header is checked with no materials
+        const contractCb=document.getElementById('exp_c_'+c.id);
+        if(selMats.length>0||(contractCb&&contractCb.checked&&(c.materials||[]).length===0)){
+            result.contracts.push({...c,materials:selMats});
+        }
+    });
+    if(result.contracts.length===0&&result.contracts.reduce((t,c)=>t+(c.materials||[]).length,0)===0){
+        // Check if any contracts with no materials were included
+        const hasAny=result.contracts.length>0;
+        if(!hasAny){alert('Select at least one item to export.');return;}
+    }
+    const totalMats=result.contracts.reduce((t,c)=>t+(c.materials||[]).length,0);
+    if(totalMats===0&&result.contracts.every(c=>(c.materials||[]).length===0)){
+        // All selected contracts have zero materials — still export them
+    }
+    const blob=new Blob([JSON.stringify(result,null,2)],{type:'application/json'});
     const a=document.createElement('a');
     const now=new Date();
     const ds=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
     a.href=URL.createObjectURL(blob);
-    a.download=`material_reference_${ds}.json`;
+    a.download=`material_ref_${ds}.json`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
+    localStorage.setItem('materialRefLastExport', new Date().toISOString());
+    renderContracts();
+    closeModal('exportModal');
 }
-function importData(event){
+
+// ── Import ─────────────────────────────────────────────
+function loadImportFile(event){
     const file=event.target.files[0];if(!file)return;
     const reader=new FileReader();
     reader.onload=e=>{
         try{
             const imp=JSON.parse(e.target.result);
-            if(!imp.contracts||!Array.isArray(imp.contracts)){alert('Invalid file format.');return;}
-            showConfirm('Import Data','This will merge imported contracts with your existing data. Contracts with duplicate IDs will be skipped.','Import',()=>{
-                const existingIds=new Set(data.contracts.map(c=>c.id));
-                let added=0;
-                imp.contracts.forEach(c=>{if(!existingIds.has(c.id)){data.contracts.push(c);added++;}});
-                saveData();renderContracts();
-                alert(`Import complete. ${added} contract(s) added.`);
-            });
+            if(!imp.contracts||!Array.isArray(imp.contracts)){alert('Invalid file format — missing contracts array.');return;}
+            pendingImportData=imp;
+            openImportChooser();
         }catch(err){alert('Error reading file: '+err.message);}
         finally{event.target.value='';}
     };
     reader.readAsText(file);
 }
 
+function openImportChooser(){
+    if(!pendingImportData)return;
+    const localMatIds=getAllLocalMaterialIds();
+    const body=document.getElementById('importChooserBody');
+    body.innerHTML='';
+
+    pendingImportData.contracts.forEach(c=>{
+        const mats=c.materials||[];
+        const group=document.createElement('div');group.className='sel-contract-group';
+        const contractCheckId='imp_c_'+c.id;
+        const localContract=getContract(c.id);
+        const contractStatus=localContract?`<span style="font-size:0.7em;color:var(--accent-orange);font-weight:700;">(contract exists locally)</span>`:`<span style="font-size:0.7em;color:var(--accent-green);font-weight:700;">(new contract)</span>`;
+
+        group.innerHTML=`<div class="sel-contract-header">
+            <input type="checkbox" id="${contractCheckId}" checked onchange="onImportContractCheck('${c.id}')">
+            <div><div class="sel-contract-name">${escHtml(c.number)} ${contractStatus}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <span class="sel-contract-toggle">${mats.length} mat.</span>
+        </div>
+        <div class="sel-materials-list" id="imp_mats_${c.id}">
+            ${mats.length===0?'<div style="font-size:0.8em;color:var(--text-muted);padding:6px 0;">No materials</div>':
+            mats.map(m=>{
+                const isConflict=localMatIds.has(m.id);
+                const badge=isConflict?`<span class="conflict-badge">Conflict</span>`:`<span class="new-badge">New</span>`;
+                return`<div class="sel-material-row">
+                    <input type="checkbox" id="imp_m_${m.id}" data-contract="${c.id}" data-conflict="${isConflict}" checked onchange="updateImportCount()">
+                    <div class="sel-material-info">
+                        <div class="sel-material-name">${escHtml(getMaterialTitle(m))}</div>
+                        <div class="sel-material-meta">${m.category} · ${escHtml(getMaterialSubtitle(m))}</div>
+                    </div>
+                    ${badge}
+                </div>`;
+            }).join('')}
+        </div>`;
+        body.appendChild(group);
+    });
+
+    updateImportCount();
+    openModal('importModal');
+}
+
+function onImportContractCheck(contractId){
+    const checked=document.getElementById('imp_c_'+contractId).checked;
+    const c=pendingImportData.contracts.find(x=>x.id===contractId);
+    (c.materials||[]).forEach(m=>{const el=document.getElementById('imp_m_'+m.id);if(el)el.checked=checked;});
+    updateImportCount();
+}
+
+function updateImportCount(){
+    const checked=document.querySelectorAll('#importChooserBody input[type="checkbox"][id^="imp_m_"]:checked').length;
+    document.getElementById('importCount').textContent=`${checked} material${checked!==1?'s':''} selected`;
+}
+
+function setAllImport(val,filter){
+    document.querySelectorAll('#importChooserBody input[type="checkbox"][id^="imp_m_"]').forEach(cb=>{
+        if(filter==='new'){if(cb.dataset.conflict==='false')cb.checked=val;}
+        else cb.checked=val;
+    });
+    // Sync contract checkboxes
+    pendingImportData.contracts.forEach(c=>{
+        const mats=c.materials||[];
+        const allChecked=mats.every(m=>{const el=document.getElementById('imp_m_'+m.id);return!el||el.checked;});
+        const contractCb=document.getElementById('imp_c_'+c.id);
+        if(contractCb)contractCb.checked=allChecked;
+    });
+    updateImportCount();
+}
+
+// ── Conflict resolution queue ──────────────────────────
+async function doImport(){
+    if(!pendingImportData)return;
+
+    // Collect selected materials with their parent contract info
+    const toImport=[];
+    pendingImportData.contracts.forEach(c=>{
+        (c.materials||[]).forEach(m=>{
+            const cb=document.getElementById('imp_m_'+m.id);
+            if(cb&&cb.checked)toImport.push({material:m,contractId:c.id,contractNumber:c.number,contractDesc:c.description,contractArchived:c.archived});
+        });
+    });
+
+    if(toImport.length===0){alert('Select at least one material to import.');return;}
+    closeModal('importModal');
+
+    const localMatIds=getAllLocalMaterialIds();
+    const conflicts=toImport.filter(item=>localMatIds.has(item.material.id));
+    const newItems=toImport.filter(item=>!localMatIds.has(item.material.id));
+
+    let skipAllConflicts=false;
+    let importedCount=0;
+
+    // Process new items first (no conflict)
+    newItems.forEach(item=>{
+        ensureContractExists(item);
+        const c=getContract(item.contractId);
+        c.materials.push(item.material);
+        importedCount++;
+    });
+
+    // Process conflicts sequentially
+    for(const item of conflicts){
+        if(skipAllConflicts){
+            // keep local, skip
+            continue;
+        }
+        const resolution=await askConflict(item);
+        if(resolution==='overwrite'){
+            ensureContractExists(item);
+            const c=getContract(item.contractId);
+            const idx=c.materials.findIndex(x=>x.id===item.material.id);
+            if(idx>=0)c.materials[idx]=item.material;
+            else c.materials.push(item.material);
+            importedCount++;
+        } else if(resolution==='skipAll'){
+            skipAllConflicts=true;
+            // keep local
+        }
+        // 'keep' = do nothing
+    }
+
+    saveData();renderContracts();
+    alert(`Import complete. ${importedCount} material${importedCount!==1?'s':''} imported.`);
+    pendingImportData=null;
+}
+
+function ensureContractExists(item){
+    if(!getContract(item.contractId)){
+        data.contracts.push({id:item.contractId,number:item.contractNumber,description:item.contractDesc||'',archived:item.contractArchived||false,materials:[]});
+    }
+}
+
+function askConflict(item){
+    return new Promise(resolve=>{
+        const m=item.material;
+        document.getElementById('conflictMsg').textContent=
+            `"${getMaterialTitle(m)}" (${m.category}) in contract ${item.contractNumber} already exists in your data. What would you like to do?`;
+        document.getElementById('conflictKeepBtn').onclick=()=>{closeConflict();resolve('keep');};
+        document.getElementById('conflictOverwriteBtn').onclick=()=>{closeConflict();resolve('overwrite');};
+        document.getElementById('conflictSkipAllBtn').onclick=()=>{closeConflict();resolve('skipAll');};
+        document.getElementById('conflictModal').classList.remove('hidden');
+    });
+}
+function closeConflict(){document.getElementById('conflictModal').classList.add('hidden');}
+
 // ── Modal helpers ──────────────────────────────────────
 function openModal(id){document.getElementById(id).classList.remove('hidden');}
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
-
-// Close modals on backdrop tap
 ['contractModal','materialModal'].forEach(id=>{
-    document.getElementById(id).addEventListener('click',e=>{
-        if(e.target===document.getElementById(id))closeModal(id);
-    });
+    document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))closeModal(id);});
+});
+['exportModal','importModal'].forEach(id=>{
+    document.getElementById(id).addEventListener('click',e=>{if(e.target===document.getElementById(id))closeModal(id);});
 });
 
-// ── Confirm modal ──────────────────────────────────────
 function showConfirm(title,msg,btnLabel,onConfirm){
     document.getElementById('confirmTitle').textContent=title;
     document.getElementById('confirmMsg').textContent=msg;
@@ -702,15 +904,8 @@ function showConfirm(title,msg,btnLabel,onConfirm){
 function closeConfirm(){document.getElementById('confirmModal').classList.add('hidden');}
 document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===document.getElementById('confirmModal'))closeConfirm();});
 
-// ── Util ───────────────────────────────────────────────
-function escHtml(str){
-    if(!str)return'';
-    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
 // ── Init ───────────────────────────────────────────────
-loadData();
-renderContracts();
+loadData();renderContracts();
 </script>
 </body>
 </html>
