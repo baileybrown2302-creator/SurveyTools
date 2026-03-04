@@ -3,7 +3,8 @@ const ASSETS = [
   './',
   './index.html',
   './leveling.html',
-  './manifest.json'
+  './manifest.json',
+  './icon.png'
 ];
 
 // Install: cache all assets
