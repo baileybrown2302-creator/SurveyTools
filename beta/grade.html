@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>Grade Calculator — Survey Tool</title>
+    <style>
+        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
+        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-orange:#fb923c;--accent-red:#f87171;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;--grade-bg:#052e16;--grade-border:#166534;--grade-text:#4ade80;--cut-bg:#431407;--cut-border:#9a3412;--cut-text:#fb923c;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        .mode-tabs{display:flex;margin:16px 16px 0;gap:8px;}
+        .mode-tab{flex:1;padding:11px 6px;border-radius:10px;border:2px solid var(--border-primary);background:var(--bg-secondary);color:var(--text-secondary);font-weight:700;font-size:0.8em;cursor:pointer;text-align:center;transition:all 0.15s;}
+        .mode-tab.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+        [data-theme="high-contrast"] .mode-tab.active{border-color:#fbbf24;background:#1c1700;color:#fbbf24;}
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:10px;font-size:0.95em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:48px;-webkit-user-select:none;user-select:none;width:100%;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{background:var(--border-primary);}
+        .btn-row{display:flex;gap:10px;margin-top:6px;}
+        .result-panel{border-radius:12px;padding:16px;margin:0 16px 12px;}
+        .result-blue{background:var(--result-bg);border:1.5px solid var(--result-border);}
+        .result-green{background:var(--grade-bg);border:1.5px solid var(--grade-border);}
+        .result-orange{background:var(--cut-bg);border:1.5px solid var(--cut-border);}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;opacity:0.8;}
+        .rt-blue{color:var(--result-text);}
+        .rt-green{color:var(--grade-text);}
+        .rt-orange{color:var(--cut-text);}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .result-label{font-size:0.7em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;}
+        .rl-blue{color:var(--result-text);}
+        .rl-green{color:var(--grade-text);}
+        .rl-orange{color:var(--cut-text);}
+        .result-value{font-size:1.15em;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+        .rv-blue{color:var(--result-text);}
+        .rv-green{color:var(--grade-text);}
+        .rv-orange{color:var(--cut-text);}
+        .result-full{grid-column:1/-1;}
+        .result-sub{font-size:0.78em;opacity:0.75;margin-top:2px;font-variant-numeric:tabular-nums;}
+        .diagram-wrap{margin:12px 16px 0;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:14px;box-shadow:var(--shadow);}
+        .rod-big{font-size:2.2em;font-weight:900;font-variant-numeric:tabular-nums;}
+        .history-section{margin:8px 16px 0;}
+        .history-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+        .history-clear{font-size:0.85em;color:var(--accent-blue);cursor:pointer;font-weight:600;text-transform:none;letter-spacing:0;}
+        .history-item{background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:10px;padding:10px 14px;margin-bottom:6px;cursor:pointer;transition:border-color 0.15s;}
+        .history-item:hover{border-color:var(--accent-blue);}
+        .history-item-top{display:flex;justify-content:space-between;align-items:center;}
+        .history-item-label{font-size:0.8em;font-weight:700;color:var(--text-primary);}
+        .history-item-detail{font-size:0.75em;color:var(--text-muted);margin-top:3px;font-variant-numeric:tabular-nums;}
+        .type-badge{font-size:0.65em;font-weight:800;text-transform:uppercase;padding:2px 6px;border-radius:5px;color:white;}
+        .hidden{display:none!important;}
+        .error-msg{color:#ef4444;font-size:0.82em;font-weight:600;margin-top:8px;}
+        [data-theme="high-contrast"] .error-msg{color:#f87171;}
+    </style>
+</head>
+<body>
+<div class="top-nav">
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">📏 Grade Calculator</span>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<div class="mode-tabs">
+    <button class="mode-tab active" id="tabGrade" onclick="setMode('grade')">📐 Grade & Slope</button>
+    <button class="mode-tab" id="tabRod" onclick="setMode('rod')">🪧 Rod Cut/Fill</button>
+    <button class="mode-tab" id="tabDesign" onclick="setMode('design')">🎯 Design Elev</button>
+</div>
+
+<!-- GRADE & SLOPE -->
+<div id="gradePanel">
+    <div class="card">
+        <div class="card-title">Two Known Points</div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Elevation @ Start</label><input class="input" type="number" inputmode="decimal" id="g_elev1" placeholder="e.g., 100.000" step="0.001"></div>
+            <div class="field-group"><label class="label">Elevation @ End</label><input class="input" type="number" inputmode="decimal" id="g_elev2" placeholder="e.g., 104.250" step="0.001"></div>
+        </div>
+        <div class="field-group"><label class="label">Horizontal Distance</label><input class="input" type="number" inputmode="decimal" id="g_hdist" placeholder="e.g., 85.000" step="0.001" min="0.001"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="clearGrade()">Clear</button>
+            <button class="btn btn-primary" onclick="calcGrade()">Calculate →</button>
+        </div>
+        <div id="g_error" class="error-msg hidden"></div>
+    </div>
+
+    <div id="gradeResult" class="hidden">
+        <div class="diagram-wrap">
+            <svg id="gradeDiagram" width="100%" viewBox="0 0 300 90" style="display:block;"></svg>
+        </div>
+        <div class="result-panel result-blue" style="margin-top:12px;">
+            <div class="result-title rt-blue">Grade & Slope Results</div>
+            <div class="result-grid">
+                <div><div class="result-label rl-blue">Grade</div><div class="result-value rv-blue" id="g_pct">—</div></div>
+                <div><div class="result-label rl-blue">Slope Ratio</div><div class="result-value rv-blue" id="g_ratio">—</div></div>
+                <div><div class="result-label rl-blue">Rise / Fall</div><div class="result-value rv-blue" id="g_rise">—</div><div class="result-sub rt-blue" id="g_direction">—</div></div>
+                <div><div class="result-label rl-blue">Slope Distance</div><div class="result-value rv-blue" id="g_slope_dist">—</div></div>
+                <div><div class="result-label rl-blue">Slope Angle</div><div class="result-value rv-blue" id="g_angle">—</div></div>
+                <div><div class="result-label rl-blue">Horiz Distance</div><div class="result-value rv-blue" id="g_hd_out">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ROD CUT / FILL -->
+<div id="rodPanel" class="hidden">
+    <div class="card">
+        <div class="card-title">Instrument Setup</div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">HI (Height of Instrument)</label><input class="input" type="number" inputmode="decimal" id="r_hi" placeholder="e.g., 104.825" step="0.001"></div>
+            <div class="field-group"><label class="label">Design Elevation</label><input class="input" type="number" inputmode="decimal" id="r_design" placeholder="e.g., 101.500" step="0.001"></div>
+        </div>
+        <div class="field-group">
+            <label class="label">Ground Elevation <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+            <input class="input" type="number" inputmode="decimal" id="r_ground" placeholder="Leave blank if unknown" step="0.001">
+            <p style="font-size:0.75em;color:var(--text-muted);margin-top:5px;">If entered, cut/fill from existing ground is shown.</p>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="clearRod()">Clear</button>
+            <button class="btn btn-primary" onclick="calcRod()">Calculate →</button>
+        </div>
+        <div id="r_error" class="error-msg hidden"></div>
+    </div>
+
+    <div id="rodResult" class="hidden">
+        <div class="result-panel result-blue" style="margin-top:0;">
+            <div class="result-title rt-blue">Grade Rod Reading</div>
+            <div style="text-align:center;padding:6px 0 4px;">
+                <div class="result-label rl-blue" style="text-align:center;margin-bottom:6px;">Rod reading to hit design grade</div>
+                <div class="rod-big rv-blue" id="r_grade_rod">—</div>
+            </div>
+            <div style="margin-top:10px;font-size:0.8em;color:var(--result-text);opacity:0.75;text-align:center;" id="r_rod_note"></div>
+        </div>
+        <div id="rodCFPanel" class="result-panel hidden">
+            <div class="result-title" id="rodCFTitle">Cut / Fill</div>
+            <div class="result-grid">
+                <div><div class="result-label" id="lbl_ground">Ground Elev</div><div class="result-value" id="rodCF_ground">—</div></div>
+                <div><div class="result-label" id="lbl_design">Design Elev</div><div class="result-value" id="rodCF_design">—</div></div>
+                <div class="result-full" style="text-align:center;padding-top:6px;">
+                    <div class="result-label" id="lbl_amount">Amount</div>
+                    <div class="rod-big" id="rodCF_amount">—</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DESIGN ELEVATION -->
+<div id="designPanel" class="hidden">
+    <div class="card">
+        <div class="card-title">Known Point & Grade</div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Known Elevation</label><input class="input" type="number" inputmode="decimal" id="d_elev" placeholder="e.g., 100.000" step="0.001"></div>
+            <div class="field-group"><label class="label">Grade (%)</label><input class="input" type="number" inputmode="decimal" id="d_grade" placeholder="e.g., 2.5 or -1.5" step="0.01"></div>
+        </div>
+        <div class="field-group"><label class="label">Horizontal Distance</label><input class="input" type="number" inputmode="decimal" id="d_dist" placeholder="e.g., 50.000" step="0.001"></div>
+        <div class="field-group">
+            <label class="label">HI <span style="font-weight:400;color:var(--text-muted);">(optional — for grade rod)</span></label>
+            <input class="input" type="number" inputmode="decimal" id="d_hi" placeholder="Leave blank to skip" step="0.001">
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="clearDesign()">Clear</button>
+            <button class="btn btn-primary" onclick="calcDesign()">Calculate →</button>
+        </div>
+        <div id="d_error" class="error-msg hidden"></div>
+    </div>
+
+    <div id="designResult" class="hidden">
+        <div class="result-panel result-blue">
+            <div class="result-title rt-blue">Design Elevation Result</div>
+            <div class="result-grid">
+                <div><div class="result-label rl-blue">Design Elevation</div><div class="result-value rv-blue" id="d_result_elev" style="font-size:1.5em;">—</div></div>
+                <div><div class="result-label rl-blue">Grade Applied</div><div class="result-value rv-blue" id="d_result_grade">—</div></div>
+                <div><div class="result-label rl-blue">Rise / Fall</div><div class="result-value rv-blue" id="d_result_rise">—</div></div>
+                <div id="d_rod_group" class="hidden"><div class="result-label rl-blue">Grade Rod</div><div class="result-value rv-blue" id="d_result_rod">—</div><div class="result-sub rt-blue">Rod to hit grade</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- History -->
+<div class="history-section" id="historySection" style="display:none;">
+    <div class="history-title"><span>Recent Calculations</span><span class="history-clear" onclick="clearHistory()">Clear All</span></div>
+    <div id="historyList"></div>
+</div>
+
+<script>
+// Theme
+const themeBtn=document.getElementById('themeBtn');
+const savedTheme=localStorage.getItem('surveyTheme');
+if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+
+// Mode switching
+function setMode(m){
+    ['grade','rod','design'].forEach(id=>{
+        document.getElementById(id+'Panel').classList.toggle('hidden',id!==m);
+        document.getElementById('tab'+id.charAt(0).toUpperCase()+id.slice(1)).classList.toggle('active',id===m);
+    });
+}
+
+// ===== GRADE & SLOPE =====
+function calcGrade(){
+    const e1=parseFloat(document.getElementById('g_elev1').value);
+    const e2=parseFloat(document.getElementById('g_elev2').value);
+    const hd=parseFloat(document.getElementById('g_hdist').value);
+    const err=document.getElementById('g_error');
+    if(isNaN(e1)||isNaN(e2)||isNaN(hd)){err.textContent='Enter both elevations and horizontal distance.';err.classList.remove('hidden');return;}
+    if(hd<=0){err.textContent='Horizontal distance must be greater than zero.';err.classList.remove('hidden');return;}
+    err.classList.add('hidden');
+
+    const rise=e2-e1;
+    const pct=(rise/hd)*100;
+    const slopeDist=Math.sqrt(hd*hd+rise*rise);
+    const angle=Math.atan(Math.abs(rise)/hd)*(180/Math.PI);
+    const isLevel=Math.abs(pct)<0.001;
+    const isRise=rise>0;
+
+    let ratioStr;
+    if(isLevel){ratioStr='Level';}
+    else{const r=Math.abs(hd/rise);ratioStr=r>=1?`1 : ${r.toFixed(2)}`:`${(1/r).toFixed(2)} : 1`;}
+
+    document.getElementById('g_pct').textContent=(pct>=0?'+':'')+pct.toFixed(3)+'%';
+    document.getElementById('g_ratio').textContent=ratioStr;
+    document.getElementById('g_rise').textContent=(rise>=0?'+':'')+rise.toFixed(4);
+    document.getElementById('g_direction').textContent=isLevel?'Level ↔':isRise?'Rising ↑':'Falling ↓';
+    document.getElementById('g_slope_dist').textContent=slopeDist.toFixed(4);
+    document.getElementById('g_angle').textContent=angle.toFixed(4)+'°';
+    document.getElementById('g_hd_out').textContent=hd.toFixed(4);
+
+    drawDiagram(e1,e2,hd,rise,pct);
+    document.getElementById('gradeResult').classList.remove('hidden');
+    addHistory({type:'grade',label:`Grade: ${(pct>=0?'+':'')+pct.toFixed(3)}%`,detail:`Elev ${e1.toFixed(3)} → ${e2.toFixed(3)}, HD: ${hd.toFixed(3)}, Rise: ${(rise>=0?'+':'')+rise.toFixed(4)}`,data:{e1,e2,hd}});
+}
+
+function drawDiagram(e1,e2,hd,rise,pct){
+    const svg=document.getElementById('gradeDiagram');
+    const isLevel=Math.abs(pct)<0.001,isRise=rise>0;
+    const col=isLevel?'var(--accent-blue)':isRise?'var(--accent-green)':'var(--accent-red)';
+    const pad={l:10,r:50,t:12,b:28};
+    const W=300-pad.l-pad.r, H=90-pad.t-pad.b;
+    const x1=pad.l, x2=pad.l+W;
+    const y1=pad.t+(isLevel?H/2:isRise?H:0);
+    const y2=pad.t+(isLevel?H/2:isRise?0:H);
+    // Dashed vertical rise line
+    const riseVert=isLevel?'':
+        `<line x1="${x2}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5"/>`;
+    // Rise label
+    const riseLabel=isLevel?'':
+        `<text x="${x2+6}" y="${(y1+y2)/2+4}" font-size="9" font-weight="700" fill="${col}">${Math.abs(rise).toFixed(3)}</text>`;
+    // HD label (centered above line)
+    const midX=(x1+x2)/2, midY=(y1+y2)/2;
+    svg.innerHTML=`
+        <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="3" stroke-linecap="round"/>
+        ${riseVert}${riseLabel}
+        <text x="${midX}" y="${midY-8}" text-anchor="middle" font-size="9" font-weight="700" fill="${col}">HD: ${hd.toFixed(2)}</text>
+        <circle cx="${x1}" cy="${y1}" r="4" fill="${col}"/>
+        <circle cx="${x2}" cy="${y2}" r="4" fill="${col}"/>
+        <text x="${x1}" y="${y1+14}" text-anchor="middle" font-size="9" fill="var(--text-muted)">${e1.toFixed(3)}</text>
+        <text x="${x2}" y="${y2+14}" text-anchor="middle" font-size="9" fill="var(--text-muted)">${e2.toFixed(3)}</text>
+    `;
+}
+
+function clearGrade(){['g_elev1','g_elev2','g_hdist'].forEach(id=>document.getElementById(id).value='');document.getElementById('gradeResult').classList.add('hidden');document.getElementById('g_error').classList.add('hidden');}
+
+// ===== ROD CUT / FILL =====
+function calcRod(){
+    const hi=parseFloat(document.getElementById('r_hi').value);
+    const design=parseFloat(document.getElementById('r_design').value);
+    const groundRaw=document.getElementById('r_ground').value.trim();
+    const ground=groundRaw!==''?parseFloat(groundRaw):null;
+    const err=document.getElementById('r_error');
+    if(isNaN(hi)||isNaN(design)){err.textContent='Enter HI and design elevation.';err.classList.remove('hidden');return;}
+    err.classList.add('hidden');
+
+    const gradeRod=hi-design;
+    document.getElementById('r_grade_rod').textContent=gradeRod.toFixed(4);
+    document.getElementById('r_rod_note').textContent=gradeRod>0?`Rod reading must be ${gradeRod.toFixed(4)} to be on grade`:`Negative rod — design is above HI`;
+
+    const cfPanel=document.getElementById('rodCFPanel');
+    if(ground!==null&&!isNaN(ground)){
+        const cf=ground-design; // positive=cut, negative=fill
+        const isCut=cf>0.0005,isFill=cf<-0.0005;
+        const panelClass=isCut?'result-panel result-orange':isFill?'result-panel result-green':'result-panel result-blue';
+        const textClass=isCut?'rt-orange':isFill?'rt-green':'rt-blue';
+        const labelClass=isCut?'rl-orange':isFill?'rl-green':'rl-blue';
+        const valueClass=isCut?'rv-orange':isFill?'rv-green':'rv-blue';
+
+        cfPanel.className=panelClass;
+        const title=document.getElementById('rodCFTitle');
+        title.className=`result-title ${textClass}`;
+        title.textContent=isCut?'Cut Required':isFill?'Fill Required':'On Grade';
+        ['lbl_ground','lbl_design','lbl_amount'].forEach(id=>document.getElementById(id).className=`result-label ${labelClass}`);
+        document.getElementById('rodCF_ground').className=`result-value ${valueClass}`;
+        document.getElementById('rodCF_design').className=`result-value ${valueClass}`;
+        document.getElementById('rodCF_amount').className=`rod-big ${valueClass}`;
+        document.getElementById('rodCF_ground').textContent=ground.toFixed(4);
+        document.getElementById('rodCF_design').textContent=design.toFixed(4);
+        document.getElementById('rodCF_amount').textContent=isCut?`CUT ${Math.abs(cf).toFixed(4)}`:isFill?`FILL ${Math.abs(cf).toFixed(4)}`:'On Grade';
+        cfPanel.classList.remove('hidden');
+    } else {
+        cfPanel.classList.add('hidden');
+    }
+
+    document.getElementById('rodResult').classList.remove('hidden');
+    addHistory({type:'rod',label:`Grade Rod: ${gradeRod.toFixed(4)}`,detail:`HI: ${hi.toFixed(3)}, Design: ${design.toFixed(3)}${ground!==null?', Ground: '+ground.toFixed(3):''}`,data:{hi,design,ground}});
+}
+function clearRod(){['r_hi','r_design','r_ground'].forEach(id=>document.getElementById(id).value='');document.getElementById('rodResult').classList.add('hidden');document.getElementById('r_error').classList.add('hidden');}
+
+// ===== DESIGN ELEVATION =====
+function calcDesign(){
+    const elev=parseFloat(document.getElementById('d_elev').value);
+    const grade=parseFloat(document.getElementById('d_grade').value);
+    const dist=parseFloat(document.getElementById('d_dist').value);
+    const hiRaw=document.getElementById('d_hi').value.trim();
+    const hi=hiRaw!==''?parseFloat(hiRaw):null;
+    const err=document.getElementById('d_error');
+    if(isNaN(elev)||isNaN(grade)||isNaN(dist)){err.textContent='Enter known elevation, grade %, and distance.';err.classList.remove('hidden');return;}
+    if(dist<=0){err.textContent='Distance must be greater than zero.';err.classList.remove('hidden');return;}
+    err.classList.add('hidden');
+
+    const rise=(grade/100)*dist;
+    const designElev=elev+rise;
+
+    document.getElementById('d_result_elev').textContent=designElev.toFixed(4);
+    document.getElementById('d_result_grade').textContent=(grade>=0?'+':'')+grade.toFixed(4)+'%';
+    document.getElementById('d_result_rise').textContent=(rise>=0?'+':'')+rise.toFixed(4)+(rise>0.0005?' ↑':rise<-0.0005?' ↓':' ↔');
+
+    const rodGroup=document.getElementById('d_rod_group');
+    if(hi!==null&&!isNaN(hi)){
+        document.getElementById('d_result_rod').textContent=(hi-designElev).toFixed(4);
+        rodGroup.classList.remove('hidden');
+    } else {
+        rodGroup.classList.add('hidden');
+    }
+
+    document.getElementById('designResult').classList.remove('hidden');
+    addHistory({type:'design',label:`Design Elev: ${designElev.toFixed(4)}`,detail:`From ${elev.toFixed(3)} @ ${grade>=0?'+':''}${grade}% over ${dist.toFixed(3)}`,data:{elev,grade,dist,hi}});
+}
+function clearDesign(){['d_elev','d_grade','d_dist','d_hi'].forEach(id=>document.getElementById(id).value='');document.getElementById('designResult').classList.add('hidden');document.getElementById('d_error').classList.add('hidden');}
+
+// ===== HISTORY =====
+let history=JSON.parse(localStorage.getItem('gradeHistory')||'[]');
+function addHistory(entry){entry.ts=Date.now();history.unshift(entry);if(history.length>15)history=history.slice(0,15);localStorage.setItem('gradeHistory',JSON.stringify(history));renderHistory();}
+function renderHistory(){
+    const list=document.getElementById('historyList'),section=document.getElementById('historySection');
+    if(history.length===0){section.style.display='none';return;}
+    section.style.display='block';list.innerHTML='';
+    const colors={grade:'#3b82f6',rod:'#f97316',design:'#8b5cf6'};
+    history.forEach(h=>{
+        const div=document.createElement('div');div.className='history-item';
+        div.innerHTML=`<div class="history-item-top"><span class="history-item-label">${h.label}</span><span class="type-badge" style="background:${colors[h.type]||'#6b7280'};">${h.type}</span></div><div class="history-item-detail">${h.detail}</div>`;
+        div.onclick=()=>loadHistory(h);list.appendChild(div);
+    });
+}
+function loadHistory(h){
+    if(h.type==='grade'){setMode('grade');document.getElementById('g_elev1').value=h.data.e1;document.getElementById('g_elev2').value=h.data.e2;document.getElementById('g_hdist').value=h.data.hd;calcGrade();}
+    else if(h.type==='rod'){setMode('rod');document.getElementById('r_hi').value=h.data.hi;document.getElementById('r_design').value=h.data.design;document.getElementById('r_ground').value=h.data.ground??'';calcRod();}
+    else if(h.type==='design'){setMode('design');document.getElementById('d_elev').value=h.data.elev;document.getElementById('d_grade').value=h.data.grade;document.getElementById('d_dist').value=h.data.dist;document.getElementById('d_hi').value=h.data.hi??'';calcDesign();}
+}
+function clearHistory(){history=[];localStorage.removeItem('gradeHistory');renderHistory();}
+renderHistory();
+</script>
+</body>
+</html>

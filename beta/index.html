@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>Survey Tool</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-primary: #f3f4f6; --bg-secondary: #ffffff; --bg-tertiary: #f9fafb;
+            --text-primary: #111827; --text-secondary: #374151; --text-muted: #9ca3af;
+            --border-primary: #e5e7eb; --border-secondary: #d1d5db;
+            --accent-blue: #3b82f6; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+        }
+        [data-theme="high-contrast"] {
+            --bg-primary: #000000; --bg-secondary: #0a0a0a; --bg-tertiary: #111111;
+            --text-primary: #ffffff; --text-secondary: #f0f0f0; --text-muted: #999999;
+            --border-primary: #333333; --border-secondary: #444444;
+            --accent-blue: #60a5fa; --shadow: 0 1px 3px rgba(0,0,0,0.5);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+            background: var(--bg-primary); color: var(--text-primary);
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; padding: 48px 20px 40px;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .app-icon {
+            width: 100px; height: 100px; border-radius: 22px;
+            box-shadow: var(--shadow-lg); margin-bottom: 14px;
+        }
+        h1 { font-size: 1.9em; font-weight: 800; color: var(--text-primary); margin-bottom: 4px; }
+        .subtitle { font-size: 0.9em; color: var(--text-muted); margin-bottom: 36px; }
+        .tools { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
+        .tool-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 18px 20px; background: var(--bg-secondary);
+            border: 1.5px solid var(--border-primary); border-radius: 14px;
+            cursor: pointer; text-decoration: none; color: inherit;
+            box-shadow: var(--shadow); transition: border-color 0.15s, transform 0.1s;
+        }
+        .tool-card:active { transform: scale(0.98); }
+        .tool-card:hover { border-color: var(--accent-blue); }
+        .tool-card.disabled {
+            opacity: 0.45; cursor: default; border-style: dashed;
+            background: var(--bg-tertiary); pointer-events: none;
+        }
+        .tool-icon { font-size: 2em; flex-shrink: 0; }
+        .tool-info { flex: 1; min-width: 0; }
+        .tool-name { font-size: 1em; font-weight: 700; color: var(--text-primary); }
+        .tool-desc { font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
+        .tool-arrow { color: var(--text-muted); font-size: 1.3em; flex-shrink: 0; }
+        .footer { margin-top: auto; padding-top: 40px; font-size: 0.72em; color: var(--text-muted); text-align: center; }
+        .theme-btn {
+            position: fixed; top: 14px; right: 14px;
+            background: var(--bg-secondary); border: 1.5px solid var(--border-secondary);
+            border-radius: 8px; padding: 6px 10px; font-size: 0.75em; font-weight: 700;
+            color: var(--text-secondary); cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+    <img src="./icon.png" class="app-icon" alt="Survey Tool">
+    <h1>Survey Tool</h1>
+    <p class="subtitle">Field Edition</p>
+    <div class="tools">
+        <a href="leveling.html" class="tool-card">
+            <span class="tool-icon">🔭</span>
+            <div class="tool-info">
+                <div class="tool-name">Differential Leveling</div>
+                <div class="tool-desc">Level loops, stadia, misclosure &amp; accuracy</div>
+            </div>
+            <span class="tool-arrow">›</span>
+        </a>
+        <a href="materials.html" class="tool-card">
+            <span class="tool-icon">🗂️</span>
+            <div class="tool-info">
+                <div class="tool-name">Material Reference</div>
+                <div class="tool-desc">HMA, concrete, granular &amp; Proctor data by contract</div>
+            </div>
+            <span class="tool-arrow">›</span>
+        </a>
+    <div class="footer">Survey / Inspection Tool &nbsp;•&nbsp; Field Edition</div>
+    <script>
+        const btn = document.getElementById('themeBtn');
+        const saved = localStorage.getItem('surveyTheme');
+        if (saved === 'high-contrast') {
+            document.documentElement.setAttribute('data-theme', 'high-contrast');
+            btn.textContent = '☀️ Light';
+        }
+        btn.addEventListener('click', () => {
+            const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+            document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+            btn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+            localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
+        });
+    </script>
+</body>
+</html>

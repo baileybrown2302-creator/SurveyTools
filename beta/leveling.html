@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>Differential Leveling — Survey Tool</title>
+    <style>
+        .mt-2 { margin-top:0.5rem; } .mt-3 { margin-top:0.75rem; } .hidden { display:none!important; }
+        :root {
+            --bg-primary: #f3f4f6; --bg-secondary: #ffffff; --bg-tertiary: #f9fafb;
+            --text-primary: #111827; --text-secondary: #374151; --text-tertiary: #6b7280; --text-muted: #9ca3af;
+            --border-primary: #e5e7eb; --border-secondary: #d1d5db;
+            --accent-blue: #3b82f6; --accent-blue-hover: #2563eb;
+            --accent-green: #22c55e; --accent-green-hover: #16a34a;
+            --accent-red: #ef4444; --accent-red-hover: #dc2626;
+            --accent-orange: #f97316; --accent-orange-hover: #ea580c;
+            --accent-gray: #6b7280; --accent-gray-hover: #4b5563;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1); --shadow-lg: 0 10px 25px rgba(0,0,0,0.1);
+            --modal-overlay: rgba(0,0,0,0.65);
+            --card-bg: #ffffff; --card-border: #e5e7eb;
+            --misc-bg: #dbeafe; --misc-border: #93c5fd; --misc-text: #1d4ed8;
+            --stadia-warn-bg: #fef3c7; --stadia-warn-border: #f59e0b;
+            --stadia-danger-bg: #fee2e2; --stadia-danger-border: #ef4444;
+            --input-bg: #ffffff; --input-border: #d1d5db;
+            --summary-bg: #eef2ff; --summary-border: #c7d2fe; --summary-text: #3730a3;
+            --void-text: #9ca3af;
+        }
+        [data-theme="high-contrast"] {
+            --bg-primary: #000000; --bg-secondary: #0a0a0a; --bg-tertiary: #111111;
+            --text-primary: #ffffff; --text-secondary: #f0f0f0; --text-tertiary: #cccccc; --text-muted: #999999;
+            --border-primary: #333333; --border-secondary: #444444;
+            --accent-blue: #60a5fa; --accent-blue-hover: #93bbfd;
+            --accent-green: #4ade80; --accent-green-hover: #86efac;
+            --accent-red: #f87171; --accent-red-hover: #fca5a5;
+            --accent-orange: #fb923c; --accent-orange-hover: #fdba74;
+            --accent-gray: #9ca3af; --accent-gray-hover: #d1d5db;
+            --shadow: 0 1px 3px rgba(0,0,0,0.5); --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+            --modal-overlay: rgba(0,0,0,0.85);
+            --card-bg: #111111; --card-border: #333333;
+            --misc-bg: #1e1b4b; --misc-border: #4338ca; --misc-text: #a5b4fc;
+            --stadia-warn-bg: #422006; --stadia-warn-border: #f59e0b;
+            --stadia-danger-bg: #450a0a; --stadia-danger-border: #f87171;
+            --input-bg: #1a1a1a; --input-border: #555555;
+            --summary-bg: #1e1b4b; --summary-border: #4338ca; --summary-text: #c7d2fe;
+            --void-text: #666666;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); margin: 0; padding: 0; transition: background-color 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
+        [data-fontsize="small"] { font-size: 13px; } [data-fontsize="medium"] { font-size: 15px; } [data-fontsize="large"] { font-size: 18px; }
+        .label { display:block; font-size:0.85em; font-weight:600; color:var(--text-secondary); margin-bottom:4px; }
+        /* FIX: added min-width:0 so date/text inputs cannot overflow their grid cell on mobile */
+        .input, .select-input { display:block; width:100%; min-width:0; padding:10px 12px; border:1.5px solid var(--input-border); border-radius:8px; background:var(--input-bg); color:var(--text-primary); font-size:1em; outline:none; transition:border-color 0.2s; }
+        .input:focus, .select-input:focus { border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(59,130,246,0.15); }
+        .button { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border:none; border-radius:10px; font-size:0.9em; font-weight:600; cursor:pointer; transition:all 0.15s ease; color:white; min-height:44px; min-width:44px; -webkit-user-select:none; user-select:none; }
+        .button:active:not(:disabled) { transform:scale(0.97); } .button:disabled { opacity:0.4; cursor:not-allowed; }
+        .button-primary { background:var(--accent-blue); } .button-primary:hover:not(:disabled) { background:var(--accent-blue-hover); }
+        .button-secondary { background:var(--accent-gray); } .button-secondary:hover:not(:disabled) { background:var(--accent-gray-hover); }
+        .button-success { background:var(--accent-green); } .button-success:hover:not(:disabled) { background:var(--accent-green-hover); }
+        .button-danger { background:var(--accent-red); } .button-danger:hover:not(:disabled) { background:var(--accent-red-hover); }
+        .button-warning { background:var(--accent-orange); } .button-warning:hover:not(:disabled) { background:var(--accent-orange-hover); }
+        .button-small { padding:6px 10px; font-size:0.78em; min-height:36px; border-radius:8px; }
+        #modalCancelButton, #confirmModalCancel { background:var(--bg-tertiary)!important; color:var(--text-secondary)!important; border:1.5px solid var(--border-secondary)!important; }
+        #modalCancelButton:hover, #confirmModalCancel:hover { background:var(--border-primary)!important; }
+        .settings-toggle { padding:6px 12px; border-radius:8px; font-size:0.8em; font-weight:700; border:1.5px solid var(--border-secondary); background:var(--bg-tertiary); color:var(--text-secondary); min-height:36px; cursor:pointer; transition:all 0.2s; }
+        .settings-toggle.active { background:var(--accent-blue); color:white; border-color:var(--accent-blue); }
+        [data-theme="high-contrast"] .settings-toggle.active { background:#fbbf24; color:#000; border-color:#fbbf24; }
+        .display-section select { padding:6px 10px; border-radius:8px; font-size:0.85em; font-weight:600; border:1.5px solid var(--border-secondary); background:var(--bg-tertiary); color:var(--text-secondary); min-height:36px; cursor:pointer; }
+        /* Summary bar - sticky top */
+        .summary-bar { background:var(--summary-bg); border-bottom:1.5px solid var(--summary-border); padding:10px 16px; display:flex; justify-content:space-around; align-items:center; gap:4px; position:sticky; top:0; z-index:50; }
+        .summary-item { text-align:center; flex:1; min-width:0; }
+        .summary-label { font-size:clamp(0.45em,1.5vw,0.6em); font-weight:700; text-transform:uppercase; letter-spacing:0.3px; color:var(--summary-text); opacity:0.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .summary-value { font-size:clamp(0.7em,2.5vw,0.95em); font-weight:700; color:var(--summary-text); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .stadia-check-btn { background:none; border:1.5px solid var(--summary-text); color:var(--summary-text); border-radius:6px; padding:1px 5px; font-size:0.65em; cursor:pointer; opacity:0.7; margin-left:3px; vertical-align:middle; font-weight:800; }
+        .stadia-check-btn:hover { opacity:1; }
+        /* Project info */
+        .project-info-container { background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:12px; margin:12px 16px; padding:16px; overflow:hidden; }
+        .project-info-header { font-size:1.1em; font-weight:700; color:var(--text-primary); margin-bottom:0; }
+        .project-info-note { font-size:0.8em; color:var(--text-muted); font-style:italic; margin-top:8px; }
+        /* Desktop action buttons - can be sticky or inline */
+        .desktop-action-buttons { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin:16px; background:var(--bg-primary); padding:12px 16px; z-index:40; }
+        .desktop-action-buttons.sticky-actions { position:sticky; top:48px; margin:0; border-bottom:1px solid var(--border-primary); box-shadow:var(--shadow); }
+        /* Table */
+        .table-container { margin:12px 16px; }
+        .table-wrapper { border:1px solid var(--border-primary); border-radius:12px; background:var(--bg-secondary); box-shadow:var(--shadow); }
+        .table-wrapper table { width:100%; border-collapse:collapse; }
+        .table-header { padding:8px 10px; text-align:left; font-size:0.7em; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; background:var(--bg-tertiary); color:var(--text-tertiary); border-bottom:1.5px solid var(--border-primary); position:sticky; z-index:39; }
+        .table-cell { padding:8px 10px; font-size:0.85em; color:var(--text-secondary); border-bottom:1px solid var(--border-primary); white-space:nowrap; font-variant-numeric:tabular-nums; }
+        .table-cell.font-semibold { font-weight:700; color:var(--text-primary); }
+        .voided-row td { text-decoration:line-through; color:var(--void-text)!important; }
+        .void-remark { color:var(--accent-red); font-weight:700; margin-left:4px; }
+        .stadia-warn td { background-color:var(--stadia-warn-bg)!important; }
+        .stadia-danger td { background-color:var(--stadia-danger-bg)!important; }
+        /* Cards */
+        .card-container { display:none; padding:0 12px 120px 12px; }
+        .level-card { background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:10px; margin-bottom:6px; overflow:hidden; box-shadow:var(--shadow); position:relative; touch-action:pan-y; }
+        .level-card.swiping { transition:none; }
+        .level-card .card-inner { transition:transform 0.25s ease; position:relative; z-index:2; background:var(--card-bg); }
+        .level-card.swiping .card-inner { transition:none; }
+        .card-swipe-actions { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; z-index:1; }
+        .swipe-action-left { flex:1; display:flex; align-items:center; justify-content:flex-start; padding-left:20px; background:var(--accent-blue); color:white; font-weight:700; font-size:0.85em; }
+        .swipe-action-right { flex:1; display:flex; align-items:center; justify-content:flex-end; padding-right:20px; background:var(--accent-orange); color:white; font-weight:700; font-size:0.85em; }
+        .level-card.voided-card { opacity:0.55; } .level-card.voided-card .card-point-name { text-decoration:line-through; }
+        .card-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px 4px 12px; }
+        .card-type-badge { font-size:0.6em; font-weight:800; text-transform:uppercase; letter-spacing:0.8px; padding:2px 6px; border-radius:5px; color:white; }
+        .badge-bm { background:#7c3aed; } .badge-bs { background:var(--accent-blue); } .badge-ip { background:#0891b2; }
+        .badge-fs { background:var(--accent-green); } .badge-close { background:var(--accent-red); } .badge-void { background:var(--text-muted); }
+        .card-point-name { font-weight:800; font-size:1em; color:var(--text-primary); }
+        .card-body { padding:2px 12px 8px 12px; }
+        .card-grid { display:grid; grid-template-columns:1fr 1fr; gap:2px 14px; }
+        .card-field-label { font-size:0.6em; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted); }
+        .card-field-value { font-size:0.88em; font-weight:600; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+        .card-elevation { font-size:1.05em; font-weight:800; color:var(--accent-blue); }
+        [data-theme="high-contrast"] .card-elevation { color:#fbbf24; }
+        .card-expand-toggle { display:block; width:100%; padding:5px; text-align:center; font-size:0.65em; font-weight:700; color:var(--text-muted); background:var(--bg-tertiary); border-top:1px solid var(--border-primary); cursor:pointer; text-transform:uppercase; letter-spacing:1px; }
+        .card-details { display:none; padding:6px 12px 8px; border-top:1px solid var(--border-primary); background:var(--bg-tertiary); }
+        .card-details.expanded { display:block; }
+        .card-remarks { font-size:0.75em; color:var(--text-tertiary); font-style:italic; padding:2px 12px 0; }
+        .card-stadia-warn { border-left:4px solid var(--stadia-warn-border)!important; }
+        .card-stadia-danger { border-left:4px solid var(--stadia-danger-border)!important; }
+        /* Mobile action bar */
+        .mobile-action-bar { display:none; position:fixed; bottom:0; left:0; right:0; background:var(--bg-secondary); border-top:1.5px solid var(--border-primary); padding:10px 12px; padding-bottom:max(10px,env(safe-area-inset-bottom)); z-index:100; box-shadow:0 -4px 20px rgba(0,0,0,0.1); }
+        .mobile-action-bar .action-buttons { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+        .mobile-action-bar .button { font-size:0.75em; padding:12px 6px; border-radius:12px; display:flex; flex-direction:column; align-items:center; gap:2px; min-height:52px; }
+        .mobile-action-bar .btn-icon { font-size:1.3em; }
+        /* Misc/management */
+        .misclosure-display { background:var(--misc-bg); border:1.5px solid var(--misc-border); color:var(--misc-text); border-radius:12px; margin:12px 16px; padding:14px; font-weight:600; }
+        .accuracy-detail { margin-top:10px; font-size:0.85em; font-weight:500; }
+        .accuracy-pass { color:var(--accent-green); } .accuracy-fail { color:var(--accent-red); }
+        [data-theme="high-contrast"] .accuracy-pass { color:#4ade80; } [data-theme="high-contrast"] .accuracy-fail { color:#f87171; }
+        .management-section { margin:16px; padding:16px; background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:12px; }
+        .management-section h3 { font-size:0.85em; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px; text-align:center; }
+        .management-buttons { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+        .help-section { margin:16px; padding:16px; border:1px solid var(--border-primary); border-radius:12px; background:var(--bg-secondary); }
+        .help-section h3 { font-size:1em; font-weight:700; color:var(--text-secondary); cursor:pointer; margin-bottom:0; }
+        .help-content { font-size:0.85em; color:var(--text-tertiary); } .help-content strong { color:var(--text-secondary); font-weight:700; }
+        .help-content ul { margin-left:16px; } .help-content li { margin-bottom:4px; }
+        /* Modals */
+        .modal { position:fixed!important; top:0; left:0; width:100%; height:100%; background:var(--modal-overlay); display:flex; align-items:center; justify-content:center; z-index:1000; padding:16px; }
+        .modal.hidden { display:none!important; }
+        .modal-content { background:var(--bg-secondary); padding:20px; border-radius:16px; box-shadow:var(--shadow-lg); width:100%; max-width:440px; max-height:90vh; overflow-y:auto; color:var(--text-primary); -webkit-overflow-scrolling:touch; }
+        .modal-content h3 { font-size:1.1em; font-weight:800; margin-bottom:16px; }
+        #modalFieldsContainer .input, #modalFieldsContainer .select-input { background:var(--input-bg)!important; border-color:var(--input-border)!important; }
+        .no-data-message { color:var(--text-muted); text-align:center; padding:32px 16px; font-size:0.95em; }
+        .ip-toast { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:var(--accent-green); color:white; padding:16px 24px; border-radius:14px; font-weight:800; font-size:1.1em; z-index:2000; opacity:0; transition:opacity 0.3s; pointer-events:none; box-shadow:0 8px 30px rgba(0,0,0,0.3); }
+        .ip-toast.show { opacity:1; }
+        @media (max-width:768px) {
+            .desktop-table:not(.force-table) { display:none!important; } .card-container:not(.force-hide) { display:block!important; }
+            .mobile-action-bar { display:block!important; } .desktop-action-buttons:not(.force-show) { display:none!important; }
+            body { padding-bottom:80px; }
+            .project-info-container,.management-section,.misclosure-display { margin:8px 12px; }
+            .summary-bar { padding:8px 10px; }
+        }
+        @media (min-width:769px) { .card-container:not(.force-cards) { display:none!important; } .mobile-action-bar { display:none!important; } }
+        @media print {
+            html,body { background:white!important; color:black!important; } .no-print { display:none!important; }
+            table.print-table { width:100%; border-collapse:collapse; margin-top:15px; }
+            .print-table th,.print-table td { border:1px solid #999; padding:4px; font-size:9pt; text-align:left; color:black!important; }
+            .print-table th { background-color:#e5e7eb!important; -webkit-print-color-adjust:exact; }
+            .voided-row td { text-decoration:line-through!important; color:#6b7280!important; }
+            .void-remark-print { font-style:italic; color:#6b7280!important; }
+        }
+        [data-theme="high-contrast"] ::-webkit-scrollbar { width:8px; }
+        [data-theme="high-contrast"] ::-webkit-scrollbar-track { background:#111; }
+        [data-theme="high-contrast"] ::-webkit-scrollbar-thumb { background:#444; border-radius:4px; }
+    </style>
+</head>
+<body data-fontsize="medium">
+<div id="ipToast" class="ip-toast">IP Added!</div>
+<!-- Sticky Summary Bar -->
+<div class="summary-bar no-print" id="summaryBar">
+    <div class="summary-item" style="flex:0 0 auto;"><a href="index.html" style="background:none;border:none;color:var(--summary-text);font-size:0.75em;font-weight:700;cursor:pointer;padding:2px 4px;opacity:0.8;text-decoration:none;">‹ Menu</a></div>
+    <div class="summary-item"><div class="summary-label">Point</div><div class="summary-value" id="summaryCurrentPoint">—</div></div>
+    <div class="summary-item"><div class="summary-label" id="summaryHILabel">HI</div><div class="summary-value" id="summaryHI">—</div></div>
+    <div class="summary-item"><div class="summary-label">Setups</div><div class="summary-value" id="summarySetups">0</div></div>
+    <div class="summary-item"><div class="summary-label">Stadia<button class="stadia-check-btn" id="stadiaCheckBtn" title="Quick stadia check">📏</button></div><div class="summary-value" id="summaryStadia">0.000</div></div>
+    <div class="summary-item" id="fsTargetItem" style="display:none;"><div class="summary-label">FS Target</div><div class="summary-value" id="summaryFSTarget">—</div></div>
+    <div class="summary-item"><div class="summary-label">Loop Dist</div><div class="summary-value" id="summaryLoopDist">0.0</div></div>
+</div>
+<div class="no-print">
+<!-- Project Info -->
+<div id="projectInfo" class="project-info-container">
+    <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" id="projectInfoToggle">
+        <h2 class="project-info-header">Project Information</h2>
+        <svg id="projectInfoArrow" style="width:20px;height:20px;color:var(--text-muted);transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+    </div>
+    <!-- FIX: changed minmax(200px,1fr) to minmax(min(200px,100%),1fr) so grid cells never force overflow on narrow screens -->
+    <div id="projectInfoFields" class="mt-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px;">
+        <div><label for="date" class="label">Date:</label><input type="date" id="date" class="input"></div>
+        <div><label for="projectNumber" class="label">Project #:</label><input type="text" id="projectNumber" class="input" placeholder="e.g., P2024-001"></div>
+        <div><label for="description" class="label">Description:</label><input type="text" id="description" class="input" placeholder="e.g., Level Loop A"></div>
+        <div><label for="operator" class="label">Operator:</label><input type="text" id="operator" class="input"></div>
+        <div><label for="recorder" class="label">Recorder:</label><input type="text" id="recorder" class="input"></div>
+        <div><label for="instrument" class="label">Instrument:</label><input type="text" id="instrument" class="input" placeholder="e.g., Trimble DiNi03"></div>
+        <div><label for="rodTypeSelect" class="label">Rod Type:</label><select id="rodTypeSelect" class="select-input"><option value="Philly Rod">Philly Rod</option><option value="Barcode Rod">Barcode Rod</option><option value="Other">Other (Specify)</option></select><input type="text" id="rodTypeOther" class="input mt-2 hidden" placeholder="Specify rod type"></div>
+        <div><label for="units" class="label">Units:</label><select id="units" class="select-input"><option value="ft">Feet (ft)</option><option value="m">Meters (m)</option></select></div>
+        <div><label for="decimalSelect" class="label">Decimal Precision:</label><select id="decimalSelect" class="select-input"><option value="3" selected>3 places</option><option value="4">4 places</option></select></div>
+    </div>
+    <p class="project-info-note" id="projectInfoNote">Ensure values match the selected unit.</p>
+</div>
+<!-- Desktop Action Buttons -->
+<div class="desktop-action-buttons" id="desktopActionButtons">
+    <button id="addBMButton" class="button button-primary">Add Starting BM</button>
+    <button id="startSetupButton" class="button button-primary" disabled>Start New Setup</button>
+    <button id="addIPButton" class="button button-secondary" disabled>Add IP</button>
+    <button id="addFSButton" class="button button-secondary" disabled>Add FS / Close</button>
+</div>
+<!-- Desktop Table -->
+<div class="table-container desktop-table" id="desktopTableContainer">
+    <div class="table-wrapper"><table style="min-width:100%;"><thead id="tableHead"><tr>
+        <th class="table-header">Station</th><th class="table-header">BS</th><th class="table-header">HI</th><th class="table-header">FS/IFS</th><th class="table-header">Elevation</th>
+        <th class="table-header">BS Dist (<span class="unit-label">ft</span>)</th><th class="table-header">FS/IFS Dist (<span class="unit-label">ft</span>)</th>
+        <th class="table-header">Pt Stadia (<span class="unit-label">ft</span>)</th><th class="table-header">Tot Stadia (<span class="unit-label">ft</span>)</th>
+        <th class="table-header">Remarks</th><th class="table-header">Actions</th>
+    </tr></thead><tbody id="levelingTableBody"></tbody></table></div>
+</div>
+<!-- Mobile Cards -->
+<div class="card-container" id="cardContainer"></div>
+<div id="noDataMessage" class="no-data-message">No leveling data yet. Start by adding a Benchmark.</div>
+<!-- Misclosure -->
+<div id="misclosureDisplay" class="misclosure-display hidden">
+    Misclosure: <span id="misclosureValue"></span>
+    <button id="accuracyDetailBtn" class="button button-small button-primary" style="margin-left:10px;font-size:0.7em;padding:4px 10px;min-height:28px;">Show Accuracy</button>
+    <div id="accuracyDetail" class="accuracy-detail" style="display:none;"></div>
+</div>
+<!-- Data Management (dropdown) -->
+<div class="management-section" style="margin-bottom:8px;">
+    <h3 style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;" id="dataMgmtToggle">Data Management
+        <svg id="dataMgmtArrow" style="width:16px;height:16px;transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></h3>
+    <div id="dataMgmtContent" style="display:none;margin-top:12px;"><div class="management-buttons">
+        <button id="deleteLastIPButton" class="button button-warning button-small" disabled>Delete Last IP</button>
+        <button id="cancelSetupButton" class="button button-warning button-small" disabled>Cancel Setup</button>
+        <button id="deleteLastSetupButton" class="button button-danger button-small" disabled>Delete Last Setup</button>
+        <button id="clearAllButton" class="button button-danger button-small">Clear All</button>
+    </div></div>
+</div>
+<!-- Export/Import (dropdown) -->
+<div class="management-section" style="margin-bottom:8px;">
+    <h3 style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;" id="exportToggle">Export / Import / Print
+        <svg id="exportArrow" style="width:16px;height:16px;transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></h3>
+    <div id="exportContent" style="display:none;margin-top:12px;"><div class="management-buttons">
+        <button id="exportLevelingDataCSVButton" class="button button-success button-small">Level Editor File</button>
+        <button id="exportTableCSVButton" class="button button-success button-small">Export CSV</button>
+        <button id="exportJSONButton" class="button button-primary button-small">Export JSON</button>
+        <label for="importJSONInput" class="button button-success button-small" style="cursor:pointer;">Import JSON</label>
+        <input type="file" id="importJSONInput" class="hidden" accept=".json">
+        <button id="printViewButton" class="button button-secondary button-small">Print View</button>
+    </div></div>
+</div>
+<!-- Display Settings (dropdown) -->
+<div class="management-section display-section" style="margin-bottom:8px;">
+    <h3 style="cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;" id="displaySettingsToggle">Display Settings
+        <svg id="displayArrow" style="width:16px;height:16px;transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></h3>
+    <div id="displaySettingsContent" style="display:none;margin-top:12px;">
+        <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:end;">
+            <div><label class="label">Theme</label><button id="themeToggle" class="settings-toggle" style="display:block;width:100%;">High Contrast</button></div>
+            <div><label class="label">Font Size</label><select id="fontSizeSelect" class="select-input" style="min-width:100px;"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
+            <div><label class="label">View Mode</label><select id="viewModeSelect" class="select-input" style="min-width:100px;"><option value="auto" selected>Auto</option><option value="table">Table</option><option value="cards">Cards</option></select></div>
+            <div><label class="label">Action Buttons</label><select id="actionPinSelect" class="select-input" style="min-width:120px;"><option value="inline" selected>Inline (default)</option><option value="pinned">Pin to Bottom</option></select></div>
+        </div>
+    </div>
+</div>
+<!-- Help -->
+<div class="help-section" style="margin-bottom:120px;">
+    <h3 id="toggleHelpButton" style="display:flex;align-items:center;justify-content:space-between;">Help & Instructions
+        <svg id="helpArrow" style="width:20px;height:20px;transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></h3>
+    <div id="helpContent" class="help-content hidden" style="margin-top:12px;">
+        <p>This calculator assists with differential leveling and level loop calculations.</p>
+        <div><strong>Starting:</strong><ul class="list-disc list-inside ml-4"><li><b>Add Starting BM</b> → Enter name, elevation, optional code.</li><li><b>Start New Setup</b> → Enter BS reading + distance (direct or three-wire).</li></ul></div>
+        <div><strong>Shots:</strong><ul class="list-disc list-inside ml-4"><li><b>Add IP</b> → Intermediate foresight. Check "DiNi Line Leveling" if the reading is a delta from BS point elevation. Quick-repeat opens next IP automatically.</li><li><b>Add FS / Close</b> → Foresight to TP or closing shot on known BM.</li></ul></div>
+        <div><strong>Mobile Gestures:</strong><ul class="list-disc list-inside ml-4"><li><b>Swipe Right</b> → Edit row</li><li><b>Swipe Left</b> → Void/Unvoid</li><li><b>Tap Details</b> → Expand full info</li></ul></div>
+        <div><strong>Summary Bar:</strong><ul class="list-disc list-inside ml-4"><li>Shows HI during setup, Elevation between setups.</li><li>FS Target = distance needed to zero stadia (during setup only).</li><li>📏 button → Quick stadia check without recording a point.</li></ul></div>
+        <div><strong>Stadia Warnings:</strong><ul class="list-disc list-inside ml-4"><li>Amber: |Pt Stadia| > 10</li><li>Red: |Pt Stadia| > 25</li></ul></div>
+        <div><strong>Misclosure Accuracy:</strong><ul class="list-disc list-inside ml-4"><li>After closing, click "Show Accuracy" to see classification against First/Second/Third Order standards.</li></ul></div>
+    </div>
+</div>
+</div>
+<!-- Mobile Action Bar -->
+<div class="mobile-action-bar no-print" id="mobileActionBar">
+    <div class="action-buttons">
+        <button id="addBMButtonMobile" class="button button-primary"><span class="btn-icon">📍</span>BM</button>
+        <button id="startSetupButtonMobile" class="button button-primary" disabled><span class="btn-icon">🔭</span>Setup</button>
+        <button id="addIPButtonMobile" class="button button-secondary" disabled><span class="btn-icon">📐</span>IP</button>
+        <button id="addFSButtonMobile" class="button button-secondary" disabled><span class="btn-icon">🎯</span>FS</button>
+    </div>
+</div>
+<!-- Desktop Pinned Action Bar (hidden by default) -->
+<div class="mobile-action-bar no-print" id="desktopPinnedBar" style="display:none!important;">
+    <div class="action-buttons">
+        <button id="addBMButtonPinned" class="button button-primary"><span class="btn-icon">📍</span>BM</button>
+        <button id="startSetupButtonPinned" class="button button-primary" disabled><span class="btn-icon">🔭</span>Setup</button>
+        <button id="addIPButtonPinned" class="button button-secondary" disabled><span class="btn-icon">📐</span>IP</button>
+        <button id="addFSButtonPinned" class="button button-secondary" disabled><span class="btn-icon">🎯</span>FS</button>
+    </div>
+</div>
+<!-- Modals -->
+<div id="inputModal" class="modal hidden no-print"><div class="modal-content"><h3 id="modalTitle">Modal Title</h3><form id="modalForm"><input type="hidden" id="editingRowId" name="editingRowId"><div id="modalFieldsContainer" style="display:flex;flex-direction:column;gap:12px;"></div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;"><button type="button" id="modalCancelButton" class="button">Cancel</button><button type="submit" id="modalSubmitButton" class="button button-primary">Submit</button></div></form></div></div>
+<div id="confirmModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;"><h3 id="confirmModalTitle">Confirm</h3><p id="confirmModalMessage" style="font-size:0.9em;color:var(--text-tertiary);margin-bottom:16px;">Are you sure?</p><div style="display:flex;justify-content:flex-end;gap:10px;"><button type="button" id="confirmModalCancel" class="button">Cancel</button><button type="button" id="confirmModalConfirm" class="button button-danger">Confirm</button></div></div></div>
+<!-- Quick Stadia Check Modal -->
+<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:340px;"><h3>Quick Stadia Check</h3><div id="stadiaCheckBody" style="font-size:0.9em;color:var(--text-secondary);"></div><div style="margin-top:12px;"><label class="label">Test FS Distance:</label><input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance"></div><div id="stadiaCheckResult" style="margin-top:12px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div></div></div>
+<script>
+const STADIA_FACTOR=100,STADIA_WARN_THRESHOLD=10,STADIA_DANGER_THRESHOLD=25;
+let decimalPlaces=3;
+const formatNumber=(num,places)=>{const p=places!==undefined?places:decimalPlaces;return(num===null||num===undefined||isNaN(parseFloat(num)))?'':parseFloat(num).toFixed(p);};
+const formatDist=(num)=>formatNumber(num);
+const formatPointStadia=(num)=>formatNumber(num);
+
+// DOM refs
+const addBMButton=document.getElementById('addBMButton'),startSetupButton=document.getElementById('startSetupButton'),addIPButton=document.getElementById('addIPButton'),addFSButton=document.getElementById('addFSButton');
+const addBMButtonMobile=document.getElementById('addBMButtonMobile'),startSetupButtonMobile=document.getElementById('startSetupButtonMobile'),addIPButtonMobile=document.getElementById('addIPButtonMobile'),addFSButtonMobile=document.getElementById('addFSButtonMobile');
+const addBMButtonPinned=document.getElementById('addBMButtonPinned'),startSetupButtonPinned=document.getElementById('startSetupButtonPinned'),addIPButtonPinned=document.getElementById('addIPButtonPinned'),addFSButtonPinned=document.getElementById('addFSButtonPinned');
+const levelingTableBody=document.getElementById('levelingTableBody'),cardContainer=document.getElementById('cardContainer'),noDataMessage=document.getElementById('noDataMessage');
+const misclosureDisplay=document.getElementById('misclosureDisplay'),misclosureValue=document.getElementById('misclosureValue');
+const deleteLastIPButton=document.getElementById('deleteLastIPButton'),cancelSetupButton=document.getElementById('cancelSetupButton'),deleteLastSetupButton=document.getElementById('deleteLastSetupButton'),clearAllButton=document.getElementById('clearAllButton');
+const exportLevelingDataCSVButton=document.getElementById('exportLevelingDataCSVButton'),exportTableCSVButton=document.getElementById('exportTableCSVButton'),printViewButton=document.getElementById('printViewButton');
+const unitsSelect=document.getElementById('units'),exportJSONButton=document.getElementById('exportJSONButton'),importJSONInput=document.getElementById('importJSONInput');
+const toggleHelpButton=document.getElementById('toggleHelpButton'),helpContent=document.getElementById('helpContent'),helpArrow=document.getElementById('helpArrow');
+const rodTypeSelect=document.getElementById('rodTypeSelect'),rodTypeOtherInput=document.getElementById('rodTypeOther');
+const inputModal=document.getElementById('inputModal'),modalTitle=document.getElementById('modalTitle'),modalFieldsContainer=document.getElementById('modalFieldsContainer'),modalForm=document.getElementById('modalForm');
+const modalCancelButton=document.getElementById('modalCancelButton'),modalSubmitButton=document.getElementById('modalSubmitButton'),editingRowIdInput=document.getElementById('editingRowId');
+const confirmModal=document.getElementById('confirmModal'),confirmModalTitle=document.getElementById('confirmModalTitle'),confirmModalMessage=document.getElementById('confirmModalMessage');
+const confirmModalCancel=document.getElementById('confirmModalCancel'),confirmModalConfirm=document.getElementById('confirmModalConfirm');
+const themeToggle=document.getElementById('themeToggle'),fontSizeSelect=document.getElementById('fontSizeSelect'),decimalSelect=document.getElementById('decimalSelect'),ipToast=document.getElementById('ipToast');
+const viewModeSelect=document.getElementById('viewModeSelect'),actionPinSelect=document.getElementById('actionPinSelect');
+const desktopActionButtons=document.getElementById('desktopActionButtons'),desktopTableContainer=document.getElementById('desktopTableContainer'),desktopPinnedBar=document.getElementById('desktopPinnedBar');
+const accuracyDetailBtn=document.getElementById('accuracyDetailBtn'),accuracyDetail=document.getElementById('accuracyDetail');
+const stadiaCheckBtn=document.getElementById('stadiaCheckBtn'),stadiaCheckModal=document.getElementById('stadiaCheckModal'),stadiaCheckInput=document.getElementById('stadiaCheckInput'),stadiaCheckResult=document.getElementById('stadiaCheckResult'),stadiaCheckBody=document.getElementById('stadiaCheckBody'),stadiaCheckClose=document.getElementById('stadiaCheckClose');
+
+let projectDetails={units:'ft'},levelRows=[],tpCounter=0,currentHI=null,lastCalculatedElevation=null,lastPointNameForBS=null,activeSetupData=null,lastDiNiLL=false;
+
+// --- Settings ---
+themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';localStorage.setItem('levelingTheme',isHC?'':'high-contrast');});
+fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);localStorage.setItem('levelingFontSize',e.target.value);});
+decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);localStorage.setItem('levelingDecimals',e.target.value);renderTable();});
+
+// View mode
+viewModeSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingViewMode',e.target.value);applyViewMode();});
+actionPinSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingActionPin',e.target.value);applyActionPin();});
+
+function applyViewMode(){
+    const mode=viewModeSelect.value;
+    desktopTableContainer.classList.remove('force-table','force-hide');cardContainer.classList.remove('force-cards','force-hide');
+    if(mode==='table'){desktopTableContainer.classList.add('force-table');desktopTableContainer.style.display='';cardContainer.classList.add('force-hide');cardContainer.style.display='none';}
+    else if(mode==='cards'){desktopTableContainer.style.display='none';cardContainer.classList.add('force-cards');cardContainer.style.display='block';}
+    else{desktopTableContainer.style.display='';cardContainer.style.display='';}
+}
+function applyActionPin(){
+    const pin=actionPinSelect.value;
+    const headers=document.querySelectorAll('.table-header');
+    if(pin==='pinned'){desktopActionButtons.style.display='none';desktopPinnedBar.style.display='block!important';desktopPinnedBar.setAttribute('style','display:block!important;position:fixed;bottom:0;left:0;right:0;background:var(--bg-secondary);border-top:1.5px solid var(--border-primary);padding:10px 12px;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,0.1);');desktopActionButtons.classList.remove('sticky-actions');document.body.style.paddingBottom='80px';
+        headers.forEach(h=>h.style.top='48px');
+    }else{desktopPinnedBar.setAttribute('style','display:none!important;');desktopActionButtons.style.display='';desktopActionButtons.classList.add('sticky-actions');document.body.style.paddingBottom='';
+        // Measure actual action button height after render
+        requestAnimationFrame(()=>{const abh=desktopActionButtons.offsetHeight||48;const sbh=document.getElementById('summaryBar').offsetHeight||48;headers.forEach(h=>h.style.top=(sbh+abh)+'px');});
+    }
+}
+
+(function loadSettings(){
+    const t=localStorage.getItem('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
+    const f=localStorage.getItem('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
+    const d=localStorage.getItem('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
+    const vm=localStorage.getItem('levelingViewMode');if(vm){viewModeSelect.value=vm;}
+    const ap=localStorage.getItem('levelingActionPin');if(ap){actionPinSelect.value=ap;}
+    applyViewMode();applyActionPin();
+})();
+
+// Dropdown toggles
+function setupDropdown(toggleId,contentId,arrowId){const t=document.getElementById(toggleId),c=document.getElementById(contentId),a=document.getElementById(arrowId);t.addEventListener('click',()=>{const o=c.style.display!=='none';c.style.display=o?'none':'block';a.style.transform=o?'':'rotate(180deg)';});}
+setupDropdown('displaySettingsToggle','displaySettingsContent','displayArrow');
+setupDropdown('dataMgmtToggle','dataMgmtContent','dataMgmtArrow');
+setupDropdown('exportToggle','exportContent','exportArrow');
+
+// Project Info Toggle
+const projectInfoToggle=document.getElementById('projectInfoToggle'),projectInfoFields=document.getElementById('projectInfoFields'),projectInfoNote=document.getElementById('projectInfoNote'),projectInfoArrow=document.getElementById('projectInfoArrow');
+let projectInfoCollapsed=false;
+projectInfoToggle.addEventListener('click',()=>{projectInfoCollapsed=!projectInfoCollapsed;projectInfoFields.style.display=projectInfoCollapsed?'none':'grid';projectInfoNote.style.display=projectInfoCollapsed?'none':'block';projectInfoArrow.style.transform=projectInfoCollapsed?'rotate(180deg)':'';});
+
+// Help toggle
+toggleHelpButton.addEventListener('click',()=>{helpContent.classList.toggle('hidden');helpArrow.style.transform=helpContent.classList.contains('hidden')?'':'rotate(180deg)';});
+
+// Modals
+function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
+
+function showModal(title,fieldsConfig,submitHandler,onModalCreateCallback){
+    modalTitle.textContent=title;modalFieldsContainer.innerHTML='';if(!title.startsWith('Edit'))editingRowIdInput.value='';
+    function createFieldElement(field){
+        const fg=document.createElement('div');fg.id=`group-${field.id}`;
+        if(field.type==='info'){const p=document.createElement('p');p.style.cssText='font-size:0.85em;color:var(--text-muted);font-style:italic;';p.textContent=field.text;fg.appendChild(p);return fg;}
+        const lbl=document.createElement('label');lbl.htmlFor=field.id;lbl.className='label';lbl.textContent=field.label;fg.appendChild(lbl);
+        if(field.type==='select'){
+            const sel=document.createElement('select');sel.id=field.id;sel.name=field.name;sel.className='select-input';
+            field.options.forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;if(o.value===field.value)opt.selected=true;sel.appendChild(opt);});
+            if(field.eventListener)sel.addEventListener('change',field.eventListener);fg.appendChild(sel);
+        }else if(field.type==='checkbox'){
+            const cc=document.createElement('div');cc.style.cssText='display:flex;align-items:center;margin-top:4px;';
+            const inp=document.createElement('input');inp.type='checkbox';inp.id=field.id;inp.name=field.name;inp.style.cssText='width:20px;height:20px;margin-right:8px;accent-color:var(--accent-blue);';
+            if(field.checked)inp.checked=true;cc.appendChild(inp);
+            const la=document.createElement('label');la.htmlFor=field.id;la.style.cssText='font-size:0.9em;color:var(--text-secondary);font-weight:600;';la.textContent=field.checkboxLabel||'';cc.appendChild(la);fg.appendChild(cc);
+            if(field.dependentFields){
+                const dc=document.createElement('div');dc.id=`${field.id}DependentContainer`;dc.style.cssText='display:'+(inp.checked?'flex':'none')+';flex-direction:column;gap:10px;margin-top:8px;';
+                field.dependentFields.forEach(df=>{const dg=document.createElement('div');const dl=document.createElement('label');dl.htmlFor=df.id;dl.className='label';dl.textContent=df.label;dg.appendChild(dl);const di=document.createElement('input');di.type=df.type;di.id=df.id;di.name=df.name;di.className='input';di.required=df.required!==false&&inp.checked;if(df.type==='number')di.inputMode='decimal';if(df.placeholder)di.placeholder=df.placeholder;if(df.step)di.step=df.step;dg.appendChild(di);dc.appendChild(dg);});
+                fg.appendChild(dc);
+                inp.addEventListener('change',(e)=>{dc.style.display=e.target.checked?'flex':'none';field.dependentFields.forEach(df=>{const el=document.getElementById(df.id);if(el)el.required=df.required!==false&&e.target.checked;});});
+            }
+        }else{
+            const inp=document.createElement('input');inp.type=field.type;inp.id=field.id;inp.name=field.name;inp.className='input';inp.required=field.required!==false;
+            if(field.type==='number')inp.inputMode='decimal';
+            if(field.placeholder)inp.placeholder=field.placeholder;if(field.value!==undefined)inp.value=field.value;if(field.step)inp.step=field.step;if(field.disabled)inp.disabled=true;
+            inp.addEventListener('keydown',(e)=>{if(e.key==='Enter'&&(field.type==='number'||field.type==='text')){e.preventDefault();const all=Array.from(modalFieldsContainer.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([type="checkbox"]),select:not([disabled])')).filter(el=>{const g=el.closest('div[id^="group-"]');return g&&g.style.display!=='none';});const idx=all.indexOf(inp);if(idx>=0&&idx<all.length-1){all[idx+1].focus();all[idx+1].select();}else{modalForm.requestSubmit();}}});
+            fg.appendChild(inp);
+        }
+        return fg;
+    }
+    fieldsConfig.forEach(f=>modalFieldsContainer.appendChild(createFieldElement(f)));
+    if(onModalCreateCallback)onModalCreateCallback(modalFieldsContainer);
+    modalForm.onsubmit=(e)=>{e.preventDefault();const fd=new FormData(modalForm);const data=Object.fromEntries(fd.entries());
+        fieldsConfig.forEach(f=>{if(f.type==='info')return;if(f.type==='number'&&data[f.name]!==undefined&&data[f.name]!=='')data[f.name]=parseFloat(data[f.name]);if(f.type==='checkbox')data[f.name]=fd.has(f.name);if(f.dependentFields&&data[f.name])f.dependentFields.forEach(df=>{if(df.type==='number'&&data[df.name]!==undefined&&data[df.name]!=='')data[df.name]=parseFloat(data[df.name]);});});
+        if(submitHandler(data))inputModal.classList.add('hidden');
+    };
+    inputModal.classList.remove('hidden');
+    setTimeout(()=>{const fi=modalFieldsContainer.querySelector('input:not([type="hidden"]):not([disabled]),select:not([disabled])');if(fi){fi.focus();if(fi.type==='number'||fi.type==='text')fi.select();}},100);
+}
+modalCancelButton.onclick=()=>inputModal.classList.add('hidden');
+
+// Units & Rod Type
+function updateUnitLabels(){const u=projectDetails.units||'ft';document.querySelectorAll('.unit-label').forEach(l=>l.textContent=u);}
+unitsSelect.addEventListener('change',(e)=>{projectDetails.units=e.target.value;updateUnitLabels();saveStateToLocalStorage();renderTable();});
+rodTypeSelect.addEventListener('change',(e)=>{if(e.target.value==='Other'){rodTypeOtherInput.classList.remove('hidden');rodTypeOtherInput.focus();}else rodTypeOtherInput.classList.add('hidden');updateProjectDetails();});
+
+// LocalStorage
+function saveStateToLocalStorage(){let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;try{localStorage.setItem('levelingAppData_singleLoop',JSON.stringify({projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent}));}catch(e){}}
+function loadStateFromLocalStorage(){
+    const ss=localStorage.getItem('levelingAppData_singleLoop');if(ss){try{const a=JSON.parse(ss);projectDetails=a.projectDetails||{units:'ft'};levelRows=a.levelRows||[];tpCounter=a.tpCounter||0;
+    lastCalculatedElevation=a.lastCalculatedElevation===undefined?null:a.lastCalculatedElevation;lastPointNameForBS=a.lastPointNameForBS===undefined?null:a.lastPointNameForBS;
+    document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';
+    const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}
+    unitsSelect.value=projectDetails.units||'ft';if(a.misclosureText){misclosureValue.textContent=a.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');
+    levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});}catch(e){localStorage.removeItem('levelingAppData_singleLoop');}}
+    if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
+}
+// Core calcs
+function calculatePointStadia(row){if(row.isVoid)return null;if(row.type==='TP_FS'||row.type==='CLOSING_FS'){const b=row.bsDistForM5,f=row.fsDist;if(b!=null&&f!=null){const bn=parseFloat(b),fn=parseFloat(f);if(!isNaN(bn)&&!isNaN(fn))return bn-fn;}}return null;}
+function getStadiaClass(v){if(v===null)return '';const a=Math.abs(v);if(a>=STADIA_DANGER_THRESHOLD)return 'danger';if(a>=STADIA_WARN_THRESHOLD)return 'warn';return '';}
+
+// Summary bar update
+function updateSummaryBar(){
+    const vr=levelRows.filter(r=>!r.isVoid);const sc=vr.filter(r=>r.type==='TP_FS'||r.type==='CLOSING_FS').length;
+    let cp='—',hiVal='—',hiLabel='HI';
+    if(activeSetupData){cp=activeSetupData.setupTPName;hiVal=formatNumber(activeSetupData.hi);hiLabel='HI';}
+    else{const lc=[...vr].reverse().find(r=>r.type==='BM'||r.type==='TP_FS'||r.type==='CLOSING_FS');if(lc){cp=lc.pointName;hiVal=formatNumber(lc.elevation);hiLabel='Elev';}}
+    let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
+    document.getElementById('summaryCurrentPoint').textContent=cp;
+    document.getElementById('summaryHI').textContent=hiVal;
+    document.getElementById('summaryHILabel').textContent=hiLabel;
+    document.getElementById('summarySetups').textContent=sc;
+    document.getElementById('summaryStadia').textContent=formatPointStadia(ts);
+    // FS Target - only during active setup
+    const fti=document.getElementById('fsTargetItem');
+    if(activeSetupData&&activeSetupData.bsDist!=null){
+        const targetFS=parseFloat(activeSetupData.bsDist)+ts;
+        document.getElementById('summaryFSTarget').textContent=formatDist(targetFS);
+        fti.style.display='';
+    }else{fti.style.display='none';}
+    // Loop distance (BS+FS distances, non-void, non-IP) in ft
+    let loopDistUnits=0;
+    levelRows.forEach(r=>{if(r.isVoid)return;
+        if(r.type==='SETUP_BS'&&r.bsDist!=null)loopDistUnits+=Math.abs(parseFloat(r.bsDist));
+        if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.fsDist!=null)loopDistUnits+=Math.abs(parseFloat(r.fsDist));
+    });
+    const unit=projectDetails.units||'ft';
+    const loopDistLabel=unit==='m'?'m':'ft';
+    document.getElementById('summaryLoopDist').textContent=loopDistUnits.toFixed(2)+' '+loopDistLabel;
+}
+
+function updateStadiaColumns(){
+    let ct=0;levelRows.forEach(row=>{const re=levelingTableBody.querySelector(`tr[data-id="${row.id}"]`);if(re){const hc=re.cells[2],psc=re.cells[7],tsc=re.cells[8];hc.textContent='';psc.textContent='';tsc.textContent='';
+    const psv=calculatePointStadia(row);if(row.type==='SETUP_BS'&&!row.isVoid)hc.textContent=formatNumber(row.hi);if(psv!==null)psc.textContent=formatPointStadia(psv);
+    if(!row.isVoid&&psv!==null){ct+=psv;tsc.textContent=formatPointStadia(ct);}
+    re.classList.remove('stadia-warn','stadia-danger');const sc=getStadiaClass(psv);if(sc==='warn')re.classList.add('stadia-warn');else if(sc==='danger')re.classList.add('stadia-danger');}});
+}
+
+function updateProjectDetails(){let r=rodTypeSelect.value;if(r==='Other')r=rodTypeOtherInput.value||'Other';projectDetails={date:document.getElementById('date').value,projectNumber:document.getElementById('projectNumber').value,description:document.getElementById('description').value,operator:document.getElementById('operator').value,recorder:document.getElementById('recorder').value,instrument:document.getElementById('instrument').value,rodType:r,units:unitsSelect.value};saveStateToLocalStorage();}
+document.querySelectorAll('#projectInfo input,#projectInfo select').forEach(i=>{i.addEventListener('change',updateProjectDetails);if(i.tagName.toLowerCase()==='input'&&i.id!=='rodTypeOther')i.addEventListener('input',updateProjectDetails);});
+rodTypeOtherInput.addEventListener('input',updateProjectDetails);
+
+// --- Quick Stadia Check ---
+stadiaCheckBtn.addEventListener('click',()=>{
+    if(!activeSetupData){alert('Start a setup first to use stadia check.');return;}
+    let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
+    stadiaCheckBody.innerHTML=`<div>Current BS Dist: <b>${formatDist(activeSetupData.bsDist)}</b></div><div>Running Total Stadia: <b>${formatPointStadia(ts)}</b></div>`;
+    stadiaCheckInput.value='';stadiaCheckResult.style.display='none';
+    stadiaCheckModal.classList.remove('hidden');stadiaCheckInput.focus();
+    stadiaCheckInput.oninput=()=>{
+        const v=parseFloat(stadiaCheckInput.value);if(isNaN(v)){stadiaCheckResult.style.display='none';return;}
+        const ptStadia=parseFloat(activeSetupData.bsDist)-v;
+        const newTotal=ts+ptStadia;
+        stadiaCheckResult.style.display='block';
+        stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b><br>New Total Stadia: <b>${formatPointStadia(newTotal)}</b>`;
+    };
+});
+stadiaCheckClose.onclick=()=>stadiaCheckModal.classList.add('hidden');
+
+// --- Accuracy Calculation ---
+function calculateAccuracy(){
+    const vr=levelRows.filter(r=>!r.isVoid);
+    // Sum all BS + FS distances (no IPs)
+    let totalDistUnits=0;
+    vr.forEach(r=>{
+        if(r.type==='SETUP_BS'&&r.bsDist!=null)totalDistUnits+=Math.abs(parseFloat(r.bsDist));
+        if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.fsDist!=null)totalDistUnits+=Math.abs(parseFloat(r.fsDist));
+    });
+    // Convert to km
+    const unit=projectDetails.units||'ft';
+    let totalDistKm, totalDistFt;
+    if(unit==='m'){totalDistKm=totalDistUnits/1000;totalDistFt=totalDistUnits/0.3048;}
+    else{totalDistFt=totalDistUnits;totalDistKm=totalDistUnits*0.0003048;}
+    // Get misclosure in mm
+    const closingRow=vr.find(r=>r.type==='CLOSING_FS');
+    if(!closingRow)return null;
+    const closingBM=vr.find(r=>r.type==='BM'&&r.pointName===closingRow.pointName&&!r.isVoid);
+    if(!closingBM)return null;
+    const misclosureRaw=closingRow.elevation-closingBM.elevation;
+    let misclosureMM, misclosureFt;
+    if(unit==='m'){misclosureMM=Math.abs(misclosureRaw)*1000;misclosureFt=Math.abs(misclosureRaw)/0.3048;}
+    else{misclosureFt=Math.abs(misclosureRaw);misclosureMM=Math.abs(misclosureRaw)*304.8;}
+    const sqrtK=Math.sqrt(totalDistKm);
+    const specs=[
+        {name:'First Order Class I',factor:3},{name:'First Order Class II',factor:4},
+        {name:'Second Order Class I',factor:6},{name:'Second Order Class II',factor:8},
+        {name:'Third Order',factor:12}
+    ];
+    return {misclosureMM,misclosureFt,totalDistKm,totalDistFt,sqrtK,specs:specs.map(s=>({...s,allowable:s.factor*sqrtK,pass:misclosureMM<=s.factor*sqrtK}))};
+}
+
+accuracyDetailBtn.addEventListener('click',()=>{
+    const shown=accuracyDetail.style.display!=='none';
+    if(shown){accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';return;}
+    const acc=calculateAccuracy();
+    if(!acc){accuracyDetail.innerHTML='<div>Cannot calculate — no closing shot found.</div>';accuracyDetail.style.display='block';accuracyDetailBtn.textContent='Hide Accuracy';return;}
+    let html=`<div style="margin-bottom:6px;">Misclosure: <b>${acc.misclosureFt.toFixed(4)} ft</b> (<b>${acc.misclosureMM.toFixed(1)} mm</b>)</div>`;
+    html+=`<div style="margin-bottom:8px;">Loop Distance: <b>${acc.totalDistFt.toFixed(1)} ft</b> (<b>${acc.totalDistKm.toFixed(3)} km</b>) | √K: <b>${acc.sqrtK.toFixed(3)}</b></div>`;
+    html+='<table style="width:100%;font-size:0.85em;border-collapse:collapse;">';
+    html+='<tr style="border-bottom:1px solid var(--border-primary);"><th style="text-align:left;padding:4px;">Standard</th><th style="padding:4px;">Allowable</th><th style="padding:4px;">Result</th></tr>';
+    acc.specs.forEach(s=>{
+        const allowFt=s.allowable/304.8; // mm → ft
+        html+=`<tr style="border-bottom:1px solid var(--border-primary);"><td style="padding:4px;">${s.name}</td><td style="padding:4px;text-align:center;">${s.allowable.toFixed(1)} mm<br><span style="font-size:0.8em;opacity:0.7;">${allowFt.toFixed(4)} ft</span></td><td style="padding:4px;text-align:center;" class="${s.pass?'accuracy-pass':'accuracy-fail'}">${s.pass?'✓ PASS':'✗ FAIL'}</td></tr>`;
+    });
+    html+='</table>';
+    // Highest achieved
+    const best=acc.specs.find(s=>s.pass);
+    if(best)html+=`<div style="margin-top:8px;font-weight:700;">Achieved: <span class="accuracy-pass">${best.name}</span></div>`;
+    else html+=`<div style="margin-top:8px;font-weight:700;"><span class="accuracy-fail">Does not meet Third Order</span></div>`;
+    accuracyDetail.innerHTML=html;accuracyDetail.style.display='block';accuracyDetailBtn.textContent='Hide Accuracy';
+});
+
+
+// Render Table (desktop)
+function renderTable(){
+    levelingTableBody.innerHTML='';updateUnitLabels();
+    if(levelRows.length===0){noDataMessage.style.display='block';levelingTableBody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--text-muted);">No leveling data yet.</td></tr>';}
+    else{noDataMessage.style.display='none';levelRows.forEach(row=>{const tr=document.createElement('tr');tr.setAttribute('data-id',row.id);if(row.isVoid)tr.classList.add('voided-row');
+    let dr=row.remarks||'';if(row.isVoid){dr=dr.replace(/\s*<span class="void-remark">\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'');dr+=`<span class="void-remark">[VOID]</span>`;}
+    if(row.isDiNiLineLeveling)dr+=' <span style="color:var(--accent-blue);font-weight:700;font-size:0.75em;">[DiNi LL]</span>';
+    tr.innerHTML=`<td class="table-cell">${row.pointName||''}</td><td class="table-cell">${formatNumber(row.bs)}</td><td class="table-cell"></td><td class="table-cell">${formatNumber(row.fs??row.ifs)}</td><td class="table-cell font-semibold">${formatNumber(row.elevation)}</td><td class="table-cell">${formatDist(row.bsDist)}</td><td class="table-cell">${formatDist(row.fsDist??row.ifsDist)}</td><td class="table-cell"></td><td class="table-cell"></td><td class="table-cell" style="font-size:0.75em;">${dr}</td><td class="table-cell"><button class="button button-secondary button-small edit-row-btn" data-row-id="${row.id}">Edit</button></td>`;
+    levelingTableBody.appendChild(tr);});}
+    updateStadiaColumns();document.querySelectorAll('.edit-row-btn').forEach(b=>b.addEventListener('click',handleEditRow));renderCards();updateButtonStates();updateSummaryBar();
+}
+
+// Render Cards (mobile)
+function renderCards(){
+    cardContainer.innerHTML='';if(levelRows.length===0){cardContainer.innerHTML='<div class="no-data-message">No data yet. Tap <b>BM</b> to start.</div>';return;}
+    let ctsc=0;
+    levelRows.forEach(row=>{
+        const card=document.createElement('div');card.className='level-card';card.setAttribute('data-id',row.id);if(row.isVoid)card.classList.add('voided-card');
+        const psv=calculatePointStadia(row);const sc=getStadiaClass(psv);if(sc==='warn')card.classList.add('card-stadia-warn');else if(sc==='danger')card.classList.add('card-stadia-danger');
+        if(!row.isVoid&&psv!==null)ctsc+=psv;
+        let bc='badge-bs',bt=row.type;
+        if(row.type==='BM'){bc='badge-bm';bt='BM';}else if(row.type==='SETUP_BS'){bc='badge-bs';bt='BS';}else if(row.type==='IP'){bc='badge-ip';bt=row.isDiNiLineLeveling?'IP·LL':'IP';}else if(row.type==='TP_FS'){bc='badge-fs';bt='FS';}else if(row.type==='CLOSING_FS'){bc='badge-close';bt='CLOSE';}
+        if(row.isVoid)bc='badge-void';
+        let pv='',pl='';
+        if(row.type==='BM'){pl='Elevation';pv=formatNumber(row.elevation);}else if(row.type==='SETUP_BS'){pl='HI';pv=formatNumber(row.hi);}else{pl='Elevation';pv=formatNumber(row.elevation);}
+        let sh='';
+        if(row.bs!=null)sh+=`<div><div class="card-field-label">BS</div><div class="card-field-value">${formatNumber(row.bs)}</div></div>`;
+        if(row.fs!=null)sh+=`<div><div class="card-field-label">FS</div><div class="card-field-value">${formatNumber(row.fs)}</div></div>`;
+        if(row.ifs!=null)sh+=`<div><div class="card-field-label">IFS</div><div class="card-field-value">${formatNumber(row.ifs)}</div></div>`;
+        let dh='';
+        if(row.bsDist!=null)dh+=`<div class="card-grid" style="margin-bottom:4px;"><div><div class="card-field-label">BS Dist</div><div class="card-field-value">${formatDist(row.bsDist)}</div></div></div>`;
+        if(row.fsDist!=null)dh+=`<div class="card-grid" style="margin-bottom:4px;"><div><div class="card-field-label">FS Dist</div><div class="card-field-value">${formatDist(row.fsDist)}</div></div></div>`;
+        if(row.ifsDist!=null)dh+=`<div class="card-grid" style="margin-bottom:4px;"><div><div class="card-field-label">IFS Dist</div><div class="card-field-value">${formatDist(row.ifsDist)}</div></div></div>`;
+        if(row.type==='SETUP_BS'&&!row.isVoid)dh+=`<div class="card-grid" style="margin-bottom:4px;"><div><div class="card-field-label">HI</div><div class="card-field-value">${formatNumber(row.hi)}</div></div></div>`;
+        if(psv!==null)dh+=`<div class="card-grid" style="margin-bottom:4px;"><div><div class="card-field-label">Pt Stadia</div><div class="card-field-value">${formatPointStadia(psv)}</div></div><div><div class="card-field-label">Tot Stadia</div><div class="card-field-value">${formatPointStadia(ctsc)}</div></div></div>`;
+        let rt=(row.remarks||'').replace(/<span[^>]*>\[VOID\]<\/span>/g,'').replace(/\[VOID\]/g,'').trim();if(row.isVoid)rt+=' [VOID]';
+        card.innerHTML=`<div class="card-swipe-actions"><div class="swipe-action-left">✏️ Edit</div><div class="swipe-action-right">${row.isVoid?'✅ Unvoid':'🚫 Void'}</div></div><div class="card-inner"><div class="card-header"><span class="card-point-name">${row.pointName||'—'}</span><span class="card-type-badge ${bc}">${bt}</span></div><div class="card-body"><div class="card-grid"><div><div class="card-field-label">${pl}</div><div class="card-field-value card-elevation">${pv}</div></div>${sh}</div></div>${rt?`<div class="card-remarks">${rt}</div>`:''}${dh?`<div class="card-expand-toggle" data-card-id="${row.id}">▼ Details</div><div class="card-details" id="details-${row.id}">${dh}</div>`:''}</div>`;
+        cardContainer.appendChild(card);setupSwipeGesture(card,row);
+    });
+    cardContainer.querySelectorAll('.card-expand-toggle').forEach(t=>{t.addEventListener('click',(e)=>{e.stopPropagation();const d=document.getElementById(`details-${t.getAttribute('data-card-id')}`);if(d){d.classList.toggle('expanded');t.textContent=d.classList.contains('expanded')?'▲ Less':'▼ Details';}});});
+    if(levelRows.length>0){const lc=cardContainer.lastElementChild;if(lc)lc.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+
+// Swipe
+function setupSwipeGesture(card,row){if(row.type==='BM')return;let sx=0,cx=0,dragging=false;const inner=card.querySelector('.card-inner');const TH=80;
+    card.addEventListener('touchstart',(e)=>{sx=e.touches[0].clientX;dragging=true;card.classList.add('swiping');},{passive:true});
+    card.addEventListener('touchmove',(e)=>{if(!dragging)return;cx=e.touches[0].clientX-sx;cx=Math.max(-150,Math.min(150,cx));inner.style.transform=`translateX(${cx}px)`;},{passive:true});
+    card.addEventListener('touchend',()=>{dragging=false;card.classList.remove('swiping');if(cx>TH){inner.style.transform='';triggerEditForRow(row.id);}else if(cx<-TH){inner.style.transform='';triggerVoidToggle(row);}else inner.style.transform='';cx=0;});}
+function triggerEditForRow(id){handleEditRow({target:{dataset:{rowId:id}}});}
+function triggerVoidToggle(row){const ri=levelRows.findIndex(r=>r.id===row.id);if(ri===-1)return;const er=levelRows[ri];const act=er.isVoid?'Un-void':'Void';showConfirmModal(`${act} ${er.pointName}`,`${act} this entry?`,()=>{er.isVoid=!er.isVoid;applyVoidChangeSideEffects(er);renderTable();saveStateToLocalStorage();});}
+function showIPToast(n){ipToast.textContent=`✓ ${n} added`;ipToast.classList.add('show');setTimeout(()=>ipToast.classList.remove('show'),1200);}
+// Void side effects
+function applyVoidChangeSideEffects(cr){
+    if(cr.isVoid){
+        if(cr.type==='TP_FS'||cr.type==='CLOSING_FS'){alert("FS voided. Re-enter FS for "+cr.pointName);currentHI=cr.hiFromBSForM5;
+            activeSetupData={bsReading:cr.bsOnPrevForM5,bsDist:cr.bsDistForM5,hi:cr.hiFromBSForM5,prevPointName:cr.prevPointNameForM5,setupTPName:cr.pointName,
+            ips:(cr.ipsForM5||[]).filter(ip=>{const f=levelRows.find(lr=>lr.id===ip.id);return f&&!f.isVoid;}),bsRowId:levelRows.find(lr=>lr.type==='SETUP_BS'&&lr.pointName===cr.pointName&&Math.abs(lr.bs-cr.bsOnPrevForM5)<0.0001)?.id||null};
+            const pp=levelRows.find(lr=>lr.pointName===activeSetupData.prevPointName&&(lr.type==='BM'||lr.type==='TP_FS')&&!lr.isVoid);
+            if(pp){lastCalculatedElevation=pp.elevation;lastPointNameForBS=pp.pointName;}else{lastCalculatedElevation=activeSetupData.hi-activeSetupData.bsReading;lastPointNameForBS=activeSetupData.prevPointName;}
+            misclosureDisplay.classList.add('hidden');accuracyDetail.style.display='none';
+        }else if(cr.type==='SETUP_BS'&&activeSetupData&&activeSetupData.bsRowId===cr.id){alert("BS voided. Setup cancelled.");activeSetupData=null;currentHI=null;tpCounter--;updateLastValidPointForLiveCalcs();}
+        else updateLastValidPointForLiveCalcs();
+    }else{updateLastValidPointForLiveCalcs();if((cr.type==='TP_FS'||cr.type==='CLOSING_FS')&&activeSetupData&&activeSetupData.setupTPName===cr.pointName){activeSetupData=null;currentHI=null;}}
+}
+function updateLastValidPointForLiveCalcs(){const vr=levelRows.filter(r=>!r.isVoid);const lv=[...vr].reverse().find(r=>r.type==='BM'||r.type==='TP_FS'||r.type==='CLOSING_FS');if(lv){if(lv.type==='CLOSING_FS'){lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=lv.elevation;lastPointNameForBS=lv.pointName;}}else{lastCalculatedElevation=null;lastPointNameForBS=null;}}
+
+function updateButtonStates(){
+    const hd=levelRows.length>0,sip=activeSetupData!==null,hnvd=levelRows.some(r=>!r.isVoid);updateLastValidPointForLiveCalcs();
+    const bmD=sip,suD=!lastCalculatedElevation||sip,ipD=!sip,fsD=!sip;
+    addBMButton.disabled=bmD;startSetupButton.disabled=suD;addIPButton.disabled=ipD;addFSButton.disabled=fsD;
+    addBMButtonMobile.disabled=bmD;startSetupButtonMobile.disabled=suD;addIPButtonMobile.disabled=ipD;addFSButtonMobile.disabled=fsD;
+    addBMButtonPinned.disabled=bmD;startSetupButtonPinned.disabled=suD;addIPButtonPinned.disabled=ipD;addFSButtonPinned.disabled=fsD;
+    deleteLastIPButton.disabled=!(sip&&activeSetupData.ips&&activeSetupData.ips.length>0);cancelSetupButton.disabled=!sip;
+    deleteLastSetupButton.disabled=sip||!levelRows.some(r=>!r.isVoid&&(r.type==='BM'||r.type==='TP_FS'||r.type==='CLOSING_FS'));
+    clearAllButton.disabled=!hd;exportLevelingDataCSVButton.disabled=!hnvd;exportTableCSVButton.disabled=!hd;printViewButton.disabled=!hd;exportJSONButton.disabled=!hd;
+}
+
+// Edit row
+function handleEditRow(event){
+    const rid=event.target.dataset.rowId;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return;const rte=levelRows[ri];editingRowIdInput.value=rid;let fields=[];
+    let mt=`Edit ${rte.type}: ${rte.pointName||'Unnamed'}`;
+    if(rte.type!=='BM')fields.push({id:'editIsVoid',name:'isVoid',label:'',type:'checkbox',checkboxLabel:rte.isVoid?'Mark as VALID':'Mark as VOID',checked:rte.isVoid});
+    fields.push({id:'editRemarks',name:'remarks',label:'Remarks:',type:'text',value:(rte.remarks||'').replace(/\s*<span[^>]*>\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'').replace(/\s*<span[^>]*>\[DiNi LL\]<\/span>$/,'')});
+    switch(rte.type){
+        case 'BM':fields.unshift({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName},{id:'editElevation',name:'elevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',value:rte.elevation});break;
+        case 'SETUP_BS':case 'IP':case 'TP_FS':case 'CLOSING_FS':
+            fields.unshift({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+            if(rte.type==='IP')fields.push({id:'editDiNiLL',name:'isDiNiLineLeveling',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:!!rte.isDiNiLineLeveling});
+            fields.push({type:'info',text:'Editing readings/distances not enabled. Use Void/Delete and re-enter.'});
+            if(rte.bs!=null)fields.push({id:'cBs',name:'cBs',label:'Current BS:',type:'text',value:formatNumber(rte.bs),disabled:true});
+            if(rte.bsDist!=null)fields.push({id:'cBsD',name:'cBsD',label:'Current BS Dist:',type:'text',value:formatDist(rte.bsDist),disabled:true});
+            if(rte.ifs!=null)fields.push({id:'cIfs',name:'cIfs',label:'Current IFS:',type:'text',value:formatNumber(rte.ifs),disabled:true});
+            if(rte.ifsDist!=null)fields.push({id:'cIfsD',name:'cIfsD',label:'Current IFS Dist:',type:'text',value:formatDist(rte.ifsDist),disabled:true});
+            if(rte.fs!=null)fields.push({id:'cFs',name:'cFs',label:'Current FS:',type:'text',value:formatNumber(rte.fs),disabled:true});
+            if(rte.fsDist!=null)fields.push({id:'cFsD',name:'cFsD',label:'Current FS Dist:',type:'text',value:formatDist(rte.fsDist),disabled:true});break;
+    }
+    showModal(mt,fields,handleEditSubmit);
+}
+function handleEditSubmit(data){
+    const rid=editingRowIdInput.value;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return false;const er=levelRows[ri];const ovs=er.isVoid;const nvs=!!data.isVoid;let vsc=er.type!=='BM'&&ovs!==nvs;er.remarks=data.remarks||'';
+    if(er.type==='BM'){
+        if(er.pointName!==data.pointName){levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`BS on ${er.pointName}`))r.remarks=r.remarks.replace(`BS on ${er.pointName}`,`BS on ${data.pointName}`);if(r.prevPointNameForM5===er.pointName)r.prevPointNameForM5=data.pointName;});if(lastPointNameForBS===er.pointName)lastPointNameForBS=data.pointName;}
+        er.pointName=data.pointName;
+        if(parseFloat(er.elevation)!==data.elevation){alert("BM elevation changed. Recalculating...");er.elevation=data.elevation;recalculateChainFromRow(ri);updateLastValidPointForLiveCalcs();
+            const lv=levelRows.filter(r=>!r.isVoid).pop();if(lv&&lv.type==='CLOSING_FS'){const ob=levelRows.find(r=>r.type==='BM'&&r.pointName===lv.pointName&&!r.isVoid);if(ob){const nm=lv.elevation-ob.elevation;misclosureValue.textContent=`${formatNumber(nm)} (Calc: ${formatNumber(lv.elevation)}, Known: ${formatNumber(ob.elevation)})`;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');}else misclosureDisplay.classList.add('hidden');}
+    } else if(data.pointName!==undefined&&data.pointName!==er.pointName){
+        // Non-BM point name change
+        const oldName=er.pointName;er.pointName=data.pointName;
+        // Update references if it's a TP/setup
+        if(er.type==='SETUP_BS'||er.type==='TP_FS'||er.type==='CLOSING_FS'){
+            levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`via ${oldName}`))r.remarks=r.remarks.replace(`via ${oldName}`,`via ${data.pointName}`);if(r.remarks&&r.remarks.includes(`FS for ${oldName}`))r.remarks=r.remarks.replace(`FS for ${oldName}`,`FS for ${data.pointName}`);});
+            if(lastPointNameForBS===oldName)lastPointNameForBS=data.pointName;
+            if(activeSetupData&&activeSetupData.setupTPName===oldName)activeSetupData.setupTPName=data.pointName;
+        }
+    } else if(data.pointName!==undefined){er.pointName=data.pointName;}
+    // Handle DiNi Line Leveling toggle for IPs
+    if(er.type==='IP'&&data.isDiNiLineLeveling!==undefined){
+        const newDiNi=!!data.isDiNiLineLeveling;
+        if(newDiNi!==er.isDiNiLineLeveling){
+            er.isDiNiLineLeveling=newDiNi;
+            // Recalculate elevation: find the BS point for this IP's setup
+            const bsRow=[...levelRows].slice(0,ri).reverse().find(r=>!r.isVoid&&r.type==='SETUP_BS');
+            if(bsRow){
+                const bsPtName=(bsRow.remarks.match(/BS on (.*)/)||[])[1];
+                const bsPt=levelRows.find(r=>!r.isVoid&&r.pointName===bsPtName&&(r.type==='BM'||r.type==='TP_FS'));
+                if(newDiNi&&bsPt){er.elevation=bsPt.elevation+parseFloat(er.ifs);}
+                else if(!newDiNi){er.elevation=bsRow.hi-parseFloat(er.ifs);}
+            }
+        }
+    }
+    if(vsc){er.isVoid=nvs;applyVoidChangeSideEffects(er);}renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;
+}
+
+function recalculateChainFromRow(si){
+    if(si<0||si>=levelRows.length||levelRows[si].type!=='BM'||levelRows[si].isVoid)return;let cve=levelRows[si].elevation,cvhi=null,lkgepn=levelRows[si].pointName;
+    for(let i=si+1;i<levelRows.length;i++){const r=levelRows[i];if(r.isVoid)continue;
+        if(r.type==='SETUP_BS'){let ppe=null;const bsn=r.remarks.match(/BS on (.*)/)?.[1];if(bsn===lkgepn)ppe=cve;else{const ap=[...levelRows].slice(0,i).reverse().find(p=>!p.isVoid&&p.pointName===bsn&&(p.type==='BM'||p.type==='TP_FS'||p.type==='CLOSING_FS'));if(ap){ppe=ap.elevation;lkgepn=ap.pointName;cve=ap.elevation;}}
+            if(ppe!==null&&r.bs!=null&&!isNaN(parseFloat(r.bs))){r.hi=ppe+parseFloat(r.bs);cvhi=r.hi;const cf=levelRows.find(f=>!f.isVoid&&(f.type==='TP_FS'||f.type==='CLOSING_FS')&&f.pointName===r.pointName&&f.prevPointNameForM5===bsn);if(cf){cf.hiFromBSForM5=r.hi;cf.bsOnPrevForM5=r.bs;}}else cvhi=null;
+        }else if(r.type==='IP'&&cvhi!==null){
+            if(r.isDiNiLineLeveling){
+                // DiNi: elevation = BS point elevation + delta
+                const bsn2=levelRows.slice(0,i).reverse().find(p=>!p.isVoid&&p.type==='SETUP_BS');
+                if(bsn2){const bsPtName=bsn2.remarks.match(/BS on (.*)/)?.[1];const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null)r.elevation=bsPt.elevation+parseFloat(r.ifs);}
+            }else if(r.ifs!=null&&!isNaN(parseFloat(r.ifs))){r.elevation=cvhi-parseFloat(r.ifs);}
+            r.hi=cvhi;
+        }else if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&cvhi!==null){if(r.fs!=null&&!isNaN(parseFloat(r.fs))){r.elevation=cvhi-parseFloat(r.fs);r.hi=cvhi;cve=r.elevation;lkgepn=r.pointName;r.hiFromBSForM5=cvhi;r.elevOfThis=r.elevation;if(r.type==='CLOSING_FS'){cve=null;lkgepn=null;}cvhi=null;}}
+    }
+}
+
+// Distance toggle
+function toggleDistanceFields(mfc,method,prefix){
+    const ddg=mfc.querySelector(`#group-${prefix}Dist`),uwg=mfc.querySelector(`#group-${prefix}UpperWire`),mwg=mfc.querySelector(`#group-${prefix}MiddleWire`),lwg=mfc.querySelector(`#group-${prefix}LowerWire`);
+    const ri=mfc.querySelector(`#${prefix}Reading`),ddi=mfc.querySelector(`#${prefix}Dist`),uwi=mfc.querySelector(`#${prefix}UpperWire`),mwi=mfc.querySelector(`#${prefix}MiddleWire`),lwi=mfc.querySelector(`#${prefix}LowerWire`);
+    if(method==='direct'){if(ddg)ddg.style.display='block';if(ri){ri.disabled=false;ri.required=true;}if(ddi)ddi.required=true;if(uwg)uwg.style.display='none';if(mwg)mwg.style.display='none';if(lwg)lwg.style.display='none';if(uwi)uwi.required=false;if(mwi)mwi.required=false;if(lwi)lwi.required=false;}
+    else{if(ddg)ddg.style.display='none';if(ri){ri.disabled=true;ri.required=false;}if(ddi)ddi.required=false;if(uwg)uwg.style.display='block';if(mwg)mwg.style.display='block';if(lwg)lwg.style.display='block';if(uwi)uwi.required=true;if(mwi)mwi.required=true;if(lwi)lwi.required=true;}
+}
+// --- Event Handlers: BM, Setup, IP, FS ---
+function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();return true;});}
+addBMButton.onclick=handleAddBM;addBMButtonMobile.onclick=handleAddBM;addBMButtonPinned.onclick=handleAddBM;
+
+function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculatedElevation){alert("No valid previous point.");updateButtonStates();return;}tpCounter++;const tpn=`TP${tpCounter}`;
+    showModal(`Setup ${tpn}`,[{id:'bsReading',name:'bsReading',label:`BS on ${lastPointNameForBS} (${formatNumber(lastCalculatedElevation)} ${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDist',name:'bsDist',label:`BS Distance (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDistMethod',name:'bsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'bs')},{id:'bsUpperWire',name:'bsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'bsMiddleWire',name:'bsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'bsLowerWire',name:'bsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
+    let fbr,fbd;if(data.bsDistMethod==='threeWire'){if(isNaN(data.bsUpperWire)||isNaN(data.bsMiddleWire)||isNaN(data.bsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.bsUpperWire>data.bsMiddleWire&&data.bsMiddleWire>data.bsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.bsUpperWire-data.bsMiddleWire,i2=data.bsMiddleWire-data.bsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals (${i1.toFixed(3)},${i2.toFixed(3)}) differ. OK?`))return false;fbr=(data.bsUpperWire+data.bsMiddleWire+data.bsLowerWire)/3;fbd=(data.bsUpperWire-data.bsLowerWire)*STADIA_FACTOR;}else{fbr=data.bsReading;fbd=data.bsDist;if(isNaN(fbr)||isNaN(fbd)){alert("Valid BS required.");tpCounter--;return false;}}
+    currentHI=lastCalculatedElevation+fbr;const brid=`bs-${Date.now()}`;levelRows.push({id:brid,pointName:tpn,bs:fbr,hi:currentHI,bsDist:fbd,fsDist:null,remarks:`BS on ${lastPointNameForBS}`,type:'SETUP_BS',pointStadia:null,isVoid:false,isDiNiLineLeveling:false});
+    activeSetupData={bsReading:fbr,bsDist:fbd,hi:currentHI,prevPointName:lastPointNameForBS,prevPointElevation:lastCalculatedElevation,setupTPName:tpn,ips:[],bsRowId:brid};renderTable();saveStateToLocalStorage();return true;},(mfc)=>toggleDistanceFields(mfc,'direct','bs'));}
+startSetupButton.onclick=handleStartSetup;startSetupButtonMobile.onclick=handleStartSetup;startSetupButtonPinned.onclick=handleStartSetup;
+
+function handleAddIP(){if(!activeSetupData)return;
+    showModal('Add IP',[{id:'ipName',name:'ipName',label:'IP Name:',type:'text',placeholder:'e.g., MH-1',required:true},{id:'ipCode',name:'ipCode',label:'Code (CSV):',type:'text',placeholder:'e.g., INV EL',required:false},{id:'isDiNiLL',name:'isDiNiLL',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:lastDiNiLL},{id:'ifsReading',name:'ifsReading',label:`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'ifsDist',name:'ifsDist',label:`IFS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'ifsDistMethod',name:'ifsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'ifs')},{id:'ifsUpperWire',name:'ifsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'ifsMiddleWire',name:'ifsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'ifsLowerWire',name:'ifsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
+    let fir=data.ifsReading,fid=data.ifsDist;const isDiNi=!!data.isDiNiLL;lastDiNiLL=isDiNi;
+    if(data.ifsDistMethod==='threeWire'){if(isNaN(data.ifsUpperWire)||isNaN(data.ifsMiddleWire)||isNaN(data.ifsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.ifsUpperWire>data.ifsMiddleWire&&data.ifsMiddleWire>data.ifsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.ifsUpperWire-data.ifsMiddleWire,i2=data.ifsMiddleWire-data.ifsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;fir=(data.ifsUpperWire+data.ifsMiddleWire+data.ifsLowerWire)/3;fid=(data.ifsUpperWire-data.ifsLowerWire)*STADIA_FACTOR;}else{if(isNaN(fir)||isNaN(fid)||!data.ipName){alert("Valid IP data required.");return false;}}
+    let ie;
+    if(isDiNi){ie=activeSetupData.prevPointElevation+fir;}  // DiNi: BS point elev + delta
+    else{ie=activeSetupData.hi-fir;}  // Normal: HI - rod reading
+    const irid=`ip-${Date.now()}`;levelRows.push({id:irid,pointName:data.ipName,ifs:fir,hi:activeSetupData.hi,elevation:ie,ifsDist:fid,bsDist:null,fsDist:null,remarks:data.ipCode||`IP via ${activeSetupData.setupTPName}`,pointCode:data.ipCode||'',type:'IP',pointStadia:null,isVoid:false,isDiNiLineLeveling:isDiNi});
+    activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();
+    setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');
+    // Update label when DiNi checkbox changes
+    const cb=mfc.querySelector('#isDiNiLL');const lbl=mfc.querySelector('label[for="ifsReading"]');
+    if(cb&&lbl){cb.addEventListener('change',()=>{if(cb.checked)lbl.textContent=`Delta from ${activeSetupData.prevPointName} (Elev: ${formatNumber(activeSetupData.prevPointElevation)} ${projectDetails.units}):`;else lbl.textContent=`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`;});}
+    });}
+addIPButton.onclick=handleAddIP;addIPButtonMobile.onclick=handleAddIP;addIPButtonPinned.onclick=handleAddIP;
+
+function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.setupTPName;
+    showModal('Add FS / Close',[{id:'fsReading',name:'fsReading',label:`FS for ${dfpn} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'fsDist',name:'fsDist',label:`FS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'fsDistMethod',name:'fsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'fs')},{id:'fsUpperWire',name:'fsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'fsMiddleWire',name:'fsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'fsLowerWire',name:'fsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false},{id:'isClosing',name:'isClosing',label:'',type:'checkbox',checkboxLabel:'Closing shot to known BM',dependentFields:[{id:'closingPointName',name:'closingPointName',label:'Closing BM Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'closingPointKnownElev',name:'closingPointKnownElev',label:`Known Elev (${projectDetails.units}):`,type:'number',step:'0.001',required:true}]}],(data)=>{
+    let ffr=data.fsReading,ffd=data.fsDist;if(data.fsDistMethod==='threeWire'){if(isNaN(data.fsUpperWire)||isNaN(data.fsMiddleWire)||isNaN(data.fsLowerWire)){alert("Valid three-wire.");return false;}if(!(data.fsUpperWire>data.fsMiddleWire&&data.fsMiddleWire>data.fsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.fsUpperWire-data.fsMiddleWire,i2=data.fsMiddleWire-data.fsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;ffr=(data.fsUpperWire+data.fsMiddleWire+data.fsLowerWire)/3;ffd=(data.fsUpperWire-data.fsLowerWire)*STADIA_FACTOR;}else{if(isNaN(ffr)||isNaN(ffd)){alert("Valid FS required.");return false;}}
+    if(data.isClosing&&(!data.closingPointName||isNaN(data.closingPointKnownElev))){alert("Enter closing BM info.");return false;}
+    const tpn=data.isClosing?data.closingPointName:dfpn;const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
+    levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
+    if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
+    activeSetupData=null;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
+    // Auto-fill closing BM from starting BM
+    const cb=mfc.querySelector('#isClosing');
+    if(cb){cb.addEventListener('change',()=>{
+        if(cb.checked){
+            const startBM=levelRows.find(r=>r.type==='BM'&&!r.isVoid);
+            if(startBM){
+                const cpn=mfc.querySelector('#closingPointName'),cpe=mfc.querySelector('#closingPointKnownElev');
+                if(cpn&&!cpn.value)cpn.value=startBM.pointName;
+                if(cpe&&!cpe.value)cpe.value=startBM.elevation;
+            }
+        }
+    });}
+    });}
+addFSButton.onclick=handleAddFS;addFSButtonMobile.onclick=handleAddFS;addFSButtonPinned.onclick=handleAddFS;
+// Deletion
+deleteLastIPButton.onclick=()=>{if(activeSetupData&&activeSetupData.ips.length>0)showConfirmModal('Delete Last IP','Delete last IP?',()=>{const r=activeSetupData.ips.pop();levelRows=levelRows.filter(x=>x.id!==r.id);renderTable();saveStateToLocalStorage();});};
+cancelSetupButton.onclick=()=>{if(activeSetupData)showConfirmModal('Cancel Setup','Remove BS and IPs from this setup?',()=>{const ids=[activeSetupData.bsRowId];if(activeSetupData.ips)activeSetupData.ips.forEach(ip=>ids.push(ip.id));levelRows=levelRows.filter(r=>!ids.includes(r.id));tpCounter--;activeSetupData=null;currentHI=null;updateLastValidPointForLiveCalcs();misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});};
+deleteLastSetupButton.onclick=()=>{const vrr=levelRows.filter(r=>!r.isVoid).reverse();const lvf=vrr.find(r=>r.type==='TP_FS'||r.type==='CLOSING_FS');if(lvf){showConfirmModal('Delete Last Setup',`Delete setup for ${lvf.pointName}?`,()=>{let ids=[lvf.id];const cb=levelRows.find(lr=>lr.type==='SETUP_BS'&&lr.pointName===lvf.pointName&&Math.abs(lr.bs-lvf.bsOnPrevForM5)<0.0001&&Math.abs(lr.bsDist-lvf.bsDistForM5)<0.0001&&lr.remarks.includes(lvf.prevPointNameForM5)&&!lr.isVoid);if(cb){ids.push(cb.id);levelRows.forEach(lr=>{if(lr.type==='IP'&&lr.remarks.includes(`via ${cb.pointName}`)&&!lr.isVoid&&lr.hi===cb.hi)ids.push(lr.id);});}levelRows=levelRows.filter(r=>!ids.includes(r.id));updateLastValidPointForLiveCalcs();tpCounter=levelRows.filter(r=>!r.isVoid&&(r.type==='TP_FS'||(r.type==='SETUP_BS'&&r.pointName.startsWith('TP')))).reduce((m,r)=>{const mt=r.pointName.match(/^TP(\d+)$/);return mt?Math.max(m,parseInt(mt[1])):m;},0);misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});}else{const lb=vrr.find(r=>r.type==='BM');if(lb&&vrr.length===1)showConfirmModal('Delete BM','Delete starting BM?',()=>{levelRows=levelRows.filter(r=>r.id!==lb.id);updateLastValidPointForLiveCalcs();tpCounter=0;misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});else alert("No completed setup to delete.");}};
+clearAllButton.onclick=()=>{showConfirmModal('Clear All','Erase everything? Cannot be undone.',()=>{projectDetails={units:'ft'};levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;document.getElementById('date').valueAsDate=new Date();['projectNumber','description','operator','recorder','instrument'].forEach(id=>document.getElementById(id).value='');rodTypeSelect.value='Philly Rod';rodTypeOtherInput.classList.add('hidden');rodTypeOtherInput.value='';misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';renderTable();saveStateToLocalStorage();});};
+
+// CSV Exports
+exportLevelingDataCSVButton.onclick=()=>{
+    updateProjectDetails();if(levelRows.length===0){alert("No data.");return;}const rn=projectDetails.description||"DefaultRun";let csv=[];csv.push("Point ID,Enabled,Measurement,Measurement Code,Elevation,Horizontal Distance,Description,Error mm/km,Error per Turn,RunName,Runcode");
+    const vr=levelRows.filter(r=>!r.isVoid);if(vr.length===0){alert("No valid data.");return;}let fbmp=false;
+    vr.forEach((row,idx)=>{let cr=[],skip=false,pid=row.pointName||'',en='Y',meas='',mc='',el='',hd='',desc='',rc='';
+    if(row.type==='BM'&&!fbmp){const fbs=vr.find(r=>r.type==='SETUP_BS'&&r.remarks.includes(`BS on ${row.pointName}`)&&!r.isVoid);if(fbs){pid=row.pointName;meas=formatNumber(fbs.bs);mc='BS';el=formatNumber(row.elevation);hd=formatDist(fbs.bsDist);desc=row.pointCode||'';rc='ST';fbmp=true;const bi=vr.indexOf(fbs);if(bi>-1)vr[bi]._cp=true;}else{pid=row.pointName;mc='BM_INFO';el=formatNumber(row.elevation);desc=row.pointCode||'';if(idx===0)rc='ST';}}
+    else if(row.type==='SETUP_BS'&&!row._cp){pid=row.remarks.match(/BS on (.*)/)?.[1]||row.pointName;meas=formatNumber(row.bs);mc='BS';hd=formatDist(row.bsDist);if(idx===0&&vr[0].type!=='BM')rc='ST';}
+    else if(row.type==='IP'){pid=row.pointName;meas=formatNumber(row.ifs);mc='SS';hd=formatDist(row.ifsDist);desc=row.pointCode||'';}
+    else if(row.type==='TP_FS'||row.type==='CLOSING_FS'){pid=row.pointName;meas=formatNumber(row.fs);mc='FS';hd=formatDist(row.fsDist);if(vr.indexOf(row)===vr.length-1)rc='END';}
+    else if(row._cp){skip=true;}else return;
+    if(!skip){cr.push(pid,en,meas,mc,el,hd,desc,'','',rn,rc);csv.push(cr.map(v=>String(v==null?'':v).replace(/"/g,'""')).join(','));}});
+    vr.forEach(r=>delete r._cp);
+    const blob=new Blob([csv.join("\r\n")],{type:'text/csv;charset=utf-8;'});const link=document.createElement("a");let df;try{df=new Date(projectDetails.date+"T00:00:00");if(isNaN(df.getTime()))df=new Date();}catch(e){df=new Date();}
+    const dfs=`${df.getFullYear()}${(df.getMonth()+1).toString().padStart(2,'0')}${df.getDate().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'NOPROJNUM').replace(/[^a-zA-Z0-9_-]/g,'_');let dp=(projectDetails.description||'NODESC').split(/\s+/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join('').replace(/[^a-zA-Z0-9]/g,'');
+    link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${dp}_${dfs}.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link);
+};
+
+exportTableCSVButton.onclick=()=>{
+    updateProjectDetails();if(levelRows.length===0){alert("No data.");return;}let csv="Project Information\r\n";
+    Object.entries(projectDetails).forEach(([k,v])=>{csv+=`"${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}","${String(v||'').replace(/"/g,'""')}"\r\n`;});
+    csv+="\r\nLeveling Data\r\n";csv+='"Station","BS","HI","FS/IFS","Elevation","BS Dist","FS/IFS Dist","Point Stadia","Total Stadia","Remarks","Status"\r\n';
+    let cts=0;levelRows.forEach(row=>{let dr=(row.remarks||'').replace(/<span[^>]*>\[VOID\]<\/span>/g,'').replace(/\[VOID\]/g,'');let st=row.isVoid?'VOID':'Valid';if(row.isVoid)dr+=' [VOID]';if(row.isDiNiLineLeveling)dr+=' [DiNi LL]';const psv=calculatePointStadia(row);let tsc='',hfc='';
+    if(row.type==='SETUP_BS'&&!row.isVoid)hfc=formatNumber(row.hi);if(!row.isVoid&&psv!==null){cts+=psv;tsc=formatPointStadia(cts);}
+    csv+=[row.pointName||'',formatNumber(row.bs),hfc,formatNumber(row.fs??row.ifs),formatNumber(row.elevation),formatDist(row.bsDist),formatDist(row.fsDist??row.ifsDist),formatPointStadia(psv),tsc,dr.replace(/"/g,'""'),st].map(v=>String(v==null?'':v).replace(/"/g,'""')).join(',')+"\r\n";});
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement("a");const df=new Date(projectDetails.date||Date.now());const dfs=`${df.getFullYear()}${(df.getMonth()+1).toString().padStart(2,'0')}${df.getDate().toString().padStart(2,'0')}`;
+    link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${projectDetails.projectNumber||'level_data'}_${dfs}.csv`);document.body.appendChild(link);link.click();document.body.removeChild(link);
+};
+
+// Print
+printViewButton.onclick=()=>{
+    updateProjectDetails();if(levelRows.length===0){alert("No data.");return;}const pw=window.open('','_blank','height=800,width=1000');
+    pw.document.write('<html><head><title>Print Leveling Notes</title><style>body{font-family:sans-serif;margin:20px;color:black;}table{width:100%;border-collapse:collapse;margin-top:15px;}th,td{border:1px solid #999;padding:4px;font-size:9pt;text-align:left;}th{background:#e5e7eb;}.voided-row td{text-decoration:line-through;color:#6b7280;}.void-remark-print{font-style:italic;color:#6b7280;margin-left:5px;}.print-btn{padding:8px 16px;margin:4px;cursor:pointer;border:1px solid #999;border-radius:4px;font-size:10pt;}@media print{.no-print{display:none!important;}}</style></head><body>');
+    pw.document.write('<div class="no-print" style="text-align:center;margin-bottom:16px;"><button class="print-btn" onclick="window.print()">Print</button><button class="print-btn" onclick="window.close()">Close</button></div>');
+    pw.document.write('<h1 style="text-align:center;font-size:18pt;">Leveling Notes</h1><h2 style="text-align:center;font-size:14pt;">Project Information</h2><div style="margin-bottom:16px;font-size:10pt;">');
+    Object.entries(projectDetails).forEach(([k,v])=>{pw.document.write(`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dotted #ccc;"><strong>${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}:</strong><span>${v||''}</span></div>`);});
+    pw.document.write('</div><h2 style="text-align:center;font-size:14pt;">Leveling Data</h2><table><thead><tr>');
+    ["Station","BS","HI","FS/IFS","Elevation","BS Dist","FS/IFS Dist","Pt Stadia","Tot Stadia","Remarks"].forEach(h=>pw.document.write(`<th>${h}</th>`));
+    pw.document.write('</tr></thead><tbody>');
+    let ctsp=0;levelRows.forEach(row=>{let dr=(row.remarks||'').replace(/\s*<span[^>]*>\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'');let psf='',tsf='',hfp='';
+    if(row.isVoid)dr+=`<span class="void-remark-print">[VOID]</span>`;if(row.isDiNiLineLeveling)dr+=' [DiNi LL]';if(row.type==='SETUP_BS'&&!row.isVoid)hfp=formatNumber(row.hi);
+    const psv=calculatePointStadia(row);psf=formatPointStadia(psv);if(!row.isVoid&&psv!==null){ctsp+=psv;tsf=formatPointStadia(ctsp);}
+    pw.document.write(`<tr class="${row.isVoid?'voided-row':''}"><td>${row.pointName||''}</td><td>${formatNumber(row.bs)}</td><td>${hfp}</td><td>${formatNumber(row.fs??row.ifs)}</td><td>${formatNumber(row.elevation)}</td><td>${formatDist(row.bsDist)}</td><td>${formatDist(row.fsDist??row.ifsDist)}</td><td>${psf}</td><td>${tsf}</td><td>${dr}</td></tr>`);});
+    pw.document.write('</tbody></table>');
+    if(!misclosureDisplay.classList.contains('hidden')){
+        pw.document.write(`<div style="margin-top:12px;padding:8px;border:1px solid #93c5fd;border-radius:4px;font-size:10pt;background:#eff6ff;"><strong>Misclosure:</strong> ${misclosureValue.textContent}</div>`);
+        const acc=calculateAccuracy();
+        if(acc){const best=acc.specs.find(s=>s.pass);pw.document.write(`<div style="margin-top:6px;font-size:9pt;">Distance: ${acc.totalDistFt.toFixed(1)} ft (${acc.totalDistKm.toFixed(3)} km) | Misclosure: ${acc.misclosureFt.toFixed(4)} ft (${acc.misclosureMM.toFixed(1)} mm) | ${best?'Achieved: '+best.name:'Does not meet Third Order'}</div>`);}
+    }
+    pw.document.write('</body></html>');pw.document.close();
+};
+
+// JSON Export/Import
+exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccuracy();const a={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent,accuracy:acc?{misclosureMM:acc.misclosureMM,misclosureFt:acc.misclosureFt,totalDistFt:acc.totalDistFt,totalDistKm:acc.totalDistKm,sqrtK:acc.sqrtK,standards:acc.specs.map(s=>({name:s.name,factor:s.factor,allowableMM:s.allowable,pass:s.pass}))}:null};const j=JSON.stringify(a,null,2);const blob=new Blob([j],{type:"application/json"});const now=new Date();const dts=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'LEVELING').replace(/[^a-zA-Z0-9_-]/g,'_');const sd=(projectDetails.description||'DATA').substring(0,5).replace(/[^a-zA-Z0-9_-]/g,'_');const link=document.createElement('a');link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${sd}_${dts}.json`);document.body.appendChild(link);link.click();};
+
+importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();alert("Imported!");});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
+
+// Init
+loadStateFromLocalStorage();
+// Register Service Worker for PWA/offline support
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+</script>
+</body>
+</html>
