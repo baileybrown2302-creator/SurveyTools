@@ -55,7 +55,8 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); margin: 0; padding: 0; transition: background-color 0.3s, color 0.3s; -webkit-tap-highlight-color: transparent; overflow-x: hidden; }
         [data-fontsize="small"] { font-size: 13px; } [data-fontsize="medium"] { font-size: 15px; } [data-fontsize="large"] { font-size: 18px; }
         .label { display:block; font-size:0.85em; font-weight:600; color:var(--text-secondary); margin-bottom:4px; }
-        .input, .select-input { display:block; width:100%; padding:10px 12px; border:1.5px solid var(--input-border); border-radius:8px; background:var(--input-bg); color:var(--text-primary); font-size:1em; outline:none; transition:border-color 0.2s; }
+        /* FIX: added min-width:0 so date/text inputs cannot overflow their grid cell on mobile */
+        .input, .select-input { display:block; width:100%; min-width:0; padding:10px 12px; border:1.5px solid var(--input-border); border-radius:8px; background:var(--input-bg); color:var(--text-primary); font-size:1em; outline:none; transition:border-color 0.2s; }
         .input:focus, .select-input:focus { border-color:var(--accent-blue); box-shadow:0 0 0 3px rgba(59,130,246,0.15); }
         .button { display:inline-flex; align-items:center; justify-content:center; padding:10px 16px; border:none; border-radius:10px; font-size:0.9em; font-weight:600; cursor:pointer; transition:all 0.15s ease; color:white; min-height:44px; min-width:44px; -webkit-user-select:none; user-select:none; }
         .button:active:not(:disabled) { transform:scale(0.97); } .button:disabled { opacity:0.4; cursor:not-allowed; }
@@ -79,7 +80,7 @@
         .stadia-check-btn { background:none; border:1.5px solid var(--summary-text); color:var(--summary-text); border-radius:6px; padding:1px 5px; font-size:0.65em; cursor:pointer; opacity:0.7; margin-left:3px; vertical-align:middle; font-weight:800; }
         .stadia-check-btn:hover { opacity:1; }
         /* Project info */
-        .project-info-container { background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:12px; margin:12px 16px; padding:16px; }
+        .project-info-container { background:var(--bg-secondary); border:1px solid var(--border-primary); border-radius:12px; margin:12px 16px; padding:16px; overflow:hidden; }
         .project-info-header { font-size:1.1em; font-weight:700; color:var(--text-primary); margin-bottom:0; }
         .project-info-note { font-size:0.8em; color:var(--text-muted); font-style:italic; margin-top:8px; }
         /* Desktop action buttons - can be sticky or inline */
@@ -189,7 +190,8 @@
         <h2 class="project-info-header">Project Information</h2>
         <svg id="projectInfoArrow" style="width:20px;height:20px;color:var(--text-muted);transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
     </div>
-    <div id="projectInfoFields" class="mt-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+    <!-- FIX: changed minmax(200px,1fr) to minmax(min(200px,100%),1fr) so grid cells never force overflow on narrow screens -->
+    <div id="projectInfoFields" class="mt-3" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(200px,100%),1fr));gap:12px;">
         <div><label for="date" class="label">Date:</label><input type="date" id="date" class="input"></div>
         <div><label for="projectNumber" class="label">Project #:</label><input type="text" id="projectNumber" class="input" placeholder="e.g., P2024-001"></div>
         <div><label for="description" class="label">Description:</label><input type="text" id="description" class="input" placeholder="e.g., Level Loop A"></div>
