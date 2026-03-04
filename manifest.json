@@ -1,7 +1,7 @@
 {
-  "name": "Leveling Tool",
-  "short_name": "Leveling",
-  "description": "Mobile leveling field tool",
+  "name": "Survey Tool",
+  "short_name": "Survey Tool",
+  "description": "Mobile surveying field tools",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",
