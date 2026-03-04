@@ -1,7 +1,7 @@
 {
-  "name": "Differential Leveling Calculator",
+  "name": "Leveling Tool",
   "short_name": "Leveling",
-  "description": "Mobile differential leveling field tool",
+  "description": "Mobile leveling field tool",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "any",
