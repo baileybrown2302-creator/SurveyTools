@@ -1,7 +1,8 @@
-const CACHE_NAME = 'leveling-v1';
+const CACHE_NAME = 'survey-tool-v2';
 const ASSETS = [
   './',
   './index.html',
+  './leveling.html',
   './manifest.json'
 ];
 
