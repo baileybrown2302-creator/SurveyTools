@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>HMA Tool — Survey Tool</title>
+    <style>
+        :root{
+            --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+            --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+            --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+            --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+            --accent-green:#22c55e;--accent-green-hover:#16a34a;
+            --accent-red:#ef4444;--accent-red-hover:#dc2626;
+            --accent-orange:#f97316;
+            --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+            --input-bg:#ffffff;--input-border:#d1d5db;
+            --result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;
+            --pass-bg:#f0fdf4;--pass-border:#86efac;--pass-text:#166534;
+            --fail-bg:#fef2f2;--fail-border:#fca5a5;--fail-text:#991b1b;
+            --warn-bg:#fff7ed;--warn-border:#fed7aa;--warn-text:#9a3412;
+            --modal-overlay:rgba(0,0,0,0.65);
+        }
+        [data-theme="high-contrast"]{
+            --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+            --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+            --border-primary:#333333;--border-secondary:#444444;
+            --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+            --accent-green:#4ade80;--accent-green-hover:#86efac;
+            --accent-red:#f87171;--accent-red-hover:#fca5a5;
+            --accent-orange:#fb923c;
+            --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+            --input-bg:#1a1a1a;--input-border:#555555;
+            --result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;
+            --pass-bg:#052e16;--pass-border:#166534;--pass-text:#4ade80;
+            --fail-bg:#450a0a;--fail-border:#991b1b;--fail-text:#f87171;
+            --warn-bg:#431407;--warn-border:#9a3412;--warn-text:#fb923c;
+            --modal-overlay:rgba(0,0,0,0.85);
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        /* Tabs */
+        .tabs{display:flex;background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);position:sticky;top:49px;z-index:40;}
+        .tab{flex:1;padding:12px 6px;text-align:center;font-size:0.8em;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.15s;}
+        .tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue);}
+        [data-theme="high-contrast"] .tab.active{color:#fbbf24;border-bottom-color:#fbbf24;}
+        /* Cards */
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .field-group:last-child{margin-bottom:0;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .opt{font-weight:400;color:var(--text-muted);}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .select-input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;}
+        .select-input:focus{border-color:var(--accent-blue);}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        /* Toggle switch for ft/stations */
+        .mode-toggle{display:flex;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:3px;margin-bottom:14px;}
+        .mode-btn{flex:1;padding:8px;text-align:center;font-size:0.82em;font-weight:700;color:var(--text-muted);border-radius:7px;cursor:pointer;transition:all 0.15s;border:none;background:none;}
+        .mode-btn.active{background:var(--accent-blue);color:white;}
+        [data-theme="high-contrast"] .mode-btn.active{background:#fbbf24;color:#000;}
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:44px;-webkit-user-select:none;user-select:none;width:100%;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{background:var(--border-primary);}
+        .btn-row{display:flex;gap:10px;margin-top:14px;}
+        .btn-row .btn{flex:1;}
+        /* Results */
+        .result-panel{border-radius:12px;padding:16px;margin:0 16px 12px;}
+        .result-blue{background:var(--result-bg);border:1.5px solid var(--result-border);}
+        .result-green{background:var(--pass-bg);border:1.5px solid var(--pass-border);}
+        .result-red{background:var(--fail-bg);border:1.5px solid var(--fail-border);}
+        .result-orange{background:var(--warn-bg);border:1.5px solid var(--warn-border);}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;opacity:0.8;margin-bottom:12px;}
+        .result-blue .result-title{color:var(--result-text);}
+        .result-green .result-title{color:var(--pass-text);}
+        .result-red .result-title{color:var(--fail-text);}
+        .result-orange .result-title{color:var(--warn-text);}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .result-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+        .result-label{font-size:0.65em;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;opacity:0.7;}
+        .result-blue .result-label{color:var(--result-text);}
+        .result-green .result-label{color:var(--pass-text);}
+        .result-red .result-label{color:var(--fail-text);}
+        .result-orange .result-label{color:var(--warn-text);}
+        .result-value{font-size:1.1em;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+        .result-blue .result-value{color:var(--result-text);}
+        .result-green .result-value{color:var(--pass-text);}
+        .result-red .result-value{color:var(--fail-text);}
+        .result-orange .result-value{color:var(--warn-text);}
+        .result-full{grid-column:1/-1;}
+        .result-divider{grid-column:1/-1;border:none;border-top:1px solid var(--result-border);margin:6px 0;}
+        .result-divider-green{border-color:var(--pass-border);}
+        .result-divider-red{border-color:var(--fail-border);}
+        /* Pass/fail badge */
+        .pf-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:0.85em;font-weight:800;letter-spacing:0.5px;}
+        .pf-pass{background:var(--pass-bg);color:var(--pass-text);border:1.5px solid var(--pass-border);}
+        .pf-fail{background:var(--fail-bg);color:var(--fail-text);border:1.5px solid var(--fail-border);}
+        [data-theme="high-contrast"] .pf-pass{background:#052e16;color:#4ade80;border-color:#166534;}
+        [data-theme="high-contrast"] .pf-fail{background:#450a0a;color:#f87171;border-color:#991b1b;}
+        /* Mix picker */
+        .mix-source-toggle{display:flex;gap:8px;margin-bottom:12px;}
+        .mix-source-btn{flex:1;padding:8px;text-align:center;font-size:0.8em;font-weight:700;border-radius:8px;border:1.5px solid var(--border-primary);background:var(--bg-tertiary);color:var(--text-muted);cursor:pointer;transition:all 0.15s;}
+        .mix-source-btn.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+        [data-theme="high-contrast"] .mix-source-btn.active{border-color:#fbbf24;background:#1c1700;color:#fbbf24;}
+        .mix-picker-info{font-size:0.78em;color:var(--text-muted);padding:8px 10px;background:var(--bg-tertiary);border-radius:8px;margin-bottom:10px;}
+        /* Error */
+        .error-msg{color:var(--accent-red);font-size:0.82em;font-weight:600;margin-top:8px;}
+        .hidden{display:none!important;}
+        /* Section views */
+        .tab-view{display:none;}
+        .tab-view.active{display:block;}
+        /* Info note */
+        .info-note{font-size:0.78em;color:var(--text-muted);padding:8px 12px;background:var(--bg-tertiary);border-radius:8px;border-left:3px solid var(--border-secondary);margin-bottom:14px;line-height:1.5;}
+        /* Station input hint */
+        .station-hint{font-size:0.72em;color:var(--text-muted);margin-top:4px;}
+    </style>
+</head>
+<body>
+<div class="top-nav">
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">🛣️ HMA Tool</span>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+    <div class="tab active" onclick="setTab('tonnage')">Tonnage</div>
+    <div class="tab" onclick="setTab('yield')">Yield</div>
+</div>
+
+<!-- ══ TONNAGE TAB ══ -->
+<div id="tab-tonnage" class="tab-view active">
+
+    <!-- Mix Design -->
+    <div class="card">
+        <div class="card-title">Mix Design</div>
+        <div class="mix-source-toggle">
+            <button class="mix-source-btn active" id="mixManualBtn" onclick="setMixSource('manual')">Enter Manually</button>
+            <button class="mix-source-btn" id="mixPickBtn" onclick="setMixSource('pick')">From Saved Materials</button>
+        </div>
+        <!-- Manual entry -->
+        <div id="mixManualFields">
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Mix ID <span class="opt">(optional)</span></label>
+                    <input class="input" type="text" id="t_mixId" placeholder="e.g. SM-9.5A">
+                </div>
+                <div class="field-group">
+                    <label class="label">JMF / Avg RICE Density (pcf)</label>
+                    <input class="input" type="number" inputmode="decimal" id="t_jmf" placeholder="e.g. 148.5" step="0.1">
+                </div>
+            </div>
+        </div>
+        <!-- Saved materials picker -->
+        <div id="mixPickFields" class="hidden">
+            <div class="field-group">
+                <label class="label">Contract</label>
+                <select class="select-input" id="t_contract" onchange="populateMixes()">
+                    <option value="">— Select contract —</option>
+                </select>
+            </div>
+            <div class="field-group" id="mixSelectGroup" style="display:none;">
+                <label class="label">Mix Design</label>
+                <select class="select-input" id="t_mix" onchange="applySelectedMix()">
+                    <option value="">— Select mix —</option>
+                </select>
+            </div>
+            <div class="mix-picker-info" id="mixPickerInfo" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Area -->
+    <div class="card">
+        <div class="card-title">Paving Area</div>
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="areaFtBtn" onclick="setAreaMode('ft')">Length × Width (ft)</button>
+            <button class="mode-btn" id="areaStaBtn" onclick="setAreaMode('sta')">Stations</button>
+        </div>
+        <!-- Feet mode -->
+        <div id="areaFtFields">
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Length (ft)</label>
+                    <input class="input" type="number" inputmode="decimal" id="t_lenFt" placeholder="0.00" step="0.01">
+                </div>
+                <div class="field-group">
+                    <label class="label">Width (ft)</label>
+                    <input class="input" type="number" inputmode="decimal" id="t_width" placeholder="0.00" step="0.01">
+                </div>
+            </div>
+        </div>
+        <!-- Stations mode -->
+        <div id="areaStaFields" class="hidden">
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Start Station</label>
+                    <input class="input" type="text" id="t_staStart" placeholder="e.g. 1+00">
+                    <div class="station-hint">Format: 1+00 or 100</div>
+                </div>
+                <div class="field-group">
+                    <label class="label">End Station</label>
+                    <input class="input" type="text" id="t_staEnd" placeholder="e.g. 5+50">
+                    <div class="station-hint">Format: 5+50 or 550</div>
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="label">Width (ft)</label>
+                <input class="input" type="number" inputmode="decimal" id="t_widthSta" placeholder="0.00" step="0.01">
+            </div>
+        </div>
+    </div>
+
+    <!-- Depth & Compaction -->
+    <div class="card">
+        <div class="card-title">Depth & Compaction</div>
+        <div class="two-col">
+            <div class="field-group">
+                <label class="label">Compacted Depth (in)</label>
+                <input class="input" type="number" inputmode="decimal" id="t_depth" placeholder="e.g. 2.0" step="0.25" oninput="updateUncompactedDepth()">
+            </div>
+            <div class="field-group">
+                <label class="label">Target Compaction (%)</label>
+                <input class="input" type="number" inputmode="decimal" id="t_targetPct" placeholder="e.g. 92.0" step="0.1">
+            </div>
+        </div>
+        <div class="info-note" id="uncompactedDepthNote" style="display:none;"></div>
+        <div class="info-note">Target compaction % is applied to JMF / RICE density to determine loose tons. Leave blank to use 100%.</div>
+        <div id="tonnageError" class="error-msg hidden"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="clearTonnage()">Clear</button>
+            <button class="btn btn-primary" onclick="calcTonnage()">Calculate →</button>
+        </div>
+    </div>
+
+    <!-- Tonnage Results -->
+    <div id="tonnageResult" class="result-panel result-blue hidden">
+        <div class="result-title">Tonnage Result</div>
+        <div class="result-grid" id="tonnageResultGrid"></div>
+    </div>
+</div>
+
+<!-- ══ YIELD TAB ══ -->
+<div id="tab-yield" class="tab-view">
+    <div class="card">
+        <div class="card-title">Yield Check</div>
+        <div class="info-note">Compare expected vs actual tons per station to evaluate paving yield. One station = 100 ft.</div>
+        <div class="field-group">
+            <label class="label">Mix Width (ft)</label>
+            <input class="input" type="number" inputmode="decimal" id="y_width" placeholder="e.g. 12.0" step="0.01">
+        </div>
+        <div class="two-col">
+            <div class="field-group">
+                <label class="label">Compacted Depth (in)</label>
+                <input class="input" type="number" inputmode="decimal" id="y_depth" placeholder="e.g. 2.0" step="0.25">
+            </div>
+            <div class="field-group">
+                <label class="label">Avg RICE Density (pcf)</label>
+                <input class="input" type="number" inputmode="decimal" id="y_jmf" placeholder="e.g. 148.5" step="0.1">
+            </div>
+        </div>
+
+        <div style="border-top:1px solid var(--border-primary);margin:14px 0;"></div>
+
+        <div class="field-group">
+            <label class="label">Actual Tons Placed</label>
+            <input class="input" type="number" inputmode="decimal" id="y_actualTons" placeholder="e.g. 42.5" step="0.1">
+        </div>
+        <div class="field-group">
+            <label class="label">Actual Length Paved (ft)</label>
+            <input class="input" type="number" inputmode="decimal" id="y_actualLen" placeholder="e.g. 520" step="1">
+        </div>
+        <div id="yieldError" class="error-msg hidden"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="clearYield()">Clear</button>
+            <button class="btn btn-primary" onclick="calcYield()">Calculate →</button>
+        </div>
+    </div>
+    <div id="yieldResult" class="hidden"></div>
+</div>
+
+<script>
+// ── Theme ──────────────────────────────────────────────
+const themeBtn=document.getElementById('themeBtn');
+const savedTheme=localStorage.getItem('surveyTheme');
+if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+
+// ── State ──────────────────────────────────────────────
+let areaMode='ft';       // 'ft' | 'sta'
+let mixSource='manual';  // 'manual' | 'pick'
+let materialData=null;   // loaded from materialReferenceData_v1
+
+// ── Tab navigation ─────────────────────────────────────
+function setTab(tab){
+    document.querySelectorAll('.tab').forEach((t,i)=>{
+        const names=['tonnage','yield'];
+        t.classList.toggle('active',names[i]===tab);
+    });
+    document.querySelectorAll('.tab-view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('tab-'+tab).classList.add('active');
+}
+
+// ── Area mode toggle ───────────────────────────────────
+function setAreaMode(mode){
+    areaMode=mode;
+    document.getElementById('areaFtBtn').classList.toggle('active',mode==='ft');
+    document.getElementById('areaStaBtn').classList.toggle('active',mode==='sta');
+    document.getElementById('areaFtFields').classList.toggle('hidden',mode!=='ft');
+    document.getElementById('areaStaFields').classList.toggle('hidden',mode!=='sta');
+}
+
+// ── Mix source toggle ──────────────────────────────────
+function setMixSource(src){
+    mixSource=src;
+    document.getElementById('mixManualBtn').classList.toggle('active',src==='manual');
+    document.getElementById('mixPickBtn').classList.toggle('active',src==='pick');
+    document.getElementById('mixManualFields').classList.toggle('hidden',src!=='manual');
+    document.getElementById('mixPickFields').classList.toggle('hidden',src!=='pick');
+    if(src==='pick')loadMaterialData();
+}
+
+// ── Load saved material data ───────────────────────────
+function loadMaterialData(){
+    try{
+        const raw=localStorage.getItem('materialReferenceData_v1');
+        if(!raw){showNoMaterials();return;}
+        materialData=JSON.parse(raw);
+        const sel=document.getElementById('t_contract');
+        sel.innerHTML='<option value="">— Select contract —</option>';
+        const contracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));
+        if(contracts.length===0){showNoMaterials();return;}
+        contracts.forEach(c=>{
+            const opt=document.createElement('option');
+            opt.value=c.id;opt.textContent=c.number+(c.description?' — '+c.description:'');
+            sel.appendChild(opt);
+        });
+        document.getElementById('mixSelectGroup').style.display='none';
+        document.getElementById('mixPickerInfo').style.display='none';
+    }catch(e){showNoMaterials();}
+}
+
+function showNoMaterials(){
+    document.getElementById('mixPickFields').innerHTML=`<div class="mix-picker-info">No HMA mixes found in saved materials. Add them in the Material Reference tool, or use manual entry.</div>`;
+}
+
+function populateMixes(){
+    const cid=document.getElementById('t_contract').value;
+    const mixSel=document.getElementById('t_mix');
+    const mixGroup=document.getElementById('mixSelectGroup');
+    const info=document.getElementById('mixPickerInfo');
+    mixSel.innerHTML='<option value="">— Select mix —</option>';
+    info.style.display='none';
+    if(!cid||!materialData){mixGroup.style.display='none';return;}
+    const contract=materialData.contracts.find(c=>c.id===cid);
+    if(!contract){mixGroup.style.display='none';return;}
+    const mixes=(contract.materials||[]).filter(m=>m.category==='HMA');
+    if(mixes.length===0){mixGroup.style.display='none';return;}
+    mixes.forEach(m=>{
+        const opt=document.createElement('option');
+        opt.value=m.id;
+        opt.textContent=m.hma_id||'Unnamed Mix';
+        opt.dataset.density=m.hma_density||'';
+        opt.dataset.ac=m.hma_ac||'';
+        mixSel.appendChild(opt);
+    });
+    mixGroup.style.display='block';
+}
+
+function applySelectedMix(){
+    const sel=document.getElementById('t_mix');
+    const info=document.getElementById('mixPickerInfo');
+    if(!sel.value){info.style.display='none';return;}
+    const opt=sel.options[sel.selectedIndex];
+    const density=opt.dataset.density;
+    const ac=opt.dataset.ac;
+    let parts=[];
+    if(density)parts.push(`JMF Density: <strong>${density} pcf</strong>`);
+    if(ac)parts.push(`Bitumen Ratio: <strong>${ac}%</strong>`);
+    info.innerHTML=parts.length>0?parts.join(' &nbsp;·&nbsp; '):'No density data saved for this mix.';
+    info.style.display='block';
+}
+
+function getJMFDensity(tabPrefix){
+    if(tabPrefix==='t'&&mixSource==='pick'){
+        const sel=document.getElementById('t_mix');
+        if(!sel||!sel.value)return null;
+        const opt=sel.options[sel.selectedIndex];
+        const d=parseFloat(opt.dataset.density);
+        return isNaN(d)?null:d;
+    }
+    const id=tabPrefix==='t'?'t_jmf':tabPrefix==='c'?'c_jmf':'y_jmf';
+    const v=parseFloat(document.getElementById(id).value);
+    return isNaN(v)?null:v;
+}
+
+// ── Station parser ─────────────────────────────────────
+function parseSta(str){
+    if(!str||str.trim()==='')return null;
+    str=str.trim();
+    // Accept: 1+00, 1+00.00, 100, 100.00
+    const plusMatch=str.match(/^(\d+)\+(\d+(?:\.\d+)?)$/);
+    if(plusMatch)return parseFloat(plusMatch[1])*100+parseFloat(plusMatch[2]);
+    const plain=parseFloat(str);
+    return isNaN(plain)?null:plain;
+}
+
+// ── Helpers ────────────────────────────────────────────
+function fv(id){const el=document.getElementById(id);if(!el||el.value==='')return null;const v=parseFloat(el.value);return isNaN(v)?null:v;}
+function fmt(n,d=2){return n==null?'—':parseFloat(n).toFixed(d);}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.remove('hidden');}
+function hideErr(id){document.getElementById(id).classList.add('hidden');}
+
+// ── Uncompacted depth live hint ────────────────────────
+function updateUncompactedDepth(){
+    const depthIn=parseFloat(document.getElementById('t_depth').value);
+    const note=document.getElementById('uncompactedDepthNote');
+    if(isNaN(depthIn)||depthIn<=0){note.style.display='none';return;}
+    // 0.25" uncompacted per 1" compacted
+    const uncompacted=depthIn*1.25;
+    note.textContent=`Uncompacted (loose) depth: ${uncompacted.toFixed(2)}" (${(uncompacted/12).toFixed(4)} ft)`;
+    note.style.display='block';
+}
+
+// ── TONNAGE CALC ───────────────────────────────────────
+function calcTonnage(){
+    hideErr('tonnageError');
+
+    // JMF / RICE density
+    const jmf=getJMFDensity('t');
+    if(!jmf){showErr('tonnageError',mixSource==='pick'?'Select a mix with a saved density.':'Enter JMF / RICE Density.');return;}
+
+    // Area
+    let areaFt2;
+    if(areaMode==='ft'){
+        const L=fv('t_lenFt'),W=fv('t_width');
+        if(!L||!W){showErr('tonnageError','Enter Length and Width.');return;}
+        areaFt2=L*W;
+    }else{
+        const s1=parseSta(document.getElementById('t_staStart').value);
+        const s2=parseSta(document.getElementById('t_staEnd').value);
+        const W=fv('t_widthSta');
+        if(s1===null||s2===null){showErr('tonnageError','Enter valid start and end stations.');return;}
+        if(s2<=s1){showErr('tonnageError','End station must be greater than start station.');return;}
+        if(!W){showErr('tonnageError','Enter Width.');return;}
+        areaFt2=(s2-s1)*W;
+    }
+
+    // Depth
+    const depthIn=fv('t_depth');
+    if(!depthIn){showErr('tonnageError','Enter compacted depth.');return;}
+    const depthFt=depthIn/12;
+    const uncompactedIn=depthIn*1.25;
+
+    // Target compaction % — default 100%
+    const targetPctRaw=fv('t_targetPct');
+    const targetPct=targetPctRaw!==null?targetPctRaw:100;
+    if(targetPctRaw!==null&&(targetPct<=0||targetPct>100)){showErr('tonnageError','Target compaction % must be between 1 and 100.');return;}
+    const targetDensity=jmf*(targetPct/100);
+
+    // Compacted volume
+    const volCF=areaFt2*depthFt;
+    const volCY=volCF/27;
+
+    // Tonnage = compacted volume × RICE density × (target% / 100)
+    const tons=(volCF*targetDensity)/2000;
+
+    // Area in sq yd
+    const areaSY=areaFt2/9;
+
+    // Yield — tons per station (100 lf)
+    let lenFt;
+    if(areaMode==='ft'){lenFt=fv('t_lenFt');}
+    else{const s1=parseSta(document.getElementById('t_staStart').value);const s2=parseSta(document.getElementById('t_staEnd').value);lenFt=(s1!==null&&s2!==null)?s2-s1:null;}
+    const stations=lenFt?lenFt/100:null;
+    const tonsPerSta=(stations&&stations>0)?tons/stations:null;
+
+    const grid=document.getElementById('tonnageResultGrid');
+    grid.innerHTML=`
+        <div class="result-full" style="margin-bottom:2px;"><div style="font-size:0.7em;font-weight:700;text-transform:uppercase;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Area</div></div>
+        <div><div class="result-label">Square Feet</div><div class="result-value">${fmt(areaFt2)} sf</div></div>
+        <div><div class="result-label">Square Yards</div><div class="result-value">${fmt(areaSY)} sy</div></div>
+        <hr class="result-divider">
+        <div class="result-full" style="margin-bottom:2px;"><div style="font-size:0.7em;font-weight:700;text-transform:uppercase;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Depth</div></div>
+        <div><div class="result-label">Compacted Depth</div><div class="result-value">${fmt(depthIn)}"</div></div>
+        <div><div class="result-label">Uncompacted Depth</div><div class="result-value">${fmt(uncompactedIn)}"</div></div>
+        <hr class="result-divider">
+        <div class="result-full" style="margin-bottom:2px;"><div style="font-size:0.7em;font-weight:700;text-transform:uppercase;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Tonnage</div></div>
+        <div><div class="result-label">Tonnage</div><div class="result-value">${fmt(tons)} T</div></div>
+        ${tonsPerSta!==null?`<div><div class="result-label">Yield</div><div class="result-value">${fmt(tonsPerSta)} T/sta</div></div>`:'<div></div>'}
+        <hr class="result-divider">
+        <div class="result-full" style="margin-bottom:2px;"><div style="font-size:0.7em;font-weight:700;text-transform:uppercase;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Reference</div></div>
+        <div><div class="result-label">Volume (CF)</div><div class="result-value">${fmt(volCF)} cf</div></div>
+        <div><div class="result-label">Volume (CY)</div><div class="result-value">${fmt(volCY)} cy</div></div>
+        <div><div class="result-label">RICE Density</div><div class="result-value">${fmt(jmf,1)} pcf</div></div>
+        <div><div class="result-label">Target Density</div><div class="result-value">${fmt(targetDensity,1)} pcf (${fmt(targetPct,1)}%)</div></div>
+    `;
+    document.getElementById('tonnageResult').classList.remove('hidden');
+    document.getElementById('tonnageResult').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function clearTonnage(){
+    ['t_mixId','t_jmf','t_lenFt','t_width','t_staStart','t_staEnd','t_widthSta','t_depth','t_targetPct'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.value='';
+    });
+    const cs=document.getElementById('t_contract');if(cs)cs.value='';
+    const ms=document.getElementById('t_mix');if(ms)ms.value='';
+    document.getElementById('mixPickerInfo').style.display='none';
+    document.getElementById('mixSelectGroup').style.display='none';
+    document.getElementById('uncompactedDepthNote').style.display='none';
+    hideErr('tonnageError');
+    document.getElementById('tonnageResult').classList.add('hidden');
+}
+
+// ── YIELD CALC ─────────────────────────────────────────
+function calcYield(){
+    hideErr('yieldError');
+    const width=fv('y_width');
+    const depthIn=fv('y_depth');
+    const jmf=fv('y_jmf');
+    const actualTons=fv('y_actualTons');
+    const actualLen=fv('y_actualLen');
+
+    if(!width){showErr('yieldError','Enter mix width.');return;}
+    if(!depthIn){showErr('yieldError','Enter compacted depth.');return;}
+    if(!jmf){showErr('yieldError','Enter Avg RICE Density.');return;}
+    if(!actualTons){showErr('yieldError','Enter actual tons placed.');return;}
+    if(!actualLen){showErr('yieldError','Enter actual length paved.');return;}
+    if(jmf<=0){showErr('yieldError','RICE density must be greater than zero.');return;}
+
+    const depthFt=depthIn/12;
+
+    // Expected: tons per station (100 ft) at JMF density
+    const volPerSta=width*100*depthFt;      // cf per station
+    const expectedTonsPerSta=(volPerSta*jmf)/2000;
+
+    // Actual: tons per station from field data
+    const actualStations=actualLen/100;
+    const actualTonsPerSta=actualTons/actualStations;
+
+    // Yield % = actual / expected × 100
+    const yieldPct=(actualTonsPerSta/expectedTonsPerSta)*100;
+
+    // Over/under per station
+    const diffPerSta=actualTonsPerSta-expectedTonsPerSta;
+
+    // Total expected for the actual length
+    const totalExpected=expectedTonsPerSta*actualStations;
+    const totalDiff=actualTons-totalExpected;
+
+    // Determine status
+    // Yield > 105% = using too much material (over)
+    // Yield < 95% = under-yielding (possible segregation/thin)
+    // 95–105% = acceptable
+    let panelClass,statusLabel;
+    if(yieldPct>105){panelClass='result-orange';statusLabel='⚠️ Over-yield';}
+    else if(yieldPct<95){panelClass='result-red';statusLabel='⚠️ Under-yield';}
+    else{panelClass='result-green';statusLabel='✓ On Target';}
+
+    document.getElementById('yieldResult').className=`result-panel ${panelClass}`;
+    document.getElementById('yieldResult').innerHTML=`
+        <div class="result-title">Yield Check Result</div>
+        <div class="result-grid">
+            <div><div class="result-label">Expected T/Sta</div><div class="result-value">${fmt(expectedTonsPerSta)} T</div></div>
+            <div><div class="result-label">Actual T/Sta</div><div class="result-value">${fmt(actualTonsPerSta)} T</div></div>
+            <div><div class="result-label">Yield %</div><div class="result-value">${fmt(yieldPct,1)}%</div></div>
+            <div><div class="result-label">Diff per Station</div><div class="result-value">${diffPerSta>=0?'+':''}${fmt(diffPerSta)} T</div></div>
+            <hr class="result-divider">
+            <div><div class="result-label">Total Expected</div><div class="result-value">${fmt(totalExpected)} T</div></div>
+            <div><div class="result-label">Total Actual</div><div class="result-value">${fmt(actualTons)} T</div></div>
+            <div><div class="result-label">Total Diff</div><div class="result-value">${totalDiff>=0?'+':''}${fmt(totalDiff)} T</div></div>
+            <div><div class="result-label">Length Paved</div><div class="result-value">${fmt(actualStations,2)} sta</div></div>
+            <div><div class="result-label">RICE Density</div><div class="result-value">${fmt(jmf,1)} pcf</div></div>
+            <div class="result-full" style="text-align:center;margin-top:6px;">
+                <span class="pf-badge ${yieldPct>=95&&yieldPct<=105?'pf-pass':'pf-fail'}">${statusLabel}</span>
+            </div>
+        </div>
+    `;
+    document.getElementById('yieldResult').classList.remove('hidden');
+    document.getElementById('yieldResult').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function clearYield(){
+    ['y_width','y_depth','y_jmf','y_actualTons','y_actualLen'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    hideErr('yieldError');
+    const r=document.getElementById('yieldResult');r.classList.add('hidden');r.innerHTML='';
+}
+</script>
+</body>
+</html>

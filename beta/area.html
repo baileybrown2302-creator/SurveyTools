@@ -107,12 +107,6 @@
         .total-item-dims{font-size:0.72em;color:var(--text-muted);margin-top:1px;font-variant-numeric:tabular-nums;}
         .total-item-vals{font-size:0.75em;font-weight:700;color:var(--grade-text);text-align:right;white-space:nowrap;}
         .total-remove{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;}
-        /* Irregular polygon point list */
-        .point-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
-        .point-row{display:flex;align-items:center;gap:8px;}
-        .point-num{font-size:0.75em;font-weight:800;color:var(--text-muted);width:20px;flex-shrink:0;text-align:center;}
-        .point-row .input{padding:8px 10px;font-size:0.9em;}
-        .point-remove{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:2px 6px;flex-shrink:0;}
         /* Heron toggle */
         .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:0.82em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
         .toggle-row input{accent-color:var(--accent-blue);width:18px;height:18px;}
@@ -141,11 +135,11 @@
 <div class="shape-scroll" id="shapeScroll">
     <button class="shape-btn active" data-shape="rectangle" onclick="setShape('rectangle')"><span class="shape-icon">▬</span><span class="shape-label">Rectangle</span></button>
     <button class="shape-btn" data-shape="triangle" onclick="setShape('triangle')"><span class="shape-icon">▲</span><span class="shape-label">Triangle</span></button>
-    <button class="shape-btn" data-shape="trapezoid" onclick="setShape('trapezoid')"><span class="shape-icon">⬡</span><span class="shape-label">Trapezoid</span></button>
+    <button class="shape-btn" data-shape="trapezoid" onclick="setShape('trapezoid')"><span class="shape-icon">⏢</span><span class="shape-label">Trapezoid</span></button>
+    <button class="shape-btn" data-shape="trapezium" onclick="setShape('trapezium')"><span class="shape-icon"><svg width="28" height="20" viewBox="0 0 28 20"><polygon points="5,18 23,18 21,2 7,2" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg></span><span class="shape-label">Trapezium</span></button>
     <button class="shape-btn" data-shape="circle" onclick="setShape('circle')"><span class="shape-icon">⬤</span><span class="shape-label">Circle</span></button>
     <button class="shape-btn" data-shape="semicircle" onclick="setShape('semicircle')"><span class="shape-icon">◗</span><span class="shape-label">Semicircle</span></button>
     <button class="shape-btn" data-shape="spandrel" onclick="setShape('spandrel')"><span class="shape-icon">◜</span><span class="shape-label">Spandrel</span></button>
-    <button class="shape-btn" data-shape="irregular" onclick="setShape('irregular')"><span class="shape-icon">⬠</span><span class="shape-label">Irregular</span></button>
 </div>
 
 <!-- Input card -->
@@ -220,7 +214,6 @@ let currentShape='rectangle';
 let lastResult=null; // {areaSF, volCF, dimStr, shapeName}
 let totalItems=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
 let heronMode=false;
-let polyPoints=[];
 
 // ── Shape definitions ──────────────────────────────────
 const SHAPES={
@@ -286,8 +279,28 @@ const SHAPES={
     },
     trapezoid:{
         name:'Trapezoid',
-        formula:'A = (H + H1) / 2 × (A + B) / 2',
+        formula:'A = ½ × (a + b) × h',
         diagram:()=>drawTrapezoid(),
+        fields:()=>`
+            <div class="two-col">
+                <div class="field-group"><label class="label">Parallel Side a (ft)</label><input class="input" type="number" inputmode="decimal" id="f_A" placeholder="0.00" step="0.01"></div>
+                <div class="field-group"><label class="label">Parallel Side b (ft)</label><input class="input" type="number" inputmode="decimal" id="f_B" placeholder="0.00" step="0.01"></div>
+            </div>
+            <div class="field-group"><label class="label">Perpendicular Height h (ft)</label><input class="input" type="number" inputmode="decimal" id="f_H" placeholder="0.00" step="0.01"></div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const a=fv('f_A'),b=fv('f_B'),h=fv('f_H'),D=fv('f_D');
+            if([a,b,h].some(v=>v===null))return err('Enter parallel sides a, b and height h.');
+            const area=0.5*(a+b)*h;
+            const vol=D!==null?area*D:null;
+            const dims=`a=${fmt(a)}, b=${fmt(b)}, h=${fmt(h)}${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Trapezoid'};
+        }
+    },
+    trapezium:{
+        name:'Trapezium',
+        formula:'A = (H + H1) / 2 × (A + B) / 2',
+        diagram:()=>drawTrapezium(),
         fields:()=>`
             <div class="two-col">
                 <div class="field-group"><label class="label">Side Height H (ft)</label><input class="input" type="number" inputmode="decimal" id="f_H" placeholder="0.00" step="0.01"></div>
@@ -304,7 +317,7 @@ const SHAPES={
             const area=((H+H1)/2)*((A+B)/2);
             const vol=D!==null?area*D:null;
             const dims=`H=${fmt(H)}, H1=${fmt(H1)}, A=${fmt(A)}, B=${fmt(B)}${D!==null?' × '+fmt(D)+' deep':''}`;
-            return{areaSF:area,volCF:vol,dims,label:'Trapezoid'};
+            return{areaSF:area,volCF:vol,dims,label:'Trapezium'};
         }
     },
     circle:{
@@ -364,29 +377,6 @@ const SHAPES={
             return{areaSF:area,volCF:vol,dims,label:'Spandrel'};
         }
     },
-    irregular:{
-        name:'Irregular Polygon',
-        formula:'Shoelace formula: A = ½ |Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)|',
-        diagram:()=>drawIrregular(),
-        fields:()=>`
-            <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:10px;">Enter coordinate pairs (ft) in order around the perimeter. Minimum 3 points.</p>
-            <div class="point-list" id="pointList"></div>
-            <button class="btn btn-secondary btn-small" style="width:100%;margin-bottom:14px;" onclick="addPolyPoint()">＋ Add Point</button>
-            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
-        calc:()=>{
-            const pts=getPolyPoints();
-            if(pts.length<3)return err('Enter at least 3 points.');
-            for(const p of pts){if(isNaN(p.x)||isNaN(p.y))return err('All coordinate pairs must be filled in.');}
-            // Shoelace
-            let sum=0;
-            for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length;sum+=pts[i].x*pts[j].y;sum-=pts[j].x*pts[i].y;}
-            const area=Math.abs(sum)/2;
-            const D=fv('f_D');
-            const vol=D!==null?area*D:null;
-            const dims=`${pts.length} points${D!==null?' × '+fmt(D)+' deep':''}`;
-            return{areaSF:area,volCF:vol,dims,label:'Irregular Polygon'};
-        }
-    }
 };
 
 // ── Helpers ────────────────────────────────────────────
@@ -399,8 +389,8 @@ function cfToCY(cf){return cf/27;}
 function syncCircle(from){
     const dEl=document.getElementById('f_diam'),rEl=document.getElementById('f_rad');
     if(!dEl||!rEl)return;
-    if(from==='diam'&&dEl.value!==''){const d=parseFloat(dEl.value);if(!isNaN(d))rEl.value=fmt(d/2,4);}
-    else if(from==='rad'&&rEl.value!==''){const r=parseFloat(rEl.value);if(!isNaN(r))dEl.value=fmt(r*2,4);}
+    if(from==='diam'&&dEl.value!==''){const d=parseFloat(dEl.value);if(!isNaN(d))rEl.value=fmt(d/2);}
+    else if(from==='rad'&&rEl.value!==''){const r=parseFloat(rEl.value);if(!isNaN(r))dEl.value=fmt(r*2);}
 }
 
 function toggleHeron(){
@@ -408,40 +398,6 @@ function toggleHeron(){
     document.getElementById('bhFields').classList.toggle('hidden',heronMode);
     document.getElementById('heronFields').classList.toggle('hidden',!heronMode);
     document.getElementById('formulaBox').textContent=heronMode?'A = √(s(s−a)(s−b)(s−c))  where s = (a+b+c)/2':'A = ½ × B × H';
-}
-
-// ── Irregular polygon points ───────────────────────────
-function initPolyPoints(){
-    polyPoints=[];
-    const list=document.getElementById('pointList');
-    if(!list)return;
-    list.innerHTML='';
-    addPolyPoint();addPolyPoint();addPolyPoint();
-}
-function addPolyPoint(){
-    polyPoints.push({x:'',y:''});
-    renderPolyPoints();
-}
-function removePolyPoint(i){
-    if(polyPoints.length<=3)return;
-    polyPoints.splice(i,1);
-    renderPolyPoints();
-}
-function renderPolyPoints(){
-    const list=document.getElementById('pointList');
-    if(!list)return;
-    list.innerHTML='';
-    polyPoints.forEach((p,i)=>{
-        const row=document.createElement('div');row.className='point-row';
-        row.innerHTML=`<span class="point-num">${i+1}</span>
-            <input class="input" type="number" inputmode="decimal" placeholder="X (ft)" step="0.01" value="${p.x}" oninput="polyPoints[${i}].x=this.value" style="flex:1;">
-            <input class="input" type="number" inputmode="decimal" placeholder="Y (ft)" step="0.01" value="${p.y}" oninput="polyPoints[${i}].y=this.value" style="flex:1;">
-            <button class="point-remove" onclick="removePolyPoint(${i})" ${polyPoints.length<=3?'disabled style="opacity:0.3;"':''}>✕</button>`;
-        list.appendChild(row);
-    });
-}
-function getPolyPoints(){
-    return polyPoints.map(p=>({x:parseFloat(p.x),y:parseFloat(p.y)}));
 }
 
 // ── Shape setup ────────────────────────────────────────
@@ -457,9 +413,6 @@ function setShape(shape){
     document.getElementById('shapeError').classList.add('hidden');
     document.getElementById('resultPanel').classList.add('hidden');
     document.getElementById('addBtnWrap').classList.add('hidden');
-    if(shape==='irregular')initPolyPoints();
-    // Focus first input
-    setTimeout(()=>{const fi=document.getElementById('shapeFields').querySelector('input');if(fi)fi.focus();},150);
 }
 
 function clearShape(){
@@ -485,13 +438,13 @@ function showResult(r){
 
     grid.innerHTML=`
         <div class="result-full" style="margin-bottom:4px;"><div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Area</div></div>
-        <div><div class="result-label">Square Feet</div><div class="result-value">${fmt(r.areaSF,4)}</div></div>
-        <div><div class="result-label">Square Yards</div><div class="result-value">${fmt(areaSY,4)}</div></div>
+        <div><div class="result-label">Square Feet</div><div class="result-value">${fmt(r.areaSF)}</div></div>
+        <div><div class="result-label">Square Yards</div><div class="result-value">${fmt(areaSY)}</div></div>
         ${hasVol?`
         <hr class="result-divider">
         <div class="result-full" style="margin-bottom:4px;"><div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Volume</div></div>
-        <div><div class="result-label">Cubic Feet</div><div class="result-value">${fmt(r.volCF,4)}</div></div>
-        <div><div class="result-label">Cubic Yards</div><div class="result-value">${fmt(volCY,4)}</div></div>`:''}
+        <div><div class="result-label">Cubic Feet</div><div class="result-value">${fmt(r.volCF)}</div></div>
+        <div><div class="result-label">Cubic Yards</div><div class="result-value">${fmt(volCY)}</div></div>`:''}
     `;
     panel.classList.remove('hidden');
     document.getElementById('addBtnWrap').classList.remove('hidden');
@@ -527,21 +480,21 @@ function renderTotal(){
     const totalVol=totalItems.filter(i=>i.volCF!==null).reduce((s,i)=>s+(i.volCF||0),0);
     const hasVol=totalItems.some(i=>i.volCF!==null);
 
-    document.getElementById('totalAreaSF').textContent=fmt(totalArea,4)+' sq ft';
-    document.getElementById('totalAreaSY').textContent=fmt(sfToSY(totalArea),4)+' sq yd';
-    document.getElementById('totalVolCF').textContent=hasVol?fmt(totalVol,4)+' cu ft':'No volume entries';
-    document.getElementById('totalVolCY').textContent=hasVol?fmt(cfToCY(totalVol),4)+' cu yd':'';
+    document.getElementById('totalAreaSF').textContent=fmt(totalArea)+' sq ft';
+    document.getElementById('totalAreaSY').textContent=fmt(sfToSY(totalArea))+' sq yd';
+    document.getElementById('totalVolCF').textContent=hasVol?fmt(totalVol)+' cu ft':'No volume entries';
+    document.getElementById('totalVolCY').textContent=hasVol?fmt(cfToCY(totalVol))+' cu yd':'';
 
     // Item list
     const list=document.getElementById('totalItemList');
     list.innerHTML='';
     totalItems.forEach((item,i)=>{
         const row=document.createElement('div');row.className='total-item';
-        const volStr=item.volCF!==null?`${fmt(item.volCF,4)} cf / ${fmt(cfToCY(item.volCF),4)} cy`:'Area only';
+        const volStr=item.volCF!==null?`${fmt(item.volCF)} cf / ${fmt(cfToCY(item.volCF))} cy`:'Area only';
         row.innerHTML=`<div class="total-item-left">
             <div class="total-item-name">${item.label}</div>
             <div class="total-item-dims">${item.dims}</div>
-            <div class="total-item-vals">${fmt(item.areaSF,4)} sf / ${fmt(sfToSY(item.areaSF),4)} sy &nbsp;|&nbsp; ${volStr}</div>
+            <div class="total-item-vals">${fmt(item.areaSF)} sf / ${fmt(sfToSY(item.areaSF))} sy &nbsp;|&nbsp; ${volStr}</div>
         </div>
         <button class="total-remove" onclick="removeTotal(${i})" title="Remove">✕</button>`;
         list.appendChild(row);
@@ -577,12 +530,20 @@ function drawTriangle(){return svg(160,110,`
 `);}
 
 function drawTrapezoid(){return svg(160,110,`
+    <polygon points="40,20 120,20 150,90 10,90" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <line x1="40" y1="20" x2="40" y2="90" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="26" y="60" font-size="9" font-weight="700" fill="${F}">h</text>
+    <text x="80" y="15" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">a</text>
+    <text x="80" y="104" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">b</text>
+`);}
+
+function drawTrapezium(){return svg(160,110,`
     <polygon points="30,20 130,20 150,90 10,90" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
     <line x1="10" y1="90" x2="10" y2="20" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
     <line x1="150" y1="90" x2="150" y2="20" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
-    <text x="2" y="60" font-size="9" font-weight="700" fill="${F}">H</text>
+    <text x="3" y="60" font-size="9" font-weight="700" fill="${F}">H</text>
     <text x="152" y="60" font-size="9" font-weight="700" fill="${F}">H1</text>
-    <text x="80" y="16" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">A</text>
+    <text x="80" y="15" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">A</text>
     <text x="80" y="104" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">B</text>
 `);}
 
@@ -611,12 +572,6 @@ function drawSpandrel(){return svg(140,130,`
     <text x="65" y="8" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">r</text>
     <text x="50" y="90" text-anchor="middle" font-size="9" fill="${F}">A = 0.2146r²</text>
     <circle cx="15" cy="10" r="3" fill="${C}"/>
-`);}
-
-function drawIrregular(){return svg(150,110,`
-    <polygon points="75,10 140,35 130,90 80,100 20,80 15,40" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
-    <text x="75" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">N points</text>
-    <text x="75" y="75" text-anchor="middle" font-size="9" fill="${T}">Shoelace</text>
 `);}
 
 // ── Confirm modal ──────────────────────────────────────

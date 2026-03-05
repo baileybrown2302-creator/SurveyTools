@@ -1,12 +1,12 @@
-const CACHE_NAME = 'survey-tool-v2';
+const CACHE_NAME = 'survey-tool-v3';
 const ASSETS = [
   './',
   './index.html',
   './leveling.html',
+  './area.html',
+  './hma.html',
   './manifest.json',
   './icon.png'
-  './materials.html'
-  './area.html'
 ];
 
 // Install: cache all assets
