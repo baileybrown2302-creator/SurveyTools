@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>Area & Volume — Survey Tool</title>
+    <style>
+        :root{
+            --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+            --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+            --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+            --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+            --accent-green:#22c55e;--accent-green-hover:#16a34a;
+            --accent-red:#ef4444;--accent-red-hover:#dc2626;
+            --accent-orange:#f97316;--accent-purple:#8b5cf6;
+            --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+            --input-bg:#ffffff;--input-border:#d1d5db;
+            --result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;
+            --grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;
+            --modal-overlay:rgba(0,0,0,0.65);
+        }
+        [data-theme="high-contrast"]{
+            --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+            --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+            --border-primary:#333333;--border-secondary:#444444;
+            --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+            --accent-green:#4ade80;--accent-green-hover:#86efac;
+            --accent-red:#f87171;--accent-red-hover:#fca5a5;
+            --accent-orange:#fb923c;--accent-purple:#a78bfa;
+            --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+            --input-bg:#1a1a1a;--input-border:#555555;
+            --result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;
+            --grade-bg:#052e16;--grade-border:#166534;--grade-text:#4ade80;
+            --modal-overlay:rgba(0,0,0,0.85);
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 80px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        /* Shape selector */
+        .shape-scroll{display:flex;gap:8px;overflow-x:auto;padding:14px 16px 12px;scrollbar-width:none;}
+        .shape-scroll::-webkit-scrollbar{display:none;}
+        .shape-btn{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding:10px 12px;border-radius:12px;border:2px solid var(--border-primary);background:var(--bg-secondary);cursor:pointer;transition:all 0.15s;min-width:68px;}
+        .shape-btn.active{border-color:var(--accent-blue);background:var(--result-bg);}
+        [data-theme="high-contrast"] .shape-btn.active{border-color:#fbbf24;background:#1c1700;}
+        .shape-icon{font-size:1.5em;line-height:1;}
+        .shape-label{font-size:0.65em;font-weight:700;color:var(--text-secondary);text-align:center;white-space:nowrap;}
+        .shape-btn.active .shape-label{color:var(--result-text);}
+        [data-theme="high-contrast"] .shape-btn.active .shape-label{color:#fbbf24;}
+        /* Cards */
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:0 16px 12px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .opt{font-weight:400;color:var(--text-muted);}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        /* Diagram */
+        .diagram-wrap{display:flex;justify-content:center;align-items:center;margin-bottom:16px;padding:12px;background:var(--bg-tertiary);border-radius:10px;border:1px solid var(--border-primary);}
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:44px;-webkit-user-select:none;user-select:none;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-success{background:var(--accent-green);}
+        .btn-success:hover{background:var(--accent-green-hover);}
+        .btn-danger{background:var(--accent-red);}
+        .btn-danger:hover{background:var(--accent-red-hover);}
+        .btn-warning{background:var(--accent-orange);color:white;}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{background:var(--border-primary);}
+        .btn-small{padding:6px 12px;font-size:0.78em;min-height:34px;border-radius:8px;}
+        .btn-row{display:flex;gap:10px;}
+        .btn-row .btn{flex:1;}
+        /* Formula display */
+        .formula-box{background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:8px;padding:8px 12px;font-size:0.8em;color:var(--text-tertiary);font-style:italic;margin-bottom:14px;text-align:center;}
+        /* Results */
+        .result-panel{background:var(--result-bg);border:1.5px solid var(--result-border);border-radius:12px;padding:16px;margin:0 16px 12px;}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--result-text);opacity:0.8;margin-bottom:12px;}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .result-label{font-size:0.68em;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--result-text);opacity:0.7;}
+        .result-value{font-size:1.05em;font-weight:800;color:var(--result-text);font-variant-numeric:tabular-nums;margin-top:2px;}
+        .result-full{grid-column:1/-1;}
+        .result-divider{grid-column:1/-1;border:none;border-top:1px solid var(--result-border);margin:6px 0;}
+        .add-btn-wrap{margin:0 16px 12px;}
+        /* Running total */
+        .total-panel{background:var(--grade-bg);border:1.5px solid var(--grade-border);border-radius:12px;padding:16px;margin:0 16px 12px;}
+        .total-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+        .total-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--grade-text);opacity:0.8;}
+        .total-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+        .total-label{font-size:0.68em;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--grade-text);opacity:0.7;}
+        .total-value{font-size:1.15em;font-weight:800;color:var(--grade-text);font-variant-numeric:tabular-nums;margin-top:2px;}
+        .total-item-list{border-top:1px solid var(--grade-border);padding-top:10px;display:flex;flex-direction:column;gap:6px;}
+        .total-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--bg-secondary);border-radius:8px;border:1px solid var(--grade-border);}
+        .total-item-left{flex:1;min-width:0;}
+        .total-item-name{font-size:0.82em;font-weight:700;color:var(--text-primary);}
+        .total-item-dims{font-size:0.72em;color:var(--text-muted);margin-top:1px;font-variant-numeric:tabular-nums;}
+        .total-item-vals{font-size:0.75em;font-weight:700;color:var(--grade-text);text-align:right;white-space:nowrap;}
+        .total-remove{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:2px 4px;line-height:1;flex-shrink:0;}
+        /* Irregular polygon point list */
+        .point-list{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+        .point-row{display:flex;align-items:center;gap:8px;}
+        .point-num{font-size:0.75em;font-weight:800;color:var(--text-muted);width:20px;flex-shrink:0;text-align:center;}
+        .point-row .input{padding:8px 10px;font-size:0.9em;}
+        .point-remove{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:2px 6px;flex-shrink:0;}
+        /* Heron toggle */
+        .toggle-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:0.82em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        .toggle-row input{accent-color:var(--accent-blue);width:18px;height:18px;}
+        /* Error */
+        .error-msg{color:#ef4444;font-size:0.82em;font-weight:600;margin-top:8px;}
+        [data-theme="high-contrast"] .error-msg{color:#f87171;}
+        .hidden{display:none!important;}
+        /* Confirm modal */
+        .confirm-modal{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--modal-overlay);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+        .confirm-modal.hidden{display:none!important;}
+        .confirm-box{background:var(--bg-secondary);border-radius:16px;padding:20px;width:100%;max-width:340px;box-shadow:var(--shadow-lg);}
+        .confirm-title{font-size:1em;font-weight:800;margin-bottom:8px;}
+        .confirm-msg{font-size:0.85em;color:var(--text-tertiary);margin-bottom:16px;line-height:1.5;}
+        .confirm-actions{display:flex;gap:10px;}
+        .confirm-actions .btn{flex:1;}
+    </style>
+</head>
+<body>
+<div class="top-nav">
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">📐 Area & Volume</span>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<!-- Shape selector -->
+<div class="shape-scroll" id="shapeScroll">
+    <button class="shape-btn active" data-shape="rectangle" onclick="setShape('rectangle')"><span class="shape-icon">▬</span><span class="shape-label">Rectangle</span></button>
+    <button class="shape-btn" data-shape="triangle" onclick="setShape('triangle')"><span class="shape-icon">▲</span><span class="shape-label">Triangle</span></button>
+    <button class="shape-btn" data-shape="trapezoid" onclick="setShape('trapezoid')"><span class="shape-icon">⬡</span><span class="shape-label">Trapezoid</span></button>
+    <button class="shape-btn" data-shape="circle" onclick="setShape('circle')"><span class="shape-icon">⬤</span><span class="shape-label">Circle</span></button>
+    <button class="shape-btn" data-shape="semicircle" onclick="setShape('semicircle')"><span class="shape-icon">◗</span><span class="shape-label">Semicircle</span></button>
+    <button class="shape-btn" data-shape="spandrel" onclick="setShape('spandrel')"><span class="shape-icon">◜</span><span class="shape-label">Spandrel</span></button>
+    <button class="shape-btn" data-shape="irregular" onclick="setShape('irregular')"><span class="shape-icon">⬠</span><span class="shape-label">Irregular</span></button>
+</div>
+
+<!-- Input card -->
+<div class="card" id="inputCard">
+    <!-- Diagram injected here -->
+    <div class="diagram-wrap" id="diagramWrap"></div>
+    <!-- Formula injected here -->
+    <div class="formula-box" id="formulaBox"></div>
+    <!-- Fields injected here -->
+    <div id="shapeFields"></div>
+    <div id="shapeError" class="error-msg hidden"></div>
+    <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-secondary" onclick="clearShape()">Clear</button>
+        <button class="btn btn-primary" onclick="calcShape()">Calculate →</button>
+    </div>
+</div>
+
+<!-- Results -->
+<div id="resultPanel" class="result-panel hidden">
+    <div class="result-title" id="resultTitle">Result</div>
+    <div class="result-grid" id="resultGrid"></div>
+</div>
+
+<!-- Add to total button -->
+<div class="add-btn-wrap hidden" id="addBtnWrap">
+    <button class="btn btn-success" style="width:100%;" onclick="addToTotal()">＋ Add to Running Total</button>
+</div>
+
+<!-- Running total -->
+<div id="totalPanel" class="total-panel hidden">
+    <div class="total-header">
+        <div class="total-title">Running Total</div>
+        <button class="btn btn-danger btn-small" onclick="clearTotal()">Clear All</button>
+    </div>
+    <div class="total-grid">
+        <div>
+            <div class="total-label">Total Area</div>
+            <div class="total-value" id="totalAreaSF">— sq ft</div>
+            <div style="font-size:0.75em;font-weight:700;color:var(--grade-text);margin-top:2px;font-variant-numeric:tabular-nums;" id="totalAreaSY">—</div>
+        </div>
+        <div>
+            <div class="total-label">Total Volume</div>
+            <div class="total-value" id="totalVolCF">— cu ft</div>
+            <div style="font-size:0.75em;font-weight:700;color:var(--grade-text);margin-top:2px;font-variant-numeric:tabular-nums;" id="totalVolCY">—</div>
+        </div>
+    </div>
+    <div class="total-item-list" id="totalItemList"></div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirmModal" class="confirm-modal hidden">
+    <div class="confirm-box">
+        <div class="confirm-title" id="confirmTitle">Confirm</div>
+        <div class="confirm-msg" id="confirmMsg"></div>
+        <div class="confirm-actions">
+            <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
+            <button class="btn btn-danger" id="confirmOkBtn">Clear</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Theme ──────────────────────────────────────────────
+const themeBtn=document.getElementById('themeBtn');
+const savedTheme=localStorage.getItem('surveyTheme');
+if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+
+// ── State ──────────────────────────────────────────────
+const STORAGE_KEY='areaVolumeTotal_v1';
+let currentShape='rectangle';
+let lastResult=null; // {areaSF, volCF, dimStr, shapeName}
+let totalItems=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+let heronMode=false;
+let polyPoints=[];
+
+// ── Shape definitions ──────────────────────────────────
+const SHAPES={
+    rectangle:{
+        name:'Rectangle',
+        formula:'A = L × W',
+        diagram:()=>drawRect(),
+        fields:()=>`
+            <div class="two-col">
+                <div class="field-group"><label class="label">Length (ft)</label><input class="input" type="number" inputmode="decimal" id="f_L" placeholder="0.00" step="0.01"></div>
+                <div class="field-group"><label class="label">Width (ft)</label><input class="input" type="number" inputmode="decimal" id="f_W" placeholder="0.00" step="0.01"></div>
+            </div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional — for volume)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const L=fv('f_L'),W=fv('f_W'),D=fv('f_D');
+            if(L===null||W===null)return err('Enter Length and Width.');
+            const area=L*W;
+            const vol=D!==null?area*D:null;
+            const dims=`${fmt(L)} × ${fmt(W)}${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Rectangle'};
+        }
+    },
+    triangle:{
+        name:'Triangle',
+        formula:'A = ½ × B × H  (or Heron\'s formula for 3 sides)',
+        diagram:()=>drawTriangle(),
+        fields:()=>`
+            <label class="toggle-row" id="heronToggle"><input type="checkbox" id="heronCheck" onchange="toggleHeron()"> Use 3-side Heron's formula</label>
+            <div id="bhFields">
+                <div class="two-col">
+                    <div class="field-group"><label class="label">Base (ft)</label><input class="input" type="number" inputmode="decimal" id="f_B" placeholder="0.00" step="0.01"></div>
+                    <div class="field-group"><label class="label">Height (ft)</label><input class="input" type="number" inputmode="decimal" id="f_H" placeholder="0.00" step="0.01"></div>
+                </div>
+            </div>
+            <div id="heronFields" class="hidden">
+                <div class="three-col" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+                    <div class="field-group"><label class="label">Side a (ft)</label><input class="input" type="number" inputmode="decimal" id="f_a" placeholder="0.00" step="0.01"></div>
+                    <div class="field-group"><label class="label">Side b (ft)</label><input class="input" type="number" inputmode="decimal" id="f_b" placeholder="0.00" step="0.01"></div>
+                    <div class="field-group"><label class="label">Side c (ft)</label><input class="input" type="number" inputmode="decimal" id="f_c" placeholder="0.00" step="0.01"></div>
+                </div>
+            </div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const D=fv('f_D');
+            let area,dims;
+            if(heronMode){
+                const a=fv('f_a'),b=fv('f_b'),c=fv('f_c');
+                if(a===null||b===null||c===null)return err('Enter all three sides.');
+                if(a+b<=c||a+c<=b||b+c<=a)return err('Invalid triangle — sides do not form a valid triangle.');
+                const s=(a+b+c)/2;
+                area=Math.sqrt(s*(s-a)*(s-b)*(s-c));
+                dims=`a=${fmt(a)}, b=${fmt(b)}, c=${fmt(c)}`;
+            }else{
+                const B=fv('f_B'),H=fv('f_H');
+                if(B===null||H===null)return err('Enter Base and Height.');
+                area=0.5*B*H;
+                dims=`B=${fmt(B)}, H=${fmt(H)}`;
+            }
+            const vol=D!==null?area*D:null;
+            if(D!==null)dims+=` × ${fmt(D)} deep`;
+            return{areaSF:area,volCF:vol,dims,label:'Triangle'};
+        }
+    },
+    trapezoid:{
+        name:'Trapezoid',
+        formula:'A = (H + H1) / 2 × (A + B) / 2',
+        diagram:()=>drawTrapezoid(),
+        fields:()=>`
+            <div class="two-col">
+                <div class="field-group"><label class="label">Side Height H (ft)</label><input class="input" type="number" inputmode="decimal" id="f_H" placeholder="0.00" step="0.01"></div>
+                <div class="field-group"><label class="label">Side Height H1 (ft)</label><input class="input" type="number" inputmode="decimal" id="f_H1" placeholder="0.00" step="0.01"></div>
+            </div>
+            <div class="two-col">
+                <div class="field-group"><label class="label">Width A (ft)</label><input class="input" type="number" inputmode="decimal" id="f_A" placeholder="0.00" step="0.01"></div>
+                <div class="field-group"><label class="label">Width B (ft)</label><input class="input" type="number" inputmode="decimal" id="f_B" placeholder="0.00" step="0.01"></div>
+            </div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const H=fv('f_H'),H1=fv('f_H1'),A=fv('f_A'),B=fv('f_B'),D=fv('f_D');
+            if([H,H1,A,B].some(v=>v===null))return err('Enter H, H1, A, and B.');
+            const area=((H+H1)/2)*((A+B)/2);
+            const vol=D!==null?area*D:null;
+            const dims=`H=${fmt(H)}, H1=${fmt(H1)}, A=${fmt(A)}, B=${fmt(B)}${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Trapezoid'};
+        }
+    },
+    circle:{
+        name:'Circle',
+        formula:'A = π × r²',
+        diagram:()=>drawCircle(),
+        fields:()=>`
+            <div class="two-col">
+                <div class="field-group"><label class="label">Diameter (ft)</label><input class="input" type="number" inputmode="decimal" id="f_diam" placeholder="0.00" step="0.01" oninput="syncCircle('diam')"></div>
+                <div class="field-group"><label class="label">Radius (ft)</label><input class="input" type="number" inputmode="decimal" id="f_rad" placeholder="0.00" step="0.01" oninput="syncCircle('rad')"></div>
+            </div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const r=fv('f_rad'),D=fv('f_D');
+            if(r===null)return err('Enter Diameter or Radius.');
+            if(r<=0)return err('Radius must be greater than zero.');
+            const area=Math.PI*r*r;
+            const vol=D!==null?area*D:null;
+            const dims=`r=${fmt(r)} (d=${fmt(r*2)})${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Circle'};
+        }
+    },
+    semicircle:{
+        name:'Semicircle',
+        formula:'A = ½ × π × r²',
+        diagram:()=>drawSemicircle(),
+        fields:()=>`
+            <div class="two-col">
+                <div class="field-group"><label class="label">Diameter (ft)</label><input class="input" type="number" inputmode="decimal" id="f_diam" placeholder="0.00" step="0.01" oninput="syncCircle('diam')"></div>
+                <div class="field-group"><label class="label">Radius (ft)</label><input class="input" type="number" inputmode="decimal" id="f_rad" placeholder="0.00" step="0.01" oninput="syncCircle('rad')"></div>
+            </div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const r=fv('f_rad'),D=fv('f_D');
+            if(r===null)return err('Enter Diameter or Radius.');
+            if(r<=0)return err('Radius must be greater than zero.');
+            const area=0.5*Math.PI*r*r;
+            const vol=D!==null?area*D:null;
+            const dims=`r=${fmt(r)} (d=${fmt(r*2)})${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Semicircle'};
+        }
+    },
+    spandrel:{
+        name:'Spandrel',
+        formula:'A = 0.2146 × r²',
+        diagram:()=>drawSpandrel(),
+        fields:()=>`
+            <div class="field-group"><label class="label">Radius r (ft)</label><input class="input" type="number" inputmode="decimal" id="f_rad" placeholder="0.00" step="0.01"></div>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const r=fv('f_rad'),D=fv('f_D');
+            if(r===null)return err('Enter Radius.');
+            if(r<=0)return err('Radius must be greater than zero.');
+            const area=0.2146*r*r;
+            const vol=D!==null?area*D:null;
+            const dims=`r=${fmt(r)}${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Spandrel'};
+        }
+    },
+    irregular:{
+        name:'Irregular Polygon',
+        formula:'Shoelace formula: A = ½ |Σ(xᵢyᵢ₊₁ − xᵢ₊₁yᵢ)|',
+        diagram:()=>drawIrregular(),
+        fields:()=>`
+            <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:10px;">Enter coordinate pairs (ft) in order around the perimeter. Minimum 3 points.</p>
+            <div class="point-list" id="pointList"></div>
+            <button class="btn btn-secondary btn-small" style="width:100%;margin-bottom:14px;" onclick="addPolyPoint()">＋ Add Point</button>
+            <div class="field-group"><label class="label">Depth / Thickness (ft) <span class="opt">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="f_D" placeholder="0.00" step="0.001"></div>`,
+        calc:()=>{
+            const pts=getPolyPoints();
+            if(pts.length<3)return err('Enter at least 3 points.');
+            for(const p of pts){if(isNaN(p.x)||isNaN(p.y))return err('All coordinate pairs must be filled in.');}
+            // Shoelace
+            let sum=0;
+            for(let i=0;i<pts.length;i++){const j=(i+1)%pts.length;sum+=pts[i].x*pts[j].y;sum-=pts[j].x*pts[i].y;}
+            const area=Math.abs(sum)/2;
+            const D=fv('f_D');
+            const vol=D!==null?area*D:null;
+            const dims=`${pts.length} points${D!==null?' × '+fmt(D)+' deep':''}`;
+            return{areaSF:area,volCF:vol,dims,label:'Irregular Polygon'};
+        }
+    }
+};
+
+// ── Helpers ────────────────────────────────────────────
+function fv(id){const el=document.getElementById(id);if(!el||el.value==='')return null;const v=parseFloat(el.value);return isNaN(v)?null:v;}
+function err(msg){document.getElementById('shapeError').textContent=msg;document.getElementById('shapeError').classList.remove('hidden');return null;}
+function fmt(n,d=2){return n==null?'—':parseFloat(n).toFixed(d);}
+function sfToSY(sf){return sf/9;}
+function cfToCY(cf){return cf/27;}
+
+function syncCircle(from){
+    const dEl=document.getElementById('f_diam'),rEl=document.getElementById('f_rad');
+    if(!dEl||!rEl)return;
+    if(from==='diam'&&dEl.value!==''){const d=parseFloat(dEl.value);if(!isNaN(d))rEl.value=fmt(d/2,4);}
+    else if(from==='rad'&&rEl.value!==''){const r=parseFloat(rEl.value);if(!isNaN(r))dEl.value=fmt(r*2,4);}
+}
+
+function toggleHeron(){
+    heronMode=document.getElementById('heronCheck').checked;
+    document.getElementById('bhFields').classList.toggle('hidden',heronMode);
+    document.getElementById('heronFields').classList.toggle('hidden',!heronMode);
+    document.getElementById('formulaBox').textContent=heronMode?'A = √(s(s−a)(s−b)(s−c))  where s = (a+b+c)/2':'A = ½ × B × H';
+}
+
+// ── Irregular polygon points ───────────────────────────
+function initPolyPoints(){
+    polyPoints=[];
+    const list=document.getElementById('pointList');
+    if(!list)return;
+    list.innerHTML='';
+    addPolyPoint();addPolyPoint();addPolyPoint();
+}
+function addPolyPoint(){
+    polyPoints.push({x:'',y:''});
+    renderPolyPoints();
+}
+function removePolyPoint(i){
+    if(polyPoints.length<=3)return;
+    polyPoints.splice(i,1);
+    renderPolyPoints();
+}
+function renderPolyPoints(){
+    const list=document.getElementById('pointList');
+    if(!list)return;
+    list.innerHTML='';
+    polyPoints.forEach((p,i)=>{
+        const row=document.createElement('div');row.className='point-row';
+        row.innerHTML=`<span class="point-num">${i+1}</span>
+            <input class="input" type="number" inputmode="decimal" placeholder="X (ft)" step="0.01" value="${p.x}" oninput="polyPoints[${i}].x=this.value" style="flex:1;">
+            <input class="input" type="number" inputmode="decimal" placeholder="Y (ft)" step="0.01" value="${p.y}" oninput="polyPoints[${i}].y=this.value" style="flex:1;">
+            <button class="point-remove" onclick="removePolyPoint(${i})" ${polyPoints.length<=3?'disabled style="opacity:0.3;"':''}>✕</button>`;
+        list.appendChild(row);
+    });
+}
+function getPolyPoints(){
+    return polyPoints.map(p=>({x:parseFloat(p.x),y:parseFloat(p.y)}));
+}
+
+// ── Shape setup ────────────────────────────────────────
+function setShape(shape){
+    currentShape=shape;
+    heronMode=false;
+    lastResult=null;
+    document.querySelectorAll('.shape-btn').forEach(b=>b.classList.toggle('active',b.dataset.shape===shape));
+    const s=SHAPES[shape];
+    document.getElementById('diagramWrap').innerHTML=s.diagram();
+    document.getElementById('formulaBox').textContent=s.formula;
+    document.getElementById('shapeFields').innerHTML=s.fields();
+    document.getElementById('shapeError').classList.add('hidden');
+    document.getElementById('resultPanel').classList.add('hidden');
+    document.getElementById('addBtnWrap').classList.add('hidden');
+    if(shape==='irregular')initPolyPoints();
+    // Focus first input
+    setTimeout(()=>{const fi=document.getElementById('shapeFields').querySelector('input');if(fi)fi.focus();},150);
+}
+
+function clearShape(){
+    setShape(currentShape);
+}
+
+function calcShape(){
+    document.getElementById('shapeError').classList.add('hidden');
+    const result=SHAPES[currentShape].calc();
+    if(!result)return;
+    lastResult=result;
+    showResult(result);
+}
+
+function showResult(r){
+    const panel=document.getElementById('resultPanel');
+    const grid=document.getElementById('resultGrid');
+    document.getElementById('resultTitle').textContent=`${r.label} — Result`;
+
+    const hasVol=r.volCF!==null;
+    const areaSY=sfToSY(r.areaSF);
+    const volCY=hasVol?cfToCY(r.volCF):null;
+
+    grid.innerHTML=`
+        <div class="result-full" style="margin-bottom:4px;"><div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Area</div></div>
+        <div><div class="result-label">Square Feet</div><div class="result-value">${fmt(r.areaSF,4)}</div></div>
+        <div><div class="result-label">Square Yards</div><div class="result-value">${fmt(areaSY,4)}</div></div>
+        ${hasVol?`
+        <hr class="result-divider">
+        <div class="result-full" style="margin-bottom:4px;"><div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--result-text);opacity:0.6;margin-bottom:6px;">Volume</div></div>
+        <div><div class="result-label">Cubic Feet</div><div class="result-value">${fmt(r.volCF,4)}</div></div>
+        <div><div class="result-label">Cubic Yards</div><div class="result-value">${fmt(volCY,4)}</div></div>`:''}
+    `;
+    panel.classList.remove('hidden');
+    document.getElementById('addBtnWrap').classList.remove('hidden');
+    panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── Running total ──────────────────────────────────────
+function addToTotal(){
+    if(!lastResult)return;
+    totalItems.push({
+        id:Date.now().toString(36),
+        label:lastResult.label,
+        dims:lastResult.dims,
+        areaSF:lastResult.areaSF,
+        volCF:lastResult.volCF
+    });
+    saveTotal();renderTotal();
+    // Flash feedback
+    const btn=document.getElementById('addBtnWrap').querySelector('button');
+    const orig=btn.textContent;btn.textContent='✓ Added!';btn.style.background='var(--accent-green)';
+    setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1200);
+}
+
+function saveTotal(){localStorage.setItem(STORAGE_KEY,JSON.stringify(totalItems));}
+
+function renderTotal(){
+    const panel=document.getElementById('totalPanel');
+    if(totalItems.length===0){panel.classList.add('hidden');return;}
+    panel.classList.remove('hidden');
+
+    // Totals
+    const totalArea=totalItems.reduce((s,i)=>s+i.areaSF,0);
+    const totalVol=totalItems.filter(i=>i.volCF!==null).reduce((s,i)=>s+(i.volCF||0),0);
+    const hasVol=totalItems.some(i=>i.volCF!==null);
+
+    document.getElementById('totalAreaSF').textContent=fmt(totalArea,4)+' sq ft';
+    document.getElementById('totalAreaSY').textContent=fmt(sfToSY(totalArea),4)+' sq yd';
+    document.getElementById('totalVolCF').textContent=hasVol?fmt(totalVol,4)+' cu ft':'No volume entries';
+    document.getElementById('totalVolCY').textContent=hasVol?fmt(cfToCY(totalVol),4)+' cu yd':'';
+
+    // Item list
+    const list=document.getElementById('totalItemList');
+    list.innerHTML='';
+    totalItems.forEach((item,i)=>{
+        const row=document.createElement('div');row.className='total-item';
+        const volStr=item.volCF!==null?`${fmt(item.volCF,4)} cf / ${fmt(cfToCY(item.volCF),4)} cy`:'Area only';
+        row.innerHTML=`<div class="total-item-left">
+            <div class="total-item-name">${item.label}</div>
+            <div class="total-item-dims">${item.dims}</div>
+            <div class="total-item-vals">${fmt(item.areaSF,4)} sf / ${fmt(sfToSY(item.areaSF),4)} sy &nbsp;|&nbsp; ${volStr}</div>
+        </div>
+        <button class="total-remove" onclick="removeTotal(${i})" title="Remove">✕</button>`;
+        list.appendChild(row);
+    });
+}
+
+function removeTotal(i){
+    totalItems.splice(i,1);saveTotal();renderTotal();
+}
+
+function clearTotal(){
+    showConfirm('Clear Running Total','Remove all items from the running total?','Clear All',()=>{
+        totalItems=[];saveTotal();renderTotal();
+    });
+}
+
+// ── SVG Diagrams ───────────────────────────────────────
+const C='var(--accent-blue)',T='var(--text-muted)',F='var(--text-secondary)';
+function svg(w,h,content){return`<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="overflow:visible;">${content}</svg>`;}
+function dimLine(x1,y1,x2,y2,label,lx,ly){return`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/><text x="${lx}" y="${ly}" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">${label}</text>`;}
+
+function drawRect(){return svg(160,100,`
+    <rect x="20" y="15" width="120" height="70" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2" rx="2"/>
+    ${dimLine(20,95,140,95,'L',80,108)}
+    ${dimLine(148,15,148,85,'W',158,53)}
+`);}
+
+function drawTriangle(){return svg(160,110,`
+    <polygon points="80,10 10,95 150,95" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <line x1="80" y1="10" x2="80" y2="95" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="86" y="60" font-size="10" font-weight="700" fill="${F}">H</text>
+    ${dimLine(10,104,150,104,'B',80,114)}
+`);}
+
+function drawTrapezoid(){return svg(160,110,`
+    <polygon points="30,20 130,20 150,90 10,90" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <line x1="10" y1="90" x2="10" y2="20" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
+    <line x1="150" y1="90" x2="150" y2="20" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="2" y="60" font-size="9" font-weight="700" fill="${F}">H</text>
+    <text x="152" y="60" font-size="9" font-weight="700" fill="${F}">H1</text>
+    <text x="80" y="16" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">A</text>
+    <text x="80" y="104" text-anchor="middle" font-size="9" font-weight="700" fill="${F}">B</text>
+`);}
+
+function drawCircle(){return svg(130,110,`
+    <circle cx="65" cy="55" r="45" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <line x1="65" y1="55" x2="110" y2="55" stroke="${T}" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="90" y="50" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">r</text>
+    <circle cx="65" cy="55" r="3" fill="${C}"/>
+`);}
+
+function drawSemicircle(){return svg(150,100,`
+    <path d="M 10 75 A 65 65 0 0 1 140 75 Z" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <line x1="75" y1="75" x2="140" y2="75" stroke="${T}" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="110" y="70" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">r</text>
+    <circle cx="75" cy="75" r="3" fill="${C}"/>
+`);}
+
+function drawSpandrel(){return svg(140,130,`
+    <!-- bounding box -->
+    <rect x="15" y="10" width="100" height="100" fill="none" stroke="${T}" stroke-width="1" stroke-dasharray="3,2"/>
+    <!-- quarter circle arc from (15,110) to (115,10), center at (15,10) -->
+    <path d="M 15 110 A 100 100 0 0 1 115 10 L 115 110 Z" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <!-- radius line -->
+    <line x1="15" y1="10" x2="115" y2="10" stroke="${T}" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <line x1="15" y1="10" x2="15" y2="110" stroke="${T}" stroke-width="1.5" stroke-dasharray="4,2"/>
+    <text x="65" y="8" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">r</text>
+    <text x="50" y="90" text-anchor="middle" font-size="9" fill="${F}">A = 0.2146r²</text>
+    <circle cx="15" cy="10" r="3" fill="${C}"/>
+`);}
+
+function drawIrregular(){return svg(150,110,`
+    <polygon points="75,10 140,35 130,90 80,100 20,80 15,40" fill="${C}" fill-opacity="0.15" stroke="${C}" stroke-width="2"/>
+    <text x="75" y="60" text-anchor="middle" font-size="10" font-weight="700" fill="${F}">N points</text>
+    <text x="75" y="75" text-anchor="middle" font-size="9" fill="${T}">Shoelace</text>
+`);}
+
+// ── Confirm modal ──────────────────────────────────────
+function showConfirm(title,msg,btnLabel,onConfirm){
+    document.getElementById('confirmTitle').textContent=title;
+    document.getElementById('confirmMsg').textContent=msg;
+    document.getElementById('confirmOkBtn').textContent=btnLabel;
+    document.getElementById('confirmOkBtn').onclick=()=>{closeConfirm();onConfirm();};
+    document.getElementById('confirmModal').classList.remove('hidden');
+}
+function closeConfirm(){document.getElementById('confirmModal').classList.add('hidden');}
+document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===document.getElementById('confirmModal'))closeConfirm();});
+
+// ── Init ───────────────────────────────────────────────
+setShape('rectangle');
+renderTotal();
+</script>
+</body>
+</html>

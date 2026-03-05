@@ -6,6 +6,7 @@ const ASSETS = [
   './manifest.json',
   './icon.png'
   './materials.html'
+  './area.html'
 ];
 
 // Install: cache all assets
