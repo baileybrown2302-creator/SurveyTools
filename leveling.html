@@ -276,6 +276,46 @@
         <div><strong>Summary Bar:</strong><ul class="list-disc list-inside ml-4"><li>Shows HI during setup, Elevation between setups.</li><li>FS Target = distance needed to zero stadia (during setup only).</li><li>📏 button → Quick stadia check without recording a point.</li></ul></div>
         <div><strong>Stadia Warnings:</strong><ul class="list-disc list-inside ml-4"><li>Amber: |Pt Stadia| > 10</li><li>Red: |Pt Stadia| > 25</li></ul></div>
         <div><strong>Misclosure Accuracy:</strong><ul class="list-disc list-inside ml-4"><li>After closing, click "Show Accuracy" to see classification against First/Second/Third Order standards.</li></ul></div>
+        <div><strong>Turning Points:</strong><ul class="list-disc list-inside ml-4"><li>TP names default to TP1, TP2, etc. but can be changed to any existing point name in the setup modal.</li></ul></div>
+        <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
+        <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 5, 2025</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0 — Changelog</button>
+        </div>
+    </div>
+</div>
+
+<!-- Changelog Modal -->
+<div id="changelogModal" class="modal hidden no-print">
+    <div class="modal-content" style="max-width:480px;">
+        <h3 style="margin-bottom:4px;">Changelog</h3>
+        <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
+        <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 5, 2025</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Initial release of Survey Tool — Differential Leveling</li>
+                    <li>Level loops with BS, IP, FS, and closing shots</li>
+                    <li>Three-wire entry with stadia distance calculation</li>
+                    <li>DiNi Line Leveling mode — rod reading stored in remarks and exported to TBC</li>
+                    <li>Custom turning point names (existing points as BS/FS)</li>
+                    <li>Stadia management: per-setup, running total, FS target, balance calculator</li>
+                    <li>Accuracy classification: First, Second, and Third Order standards</li>
+                    <li>IP elevation banner in auto-repeat modal</li>
+                    <li>Selective clear — keep project info when clearing loop data</li>
+                    <li>TBC Level Editor CSV, table CSV, JSON, and print exports</li>
+                    <li>PWA — works fully offline after first load</li>
+                    <li>Dark / High Contrast theme, font size, and view mode settings</li>
+                </ul>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+            <button type="button" id="changelogClose" class="button button-secondary">Close</button>
+        </div>
     </div>
 </div>
 </div>
@@ -301,7 +341,10 @@
 <div id="inputModal" class="modal hidden no-print"><div class="modal-content"><h3 id="modalTitle">Modal Title</h3><form id="modalForm"><input type="hidden" id="editingRowId" name="editingRowId"><div id="modalFieldsContainer" style="display:flex;flex-direction:column;gap:12px;"></div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;"><button type="button" id="modalCancelButton" class="button">Cancel</button><button type="submit" id="modalSubmitButton" class="button button-primary">Submit</button></div></form></div></div>
 <div id="confirmModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;"><h3 id="confirmModalTitle">Confirm</h3><p id="confirmModalMessage" style="font-size:0.9em;color:var(--text-tertiary);margin-bottom:16px;">Are you sure?</p><div style="display:flex;justify-content:flex-end;gap:10px;"><button type="button" id="confirmModalCancel" class="button">Cancel</button><button type="button" id="confirmModalConfirm" class="button button-danger">Confirm</button></div></div></div>
 <!-- Quick Stadia Check Modal -->
-<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:340px;"><h3>Quick Stadia Check</h3><div id="stadiaCheckBody" style="font-size:0.9em;color:var(--text-secondary);"></div><div style="margin-top:12px;"><label class="label">Test FS Distance:</label><input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance"></div><div id="stadiaCheckResult" style="margin-top:12px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div></div></div>
+<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:340px;"><h3>Quick Stadia Check</h3><div id="stadiaCheckBody" style="font-size:0.9em;color:var(--text-secondary);margin-bottom:12px;"></div>
+<div style="border-top:1px solid var(--border-primary);padding-top:12px;"><label class="label">Test FS Distance:</label><input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance to test"></div><div id="stadiaCheckResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
+<div style="border-top:1px solid var(--border-primary);margin-top:14px;padding-top:12px;"><label class="label">Setup Balance Calculator</label><p style="font-size:0.8em;color:var(--text-muted);margin-bottom:8px;">Enter the distance from your next instrument setup to the known turning point (FS distance). Get the ideal BS distance to balance stadia.</p><input type="number" id="stadiaBalanceInput" class="input" step="0.001" inputMode="decimal" placeholder="Distance to next known TP"></div><div id="stadiaBalanceResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
+<div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div></div></div>
 <script>
 const STADIA_FACTOR=100,STADIA_WARN_THRESHOLD=10,STADIA_DANGER_THRESHOLD=25;
 let decimalPlaces=3;
@@ -381,15 +424,21 @@ projectInfoToggle.addEventListener('click',()=>{projectInfoCollapsed=!projectInf
 
 // Help toggle
 toggleHelpButton.addEventListener('click',()=>{helpContent.classList.toggle('hidden');helpArrow.style.transform=helpContent.classList.contains('hidden')?'':'rotate(180deg)';});
+document.getElementById('changelogBtn').addEventListener('click',(e)=>{e.stopPropagation();document.getElementById('changelogModal').classList.remove('hidden');});
+document.getElementById('changelogClose').addEventListener('click',()=>document.getElementById('changelogModal').classList.add('hidden'));
+document.getElementById('changelogModal').addEventListener('click',(e)=>{if(e.target===document.getElementById('changelogModal'))document.getElementById('changelogModal').classList.add('hidden');});
 
 // Modals
-function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
+function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.textContent='Confirm';confirmModalCancel.textContent='Cancel';confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
 
 function showModal(title,fieldsConfig,submitHandler,onModalCreateCallback){
     modalTitle.textContent=title;modalFieldsContainer.innerHTML='';if(!title.startsWith('Edit'))editingRowIdInput.value='';
     function createFieldElement(field){
         const fg=document.createElement('div');fg.id=`group-${field.id}`;
-        if(field.type==='info'){const p=document.createElement('p');p.style.cssText='font-size:0.85em;color:var(--text-muted);font-style:italic;';p.textContent=field.text;fg.appendChild(p);return fg;}
+        if(field.type==='info'){const p=document.createElement('p');
+        if(field.id==='lastIPBanner'){p.style.cssText='font-size:0.9em;font-weight:700;padding:10px 12px;border-radius:8px;background:var(--summary-bg);border:1.5px solid var(--summary-border);color:var(--summary-text);text-align:center;';}
+        else{p.style.cssText='font-size:0.85em;color:var(--text-muted);font-style:italic;';}
+        p.textContent=field.text;fg.appendChild(p);return fg;}
         const lbl=document.createElement('label');lbl.htmlFor=field.id;lbl.className='label';lbl.textContent=field.label;fg.appendChild(lbl);
         if(field.type==='select'){
             const sel=document.createElement('select');sel.id=field.id;sel.name=field.name;sel.className='select-input';
@@ -502,7 +551,25 @@ stadiaCheckBtn.addEventListener('click',()=>{
         stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b><br>New Total Stadia: <b>${formatPointStadia(newTotal)}</b>`;
     };
 });
-stadiaCheckClose.onclick=()=>stadiaCheckModal.classList.add('hidden');
+stadiaCheckClose.onclick=()=>{
+    stadiaCheckModal.classList.add('hidden');
+    // Reset button text in case clearAll changed them
+    confirmModalConfirm.textContent='Confirm';
+    confirmModalCancel.textContent='Cancel';
+};
+
+// Balance calculator
+document.getElementById('stadiaBalanceInput').oninput=()=>{
+    const nextFSDist=parseFloat(document.getElementById('stadiaBalanceInput').value);
+    const balResult=document.getElementById('stadiaBalanceResult');
+    if(isNaN(nextFSDist)){balResult.style.display='none';return;}
+    // Running total stadia (before this next setup)
+    let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
+    // For the next leg: ptStadia = newBS - nextFS = 0 - ts  =>  newBS = nextFS - ts
+    const idealBS=nextFSDist-ts;
+    balResult.style.display='block';
+    balResult.innerHTML=`Ideal BS Distance: <b>${formatDist(idealBS)}</b><br><span style="font-size:0.85em;font-weight:500;color:var(--text-tertiary);">Sets up at this distance from your BS point to zero total stadia</span>`;
+};
 
 // --- Accuracy Calculation ---
 function calculateAccuracy(){
@@ -734,7 +801,11 @@ function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculate
 startSetupButton.onclick=handleStartSetup;startSetupButtonMobile.onclick=handleStartSetup;startSetupButtonPinned.onclick=handleStartSetup;
 
 function handleAddIP(){if(!activeSetupData)return;
-    showModal('Add IP',[{id:'ipName',name:'ipName',label:'IP Name:',type:'text',placeholder:'e.g., MH-1',required:true},{id:'ipCode',name:'ipCode',label:'Code (CSV):',type:'text',placeholder:'e.g., INV EL',required:false},{id:'isDiNiLL',name:'isDiNiLL',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:lastDiNiLL},{id:'ifsReading',name:'ifsReading',label:`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'ifsDist',name:'ifsDist',label:`IFS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'ifsDistMethod',name:'ifsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'ifs')},{id:'ifsUpperWire',name:'ifsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'ifsMiddleWire',name:'ifsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'ifsLowerWire',name:'ifsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
+    // Build last IP banner
+    const lastIPs=levelRows.filter(r=>r.type==='IP'&&!r.isVoid&&activeSetupData.ips.some(ip=>ip.id===r.id));
+    const lastIP=lastIPs.length>0?lastIPs[lastIPs.length-1]:null;
+    const lastIPBannerText=lastIP?`Last IP — ${lastIP.pointName}: ${formatNumber(lastIP.elevation)} ${projectDetails.units||'ft'}`:'No IPs recorded yet for this setup.';
+    showModal('Add IP',[{id:'lastIPBanner',name:'lastIPBanner',label:'',type:'info',text:lastIPBannerText},{id:'ipName',name:'ipName',label:'IP Name:',type:'text',placeholder:'e.g., MH-1',required:true},{id:'ipCode',name:'ipCode',label:'Code (CSV):',type:'text',placeholder:'e.g., INV EL',required:false},{id:'isDiNiLL',name:'isDiNiLL',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:lastDiNiLL},{id:'ifsReading',name:'ifsReading',label:`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'ifsDist',name:'ifsDist',label:`IFS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'ifsDistMethod',name:'ifsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'ifs')},{id:'ifsUpperWire',name:'ifsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'ifsMiddleWire',name:'ifsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'ifsLowerWire',name:'ifsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
     let fir=data.ifsReading,fid=data.ifsDist;const isDiNi=!!data.isDiNiLL;lastDiNiLL=isDiNi;
     if(data.ifsDistMethod==='threeWire'){if(isNaN(data.ifsUpperWire)||isNaN(data.ifsMiddleWire)||isNaN(data.ifsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.ifsUpperWire>data.ifsMiddleWire&&data.ifsMiddleWire>data.ifsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.ifsUpperWire-data.ifsMiddleWire,i2=data.ifsMiddleWire-data.ifsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;fir=(data.ifsUpperWire+data.ifsMiddleWire+data.ifsLowerWire)/3;fid=(data.ifsUpperWire-data.ifsLowerWire)*STADIA_FACTOR;}else{if(isNaN(fir)||isNaN(fid)||!data.ipName){alert("Valid IP data required.");return false;}}
     let ie;
@@ -779,7 +850,32 @@ addFSButton.onclick=handleAddFS;addFSButtonMobile.onclick=handleAddFS;addFSButto
 deleteLastIPButton.onclick=()=>{if(activeSetupData&&activeSetupData.ips.length>0)showConfirmModal('Delete Last IP','Delete last IP?',()=>{const r=activeSetupData.ips.pop();levelRows=levelRows.filter(x=>x.id!==r.id);renderTable();saveStateToLocalStorage();});};
 cancelSetupButton.onclick=()=>{if(activeSetupData)showConfirmModal('Cancel Setup','Remove BS and IPs from this setup?',()=>{const ids=[activeSetupData.bsRowId];if(activeSetupData.ips)activeSetupData.ips.forEach(ip=>ids.push(ip.id));levelRows=levelRows.filter(r=>!ids.includes(r.id));tpCounter--;activeSetupData=null;currentHI=null;updateLastValidPointForLiveCalcs();misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});};
 deleteLastSetupButton.onclick=()=>{const vrr=levelRows.filter(r=>!r.isVoid).reverse();const lvf=vrr.find(r=>r.type==='TP_FS'||r.type==='CLOSING_FS');if(lvf){showConfirmModal('Delete Last Setup',`Delete setup for ${lvf.pointName}?`,()=>{let ids=[lvf.id];const cb=levelRows.find(lr=>lr.type==='SETUP_BS'&&lr.pointName===lvf.pointName&&Math.abs(lr.bs-lvf.bsOnPrevForM5)<0.0001&&Math.abs(lr.bsDist-lvf.bsDistForM5)<0.0001&&lr.remarks.includes(lvf.prevPointNameForM5)&&!lr.isVoid);if(cb){ids.push(cb.id);levelRows.forEach(lr=>{if(lr.type==='IP'&&lr.remarks.includes(`via ${cb.pointName}`)&&!lr.isVoid&&lr.hi===cb.hi)ids.push(lr.id);});}levelRows=levelRows.filter(r=>!ids.includes(r.id));updateLastValidPointForLiveCalcs();tpCounter=levelRows.filter(r=>!r.isVoid&&(r.type==='TP_FS'||(r.type==='SETUP_BS'&&r.pointName.startsWith('TP')))).reduce((m,r)=>{const mt=r.pointName.match(/^TP(\d+)$/);return mt?Math.max(m,parseInt(mt[1])):m;},0);misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});}else{const lb=vrr.find(r=>r.type==='BM');if(lb&&vrr.length===1)showConfirmModal('Delete BM','Delete starting BM?',()=>{levelRows=levelRows.filter(r=>r.id!==lb.id);updateLastValidPointForLiveCalcs();tpCounter=0;misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});else alert("No completed setup to delete.");}};
-clearAllButton.onclick=()=>{showConfirmModal('Clear All','Erase everything? Cannot be undone.',()=>{projectDetails={units:'ft'};levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;document.getElementById('date').valueAsDate=new Date();['projectNumber','description','operator','recorder','instrument'].forEach(id=>document.getElementById(id).value='');rodTypeSelect.value='Philly Rod';rodTypeOtherInput.classList.add('hidden');rodTypeOtherInput.value='';misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';renderTable();saveStateToLocalStorage();});};
+clearAllButton.onclick=()=>{
+    // Custom two-button confirm: Yes = clear everything, No = keep project info
+    confirmModalTitle.textContent='Clear All Leveling Data';
+    confirmModalMessage.textContent='Also clear project information (operator, instrument, etc.)?';
+    confirmModalConfirm.textContent='Yes — Clear Everything';
+    confirmModalConfirm.onclick=()=>{
+        // Clear everything including project info
+        projectDetails={units:'ft'};levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;
+        document.getElementById('date').valueAsDate=new Date();
+        ['projectNumber','description','operator','recorder','instrument'].forEach(id=>document.getElementById(id).value='');
+        rodTypeSelect.value='Philly Rod';rodTypeOtherInput.classList.add('hidden');rodTypeOtherInput.value='';
+        misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';
+        confirmModal.classList.add('hidden');renderTable();saveStateToLocalStorage();
+    };
+    confirmModalCancel.textContent='No — Keep Project Info';
+    confirmModalCancel.onclick=()=>{
+        // Keep project info, only clear description (loop name) and leveling data
+        const savedDetails={...projectDetails};
+        levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;
+        projectDetails={...savedDetails,description:''};
+        document.getElementById('description').value='';
+        misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';
+        confirmModal.classList.add('hidden');renderTable();saveStateToLocalStorage();
+    };
+    confirmModal.classList.remove('hidden');
+};
 
 // CSV Exports
 exportLevelingDataCSVButton.onclick=()=>{
