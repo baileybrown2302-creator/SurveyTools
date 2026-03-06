@@ -178,7 +178,7 @@
     <div class="summary-item"><div class="summary-label">Point</div><div class="summary-value" id="summaryCurrentPoint">—</div></div>
     <div class="summary-item"><div class="summary-label" id="summaryHILabel">HI</div><div class="summary-value" id="summaryHI">—</div></div>
     <div class="summary-item"><div class="summary-label">Setups</div><div class="summary-value" id="summarySetups">0</div></div>
-    <div class="summary-item"><div class="summary-label">Stadia<button class="stadia-check-btn" id="stadiaCheckBtn" title="Quick stadia check">📏</button></div><div class="summary-value" id="summaryStadia">0.000</div></div>
+    <div class="summary-item" id="stadiaCheckBtn" style="cursor:pointer;user-select:none;" title="Tap for stadia check &amp; balance calculator"><div class="summary-label">Stadia 📏</div><div class="summary-value" id="summaryStadia">0.000</div></div>
     <div class="summary-item" id="fsTargetItem" style="display:none;"><div class="summary-label">FS Target</div><div class="summary-value" id="summaryFSTarget">—</div></div>
     <div class="summary-item"><div class="summary-label">Loop Dist</div><div class="summary-value" id="summaryLoopDist">0.0</div></div>
 </div>
@@ -280,8 +280,8 @@
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 6, 2026</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.1 — Changelog</button>
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 6, 2026 — 11:30</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.2 — Changelog</button>
         </div>
     </div>
 </div>
@@ -292,6 +292,20 @@
         <h3 style="margin-bottom:4px;">Changelog</h3>
         <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.2</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 6, 2026 — 11:30</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Stadia summary bar item is now fully tappable (not just the 📏 button)</li>
+                    <li>Stadia modal opens at any time — no active setup required</li>
+                    <li>During active setup: shows optimal FS distance and FS test calculator</li>
+                    <li>Between setups: balance calculator is focused automatically</li>
+                    <li>Balance calculator fixed — enter total distance TP→next known point, get exact level placement distance from current TP to zero total stadia</li>
+                    <li>Last updated timestamp now shows date and time (hour:minute)</li>
+                </ul>
+            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.1</span>
@@ -352,10 +366,25 @@
 <div id="inputModal" class="modal hidden no-print"><div class="modal-content"><h3 id="modalTitle">Modal Title</h3><form id="modalForm"><input type="hidden" id="editingRowId" name="editingRowId"><div id="modalFieldsContainer" style="display:flex;flex-direction:column;gap:12px;"></div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;"><button type="button" id="modalCancelButton" class="button">Cancel</button><button type="submit" id="modalSubmitButton" class="button button-primary">Submit</button></div></form></div></div>
 <div id="confirmModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;"><h3 id="confirmModalTitle">Confirm</h3><p id="confirmModalMessage" style="font-size:0.9em;color:var(--text-tertiary);margin-bottom:16px;">Are you sure?</p><div style="display:flex;justify-content:flex-end;gap:10px;"><button type="button" id="confirmModalCancel" class="button">Cancel</button><button type="button" id="confirmModalConfirm" class="button button-danger">Confirm</button></div></div></div>
 <!-- Quick Stadia Check Modal -->
-<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:340px;"><h3>Quick Stadia Check</h3><div id="stadiaCheckBody" style="font-size:0.9em;color:var(--text-secondary);margin-bottom:12px;"></div>
-<div style="border-top:1px solid var(--border-primary);padding-top:12px;"><label class="label">Test FS Distance:</label><input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance to test"></div><div id="stadiaCheckResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
-<div style="border-top:1px solid var(--border-primary);margin-top:14px;padding-top:12px;"><label class="label">Setup Balance Calculator</label><p style="font-size:0.8em;color:var(--text-muted);margin-bottom:8px;">Enter the distance from your next instrument setup to the known turning point (FS distance). Get the ideal BS distance to balance stadia.</p><input type="number" id="stadiaBalanceInput" class="input" step="0.001" inputMode="decimal" placeholder="Distance to next known TP"></div><div id="stadiaBalanceResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
-<div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div></div></div>
+<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;">
+<h3 style="margin-bottom:4px;">Stadia Check</h3>
+<div id="stadiaCheckBody" style="font-size:0.88em;color:var(--text-secondary);padding:8px 0 10px;border-bottom:1px solid var(--border-primary);"></div>
+<!-- Section A: FS test — shown only during active setup -->
+<div id="stadiaFSSection" style="padding-top:12px;">
+  <label class="label">Test FS Distance:</label>
+  <p style="font-size:0.78em;color:var(--text-muted);margin-bottom:6px;">Enter a FS distance to see what point stadia and new total would be.</p>
+  <input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance to test">
+  <div id="stadiaCheckResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
+</div>
+<!-- Section B: Balance calculator — always shown -->
+<div style="border-top:1px solid var(--border-primary);margin-top:14px;padding-top:12px;">
+  <label class="label">Setup Balance Calculator</label>
+  <p style="font-size:0.78em;color:var(--text-muted);margin-bottom:6px;">Measure the total distance from your current TP to the next known point. Enter it to find where to place the level so the BS distance zeros total stadia.</p>
+  <input type="number" id="stadiaBalanceInput" class="input" step="0.001" inputMode="decimal" placeholder="Total dist: current TP → next known point">
+  <div id="stadiaBalanceResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.88em;display:none;"></div>
+</div>
+<div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div>
+</div></div>
 <script>
 const STADIA_FACTOR=100,STADIA_WARN_THRESHOLD=10,STADIA_DANGER_THRESHOLD=25;
 let decimalPlaces=3;
@@ -550,38 +579,59 @@ document.querySelectorAll('#projectInfo input,#projectInfo select').forEach(i=>{
 rodTypeOtherInput.addEventListener('input',updateProjectDetails);
 
 // --- Quick Stadia Check ---
-stadiaCheckBtn.addEventListener('click',()=>{
-    if(!activeSetupData){alert('Start a setup first to use stadia check.');return;}
+function openStadiaModal(){
     let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
-    stadiaCheckBody.innerHTML=`<div>Current BS Dist: <b>${formatDist(activeSetupData.bsDist)}</b></div><div>Running Total Stadia: <b>${formatPointStadia(ts)}</b></div>`;
+    const fsSection=document.getElementById('stadiaFSSection');
+    // Build info header
+    let bodyHtml=`<div style="margin-bottom:2px;">Running Total Stadia: <b>${formatPointStadia(ts)}</b></div>`;
+    if(activeSetupData){
+        const optFS=parseFloat(activeSetupData.bsDist)+ts;
+        bodyHtml+=`<div>Current BS Dist: <b>${formatDist(activeSetupData.bsDist)}</b></div>`;
+        bodyHtml+=`<div style="margin-top:4px;color:var(--accent-blue);font-weight:700;">Optimal FS to zero stadia: <b>${formatDist(optFS)}</b></div>`;
+        fsSection.style.display='block';
+    } else {
+        bodyHtml+=`<div style="font-size:0.85em;color:var(--text-muted);margin-top:2px;">No active setup — use balance calculator below.</div>`;
+        fsSection.style.display='none';
+    }
+    stadiaCheckBody.innerHTML=bodyHtml;
+    // Reset inputs
     stadiaCheckInput.value='';stadiaCheckResult.style.display='none';
-    stadiaCheckModal.classList.remove('hidden');stadiaCheckInput.focus();
+    document.getElementById('stadiaBalanceInput').value='';
+    document.getElementById('stadiaBalanceResult').style.display='none';
+    stadiaCheckModal.classList.remove('hidden');
+    if(activeSetupData){stadiaCheckInput.focus();}
+    else{document.getElementById('stadiaBalanceInput').focus();}
+    // FS test input handler (uses BS dist of active setup)
     stadiaCheckInput.oninput=()=>{
         const v=parseFloat(stadiaCheckInput.value);if(isNaN(v)){stadiaCheckResult.style.display='none';return;}
-        const ptStadia=parseFloat(activeSetupData.bsDist)-v;
+        const bsDist=activeSetupData?parseFloat(activeSetupData.bsDist):0;
+        const ptStadia=bsDist-v;
         const newTotal=ts+ptStadia;
         stadiaCheckResult.style.display='block';
-        stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b><br>New Total Stadia: <b>${formatPointStadia(newTotal)}</b>`;
+        stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b> &nbsp;|&nbsp; New Total: <b>${formatPointStadia(newTotal)}</b>`;
     };
-});
+    // Balance calculator handler
+    document.getElementById('stadiaBalanceInput').oninput=()=>{
+        const totalDist=parseFloat(document.getElementById('stadiaBalanceInput').value);
+        const balResult=document.getElementById('stadiaBalanceResult');
+        if(isNaN(totalDist)||totalDist<=0){balResult.style.display='none';return;}
+        // Need: BS_dist - FS_dist = -ts  AND  BS_dist + FS_dist = totalDist
+        // => BS_dist = (totalDist - ts) / 2
+        const idealBS=(totalDist-ts)/2;
+        const idealFS=totalDist-idealBS;
+        balResult.style.display='block';
+        if(idealBS<=0){
+            balResult.innerHTML=`<span style="color:var(--accent-red);">⚠ Running stadia (${formatPointStadia(ts)}) exceeds total distance. Cannot balance on this leg.</span>`;
+        } else {
+            balResult.innerHTML=`Place level <b>${formatDist(idealBS)}</b> from current TP<br>Resulting FS distance: <b>${formatDist(idealFS)}</b>`;
+        }
+    };
+}
+stadiaCheckBtn.addEventListener('click', openStadiaModal);
 stadiaCheckClose.onclick=()=>{
     stadiaCheckModal.classList.add('hidden');
-    // Reset button text in case clearAll changed them
     confirmModalConfirm.textContent='Confirm';
     confirmModalCancel.textContent='Cancel';
-};
-
-// Balance calculator
-document.getElementById('stadiaBalanceInput').oninput=()=>{
-    const nextFSDist=parseFloat(document.getElementById('stadiaBalanceInput').value);
-    const balResult=document.getElementById('stadiaBalanceResult');
-    if(isNaN(nextFSDist)){balResult.style.display='none';return;}
-    // Running total stadia (before this next setup)
-    let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
-    // For the next leg: ptStadia = newBS - nextFS = 0 - ts  =>  newBS = nextFS - ts
-    const idealBS=nextFSDist-ts;
-    balResult.style.display='block';
-    balResult.innerHTML=`Ideal BS Distance: <b>${formatDist(idealBS)}</b><br><span style="font-size:0.85em;font-weight:500;color:var(--text-tertiary);">Sets up at this distance from your BS point to zero total stadia</span>`;
 };
 
 // --- Accuracy Calculation ---
