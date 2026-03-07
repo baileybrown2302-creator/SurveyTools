@@ -280,8 +280,8 @@
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 6, 2026 — 11:30</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.2 — Changelog</button>
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 6, 2026 — 19:00</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.3 — Changelog</button>
         </div>
     </div>
 </div>
@@ -292,6 +292,15 @@
         <h3 style="margin-bottom:4px;">Changelog</h3>
         <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.3</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 6, 2026 — 19:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Fixed TP numbers occasionally skipping — counter now only increments after a setup is successfully submitted, not when the modal opens</li>
+                </ul>
+            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.2</span>
@@ -864,9 +873,12 @@ function generateUniqueTPName(tpNum){
     const mi=String(now.getMinutes()).padStart(2,'0');
     return `TP${tpNum}_${mo}${d}${y}${h}${mi}`;
 }
-function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculatedElevation){alert("No valid previous point.");updateButtonStates();return;}tpCounter++;const defaultTpn=`TP${tpCounter}`;
+function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculatedElevation){alert("No valid previous point.");updateButtonStates();return;}
+    // tpCounter incremented inside submit only — prevents skipping numbers on cancel
+    const nextTPNum=tpCounter+1;const defaultTpn=`TP${nextTPNum}`;
     showModal(`New Setup`,[{id:'bsReading',name:'bsReading',label:`BS on ${lastPointNameForBS} (${formatNumber(lastCalculatedElevation)} ${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDist',name:'bsDist',label:`BS Distance (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDistMethod',name:'bsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'bs')},{id:'bsUpperWire',name:'bsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'bsMiddleWire',name:'bsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'bsLowerWire',name:'bsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
-    let fbr,fbd;if(data.bsDistMethod==='threeWire'){if(isNaN(data.bsUpperWire)||isNaN(data.bsMiddleWire)||isNaN(data.bsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.bsUpperWire>data.bsMiddleWire&&data.bsMiddleWire>data.bsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.bsUpperWire-data.bsMiddleWire,i2=data.bsMiddleWire-data.bsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals (${i1.toFixed(3)},${i2.toFixed(3)}) differ. OK?`))return false;fbr=(data.bsUpperWire+data.bsMiddleWire+data.bsLowerWire)/3;fbd=(data.bsUpperWire-data.bsLowerWire)*STADIA_FACTOR;}else{fbr=data.bsReading;fbd=data.bsDist;if(isNaN(fbr)||isNaN(fbd)){alert("Valid BS required.");tpCounter--;return false;}}
+    let fbr,fbd;if(data.bsDistMethod==='threeWire'){if(isNaN(data.bsUpperWire)||isNaN(data.bsMiddleWire)||isNaN(data.bsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.bsUpperWire>data.bsMiddleWire&&data.bsMiddleWire>data.bsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.bsUpperWire-data.bsMiddleWire,i2=data.bsMiddleWire-data.bsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals (${i1.toFixed(3)},${i2.toFixed(3)}) differ. OK?`))return false;fbr=(data.bsUpperWire+data.bsMiddleWire+data.bsLowerWire)/3;fbd=(data.bsUpperWire-data.bsLowerWire)*STADIA_FACTOR;}else{fbr=data.bsReading;fbd=data.bsDist;if(isNaN(fbr)||isNaN(fbd)){alert("Valid BS required.");return false;}}
+    tpCounter=nextTPNum;
     // BS point name comes from the previous FS/BM — not user-entered
     const tpn=lastPointNameForBS;
     currentHI=lastCalculatedElevation+fbr;const brid=`bs-${Date.now()}`;levelRows.push({id:brid,pointName:defaultTpn,bs:fbr,hi:currentHI,bsDist:fbd,fsDist:null,remarks:`BS on ${lastPointNameForBS}`,type:'SETUP_BS',pointStadia:null,isVoid:false,isDiNiLineLeveling:false});
