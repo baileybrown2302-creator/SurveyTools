@@ -178,7 +178,7 @@
     <div class="summary-item"><div class="summary-label">Point</div><div class="summary-value" id="summaryCurrentPoint">—</div></div>
     <div class="summary-item"><div class="summary-label" id="summaryHILabel">HI</div><div class="summary-value" id="summaryHI">—</div></div>
     <div class="summary-item"><div class="summary-label">Setups</div><div class="summary-value" id="summarySetups">0</div></div>
-    <div class="summary-item"><div class="summary-label">Stadia<button class="stadia-check-btn" id="stadiaCheckBtn" title="Quick stadia check">📏</button></div><div class="summary-value" id="summaryStadia">0.000</div></div>
+    <div class="summary-item" id="stadiaCheckBtn" style="cursor:pointer;user-select:none;" title="Tap for stadia check &amp; balance calculator"><div class="summary-label">Stadia 📏</div><div class="summary-value" id="summaryStadia">0.000</div></div>
     <div class="summary-item" id="fsTargetItem" style="display:none;"><div class="summary-label">FS Target</div><div class="summary-value" id="summaryFSTarget">—</div></div>
     <div class="summary-item"><div class="summary-label">Loop Dist</div><div class="summary-value" id="summaryLoopDist">0.0</div></div>
 </div>
@@ -276,6 +276,106 @@
         <div><strong>Summary Bar:</strong><ul class="list-disc list-inside ml-4"><li>Shows HI during setup, Elevation between setups.</li><li>FS Target = distance needed to zero stadia (during setup only).</li><li>📏 button → Quick stadia check without recording a point.</li></ul></div>
         <div><strong>Stadia Warnings:</strong><ul class="list-disc list-inside ml-4"><li>Amber: |Pt Stadia| > 10</li><li>Red: |Pt Stadia| > 25</li></ul></div>
         <div><strong>Misclosure Accuracy:</strong><ul class="list-disc list-inside ml-4"><li>After closing, click "Show Accuracy" to see classification against First/Second/Third Order standards.</li></ul></div>
+        <div><strong>Turning Points:</strong><ul class="list-disc list-inside ml-4"><li>TP names default to TP1, TP2, etc. but can be changed to any existing point name in the setup modal.</li></ul></div>
+        <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
+        <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 10, 2026 — 20:00</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.5 — Changelog</button>
+        </div>
+    </div>
+</div>
+
+<!-- Changelog Modal -->
+<div id="changelogModal" class="modal hidden no-print">
+    <div class="modal-content" style="max-width:480px;">
+        <h3 style="margin-bottom:4px;">Changelog</h3>
+        <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
+        <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.5</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 10, 2026 — 20:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Full edit history per point — every field change is logged with old value, new value, and timestamp</li>
+                    <li>"📋 View Edit History" button appears in the edit modal when a point has been edited</li>
+                    <li>Edit history modal shows a clean timeline of all changes with red/green old→new formatting</li>
+                    <li>CSV export includes full edit log appended to each row's remarks column</li>
+                    <li>Print view adds a highlighted edit history row beneath any point that has been edited</li>
+                </ul>
+            </div>
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.4</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 10, 2026 — 19:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>All point types (BM, BS, IP, FS) are now fully editable — readings and distances can be corrected directly</li>
+                    <li>Any change to a reading or distance appends a timestamped edit note to that point's remarks (e.g. [Edited 03/10/26 19:05])</li>
+                    <li>Editing a BM elevation prompts a confirmation warning before saving, then recalculates the full loop</li>
+                    <li>All other reading/distance edits trigger a full downstream recalculation automatically</li>
+                    <li>DiNi LL toggle and rod reading annotation update correctly on IP edits</li>
+                </ul>
+            </div>
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.3</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 6, 2026 — 19:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Fixed TP numbers occasionally skipping — counter now only increments after a setup is successfully submitted, not when the modal opens</li>
+                </ul>
+            </div>
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.2</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 6, 2026 — 11:30</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Stadia summary bar item is now fully tappable (not just the 📏 button)</li>
+                    <li>Stadia modal opens at any time — no active setup required</li>
+                    <li>During active setup: shows optimal FS distance and FS test calculator</li>
+                    <li>Between setups: balance calculator is focused automatically</li>
+                    <li>Balance calculator fixed — enter total distance TP→next known point, get exact level placement distance from current TP to zero total stadia</li>
+                    <li>Last updated timestamp now shows date and time (hour:minute)</li>
+                </ul>
+            </div>
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.1</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 6, 2026</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Fixed DiNi LL rod reading not exporting correctly on desktop (localStorage restore issue)</li>
+                    <li>Unique TP names with timestamp (TP#_MMDDYYHHmm) stored internally for TBC Level Editor export</li>
+                    <li>App UI, table CSV, and print views continue to show standard TP1, TP2 names</li>
+                </ul>
+            </div>
+            <div>
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 5, 2026</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Initial release of Survey Tool — Differential Leveling</li>
+                    <li>Level loops with BS, IP, FS, and closing shots</li>
+                    <li>Three-wire entry with stadia distance calculation</li>
+                    <li>DiNi Line Leveling mode — rod reading stored in remarks and exported to TBC</li>
+                    <li>Custom turning point names (existing points as BS/FS)</li>
+                    <li>Stadia management: per-setup, running total, FS target, balance calculator</li>
+                    <li>Accuracy classification: First, Second, and Third Order standards</li>
+                    <li>IP elevation banner in auto-repeat modal</li>
+                    <li>Selective clear — keep project info when clearing loop data</li>
+                    <li>TBC Level Editor CSV, table CSV, JSON, and print exports</li>
+                    <li>PWA — works fully offline after first load</li>
+                    <li>Dark / High Contrast theme, font size, and view mode settings</li>
+                </ul>
+            </div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+            <button type="button" id="changelogClose" class="button button-secondary">Close</button>
+        </div>
     </div>
 </div>
 </div>
@@ -301,7 +401,32 @@
 <div id="inputModal" class="modal hidden no-print"><div class="modal-content"><h3 id="modalTitle">Modal Title</h3><form id="modalForm"><input type="hidden" id="editingRowId" name="editingRowId"><div id="modalFieldsContainer" style="display:flex;flex-direction:column;gap:12px;"></div><div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;"><button type="button" id="modalCancelButton" class="button">Cancel</button><button type="submit" id="modalSubmitButton" class="button button-primary">Submit</button></div></form></div></div>
 <div id="confirmModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;"><h3 id="confirmModalTitle">Confirm</h3><p id="confirmModalMessage" style="font-size:0.9em;color:var(--text-tertiary);margin-bottom:16px;">Are you sure?</p><div style="display:flex;justify-content:flex-end;gap:10px;"><button type="button" id="confirmModalCancel" class="button">Cancel</button><button type="button" id="confirmModalConfirm" class="button button-danger">Confirm</button></div></div></div>
 <!-- Quick Stadia Check Modal -->
-<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:340px;"><h3>Quick Stadia Check</h3><div id="stadiaCheckBody" style="font-size:0.9em;color:var(--text-secondary);"></div><div style="margin-top:12px;"><label class="label">Test FS Distance:</label><input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance"></div><div id="stadiaCheckResult" style="margin-top:12px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div><div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div></div></div>
+<div id="stadiaCheckModal" class="modal hidden no-print"><div class="modal-content" style="max-width:360px;">
+<h3 style="margin-bottom:4px;">Stadia Check</h3>
+<div id="stadiaCheckBody" style="font-size:0.88em;color:var(--text-secondary);padding:8px 0 10px;border-bottom:1px solid var(--border-primary);"></div>
+<!-- Section A: FS test — shown only during active setup -->
+<div id="stadiaFSSection" style="padding-top:12px;">
+  <label class="label">Test FS Distance:</label>
+  <p style="font-size:0.78em;color:var(--text-muted);margin-bottom:6px;">Enter a FS distance to see what point stadia and new total would be.</p>
+  <input type="number" id="stadiaCheckInput" class="input" step="0.001" inputMode="decimal" placeholder="Enter FS distance to test">
+  <div id="stadiaCheckResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.9em;display:none;"></div>
+</div>
+<!-- Section B: Balance calculator — always shown -->
+<div style="border-top:1px solid var(--border-primary);margin-top:14px;padding-top:12px;">
+  <label class="label">Setup Balance Calculator</label>
+  <p style="font-size:0.78em;color:var(--text-muted);margin-bottom:6px;">Measure the total distance from your current TP to the next known point. Enter it to find where to place the level so the BS distance zeros total stadia.</p>
+  <input type="number" id="stadiaBalanceInput" class="input" step="0.001" inputMode="decimal" placeholder="Total dist: current TP → next known point">
+  <div id="stadiaBalanceResult" style="margin-top:10px;padding:10px;border-radius:8px;background:var(--bg-tertiary);font-weight:600;font-size:0.88em;display:none;"></div>
+</div>
+<div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="stadiaCheckClose" class="button button-secondary">Close</button></div>
+</div></div>
+<!-- Edit History Modal -->
+<div id="editHistoryModal" class="modal hidden no-print"><div class="modal-content" style="max-width:420px;">
+<h3 id="editHistoryTitle" style="margin-bottom:4px;">Edit History</h3>
+<p id="editHistorySubtitle" style="font-size:0.8em;color:var(--text-muted);margin-bottom:12px;"></p>
+<div id="editHistoryBody" style="max-height:55vh;overflow-y:auto;"></div>
+<div style="display:flex;justify-content:flex-end;margin-top:16px;"><button type="button" id="editHistoryClose" class="button button-secondary">Close</button></div>
+</div></div>
 <script>
 const STADIA_FACTOR=100,STADIA_WARN_THRESHOLD=10,STADIA_DANGER_THRESHOLD=25;
 let decimalPlaces=3;
@@ -381,40 +506,46 @@ projectInfoToggle.addEventListener('click',()=>{projectInfoCollapsed=!projectInf
 
 // Help toggle
 toggleHelpButton.addEventListener('click',()=>{helpContent.classList.toggle('hidden');helpArrow.style.transform=helpContent.classList.contains('hidden')?'':'rotate(180deg)';});
+document.getElementById('changelogBtn').addEventListener('click',(e)=>{e.stopPropagation();document.getElementById('changelogModal').classList.remove('hidden');});
+document.getElementById('changelogClose').addEventListener('click',()=>document.getElementById('changelogModal').classList.add('hidden'));
+document.getElementById('changelogModal').addEventListener('click',(e)=>{if(e.target===document.getElementById('changelogModal'))document.getElementById('changelogModal').classList.add('hidden');});
 
 // Modals
-function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
+function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.textContent='Confirm';confirmModalCancel.textContent='Cancel';confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
 
+function createFieldElement(field){
+    const fg=document.createElement('div');fg.id=`group-${field.id||Math.random().toString(36).slice(2)}`;
+    if(field.type==='info'){const p=document.createElement('p');
+    if(field.id==='lastIPBanner'){p.style.cssText='font-size:0.9em;font-weight:700;padding:10px 12px;border-radius:8px;background:var(--summary-bg);border:1.5px solid var(--summary-border);color:var(--summary-text);text-align:center;';}
+    else{p.style.cssText='font-size:0.85em;color:var(--text-muted);font-style:italic;';}
+    p.innerHTML=field.text;fg.appendChild(p);return fg;}
+    const lbl=document.createElement('label');lbl.htmlFor=field.id;lbl.className='label';lbl.textContent=field.label;fg.appendChild(lbl);
+    if(field.type==='select'){
+        const sel=document.createElement('select');sel.id=field.id;sel.name=field.name;sel.className='select-input';
+        field.options.forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;if(o.value===field.value)opt.selected=true;sel.appendChild(opt);});
+        if(field.eventListener)sel.addEventListener('change',field.eventListener);fg.appendChild(sel);
+    }else if(field.type==='checkbox'){
+        const cc=document.createElement('div');cc.style.cssText='display:flex;align-items:center;margin-top:4px;';
+        const inp=document.createElement('input');inp.type='checkbox';inp.id=field.id;inp.name=field.name;inp.style.cssText='width:20px;height:20px;margin-right:8px;accent-color:var(--accent-blue);';
+        if(field.checked)inp.checked=true;cc.appendChild(inp);
+        const la=document.createElement('label');la.htmlFor=field.id;la.style.cssText='font-size:0.9em;color:var(--text-secondary);font-weight:600;';la.textContent=field.checkboxLabel||'';cc.appendChild(la);fg.appendChild(cc);
+        if(field.dependentFields){
+            const dc=document.createElement('div');dc.id=`${field.id}DependentContainer`;dc.style.cssText='display:'+(inp.checked?'flex':'none')+';flex-direction:column;gap:10px;margin-top:8px;';
+            field.dependentFields.forEach(df=>{const dg=document.createElement('div');const dl=document.createElement('label');dl.htmlFor=df.id;dl.className='label';dl.textContent=df.label;dg.appendChild(dl);const di=document.createElement('input');di.type=df.type;di.id=df.id;di.name=df.name;di.className='input';di.required=df.required!==false&&inp.checked;if(df.type==='number')di.inputMode='decimal';if(df.placeholder)di.placeholder=df.placeholder;if(df.step)di.step=df.step;dg.appendChild(di);dc.appendChild(dg);});
+            fg.appendChild(dc);
+            inp.addEventListener('change',(e)=>{dc.style.display=e.target.checked?'flex':'none';field.dependentFields.forEach(df=>{const el=document.getElementById(df.id);if(el)el.required=df.required!==false&&e.target.checked;});});
+        }
+    }else{
+        const inp=document.createElement('input');inp.type=field.type;inp.id=field.id;inp.name=field.name;inp.className='input';inp.required=field.required!==false;
+        if(field.type==='number')inp.inputMode='decimal';
+        if(field.placeholder)inp.placeholder=field.placeholder;if(field.value!==undefined)inp.value=field.value;if(field.step)inp.step=field.step;if(field.disabled)inp.disabled=true;
+        inp.addEventListener('keydown',(e)=>{if(e.key==='Enter'&&(field.type==='number'||field.type==='text')){e.preventDefault();const all=Array.from(modalFieldsContainer.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([type="checkbox"]),select:not([disabled])')).filter(el=>{const g=el.closest('div[id^="group-"]');return g&&g.style.display!=='none';});const idx=all.indexOf(inp);if(idx>=0&&idx<all.length-1){all[idx+1].focus();all[idx+1].select();}else{modalForm.requestSubmit();}}});
+        fg.appendChild(inp);
+    }
+    return fg;
+}
 function showModal(title,fieldsConfig,submitHandler,onModalCreateCallback){
     modalTitle.textContent=title;modalFieldsContainer.innerHTML='';if(!title.startsWith('Edit'))editingRowIdInput.value='';
-    function createFieldElement(field){
-        const fg=document.createElement('div');fg.id=`group-${field.id}`;
-        if(field.type==='info'){const p=document.createElement('p');p.style.cssText='font-size:0.85em;color:var(--text-muted);font-style:italic;';p.textContent=field.text;fg.appendChild(p);return fg;}
-        const lbl=document.createElement('label');lbl.htmlFor=field.id;lbl.className='label';lbl.textContent=field.label;fg.appendChild(lbl);
-        if(field.type==='select'){
-            const sel=document.createElement('select');sel.id=field.id;sel.name=field.name;sel.className='select-input';
-            field.options.forEach(o=>{const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.text;if(o.value===field.value)opt.selected=true;sel.appendChild(opt);});
-            if(field.eventListener)sel.addEventListener('change',field.eventListener);fg.appendChild(sel);
-        }else if(field.type==='checkbox'){
-            const cc=document.createElement('div');cc.style.cssText='display:flex;align-items:center;margin-top:4px;';
-            const inp=document.createElement('input');inp.type='checkbox';inp.id=field.id;inp.name=field.name;inp.style.cssText='width:20px;height:20px;margin-right:8px;accent-color:var(--accent-blue);';
-            if(field.checked)inp.checked=true;cc.appendChild(inp);
-            const la=document.createElement('label');la.htmlFor=field.id;la.style.cssText='font-size:0.9em;color:var(--text-secondary);font-weight:600;';la.textContent=field.checkboxLabel||'';cc.appendChild(la);fg.appendChild(cc);
-            if(field.dependentFields){
-                const dc=document.createElement('div');dc.id=`${field.id}DependentContainer`;dc.style.cssText='display:'+(inp.checked?'flex':'none')+';flex-direction:column;gap:10px;margin-top:8px;';
-                field.dependentFields.forEach(df=>{const dg=document.createElement('div');const dl=document.createElement('label');dl.htmlFor=df.id;dl.className='label';dl.textContent=df.label;dg.appendChild(dl);const di=document.createElement('input');di.type=df.type;di.id=df.id;di.name=df.name;di.className='input';di.required=df.required!==false&&inp.checked;if(df.type==='number')di.inputMode='decimal';if(df.placeholder)di.placeholder=df.placeholder;if(df.step)di.step=df.step;dg.appendChild(di);dc.appendChild(dg);});
-                fg.appendChild(dc);
-                inp.addEventListener('change',(e)=>{dc.style.display=e.target.checked?'flex':'none';field.dependentFields.forEach(df=>{const el=document.getElementById(df.id);if(el)el.required=df.required!==false&&e.target.checked;});});
-            }
-        }else{
-            const inp=document.createElement('input');inp.type=field.type;inp.id=field.id;inp.name=field.name;inp.className='input';inp.required=field.required!==false;
-            if(field.type==='number')inp.inputMode='decimal';
-            if(field.placeholder)inp.placeholder=field.placeholder;if(field.value!==undefined)inp.value=field.value;if(field.step)inp.step=field.step;if(field.disabled)inp.disabled=true;
-            inp.addEventListener('keydown',(e)=>{if(e.key==='Enter'&&(field.type==='number'||field.type==='text')){e.preventDefault();const all=Array.from(modalFieldsContainer.querySelectorAll('input:not([type="hidden"]):not([disabled]):not([type="checkbox"]),select:not([disabled])')).filter(el=>{const g=el.closest('div[id^="group-"]');return g&&g.style.display!=='none';});const idx=all.indexOf(inp);if(idx>=0&&idx<all.length-1){all[idx+1].focus();all[idx+1].select();}else{modalForm.requestSubmit();}}});
-            fg.appendChild(inp);
-        }
-        return fg;
-    }
     fieldsConfig.forEach(f=>modalFieldsContainer.appendChild(createFieldElement(f)));
     if(onModalCreateCallback)onModalCreateCallback(modalFieldsContainer);
     modalForm.onsubmit=(e)=>{e.preventDefault();const fd=new FormData(modalForm);const data=Object.fromEntries(fd.entries());
@@ -439,7 +570,9 @@ function loadStateFromLocalStorage(){
     document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';
     const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}
     unitsSelect.value=projectDetails.units||'ft';if(a.misclosureText){misclosureValue.textContent=a.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');
-    levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});}catch(e){localStorage.removeItem('levelingAppData_singleLoop');}}
+    levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});
+    // Recalculate diNiRodReading for DiNi LL IPs where it wasn't saved (older data or pre-fix)
+    levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){localStorage.removeItem('levelingAppData_singleLoop');}}
     if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
 }
 // Core calcs
@@ -488,21 +621,74 @@ document.querySelectorAll('#projectInfo input,#projectInfo select').forEach(i=>{
 rodTypeOtherInput.addEventListener('input',updateProjectDetails);
 
 // --- Quick Stadia Check ---
-stadiaCheckBtn.addEventListener('click',()=>{
-    if(!activeSetupData){alert('Start a setup first to use stadia check.');return;}
+function openStadiaModal(){
     let ts=0;levelRows.forEach(r=>{const ps=calculatePointStadia(r);if(ps!==null&&!r.isVoid)ts+=ps;});
-    stadiaCheckBody.innerHTML=`<div>Current BS Dist: <b>${formatDist(activeSetupData.bsDist)}</b></div><div>Running Total Stadia: <b>${formatPointStadia(ts)}</b></div>`;
+    const fsSection=document.getElementById('stadiaFSSection');
+    // Build info header
+    let bodyHtml=`<div style="margin-bottom:2px;">Running Total Stadia: <b>${formatPointStadia(ts)}</b></div>`;
+    if(activeSetupData){
+        const optFS=parseFloat(activeSetupData.bsDist)+ts;
+        bodyHtml+=`<div>Current BS Dist: <b>${formatDist(activeSetupData.bsDist)}</b></div>`;
+        bodyHtml+=`<div style="margin-top:4px;color:var(--accent-blue);font-weight:700;">Optimal FS to zero stadia: <b>${formatDist(optFS)}</b></div>`;
+        fsSection.style.display='block';
+    } else {
+        bodyHtml+=`<div style="font-size:0.85em;color:var(--text-muted);margin-top:2px;">No active setup — use balance calculator below.</div>`;
+        fsSection.style.display='none';
+    }
+    stadiaCheckBody.innerHTML=bodyHtml;
+    // Reset inputs
     stadiaCheckInput.value='';stadiaCheckResult.style.display='none';
-    stadiaCheckModal.classList.remove('hidden');stadiaCheckInput.focus();
+    document.getElementById('stadiaBalanceInput').value='';
+    document.getElementById('stadiaBalanceResult').style.display='none';
+    stadiaCheckModal.classList.remove('hidden');
+    if(activeSetupData){stadiaCheckInput.focus();}
+    else{document.getElementById('stadiaBalanceInput').focus();}
+    // FS test input handler (uses BS dist of active setup)
     stadiaCheckInput.oninput=()=>{
         const v=parseFloat(stadiaCheckInput.value);if(isNaN(v)){stadiaCheckResult.style.display='none';return;}
-        const ptStadia=parseFloat(activeSetupData.bsDist)-v;
+        const bsDist=activeSetupData?parseFloat(activeSetupData.bsDist):0;
+        const ptStadia=bsDist-v;
         const newTotal=ts+ptStadia;
         stadiaCheckResult.style.display='block';
-        stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b><br>New Total Stadia: <b>${formatPointStadia(newTotal)}</b>`;
+        stadiaCheckResult.innerHTML=`Point Stadia: <b>${formatPointStadia(ptStadia)}</b> &nbsp;|&nbsp; New Total: <b>${formatPointStadia(newTotal)}</b>`;
     };
-});
-stadiaCheckClose.onclick=()=>stadiaCheckModal.classList.add('hidden');
+    // Balance calculator handler
+    document.getElementById('stadiaBalanceInput').oninput=()=>{
+        const totalDist=parseFloat(document.getElementById('stadiaBalanceInput').value);
+        const balResult=document.getElementById('stadiaBalanceResult');
+        if(isNaN(totalDist)||totalDist<=0){balResult.style.display='none';return;}
+        // Need: BS_dist - FS_dist = -ts  AND  BS_dist + FS_dist = totalDist
+        // => BS_dist = (totalDist - ts) / 2
+        const idealBS=(totalDist-ts)/2;
+        const idealFS=totalDist-idealBS;
+        balResult.style.display='block';
+        if(idealBS<=0){
+            balResult.innerHTML=`<span style="color:var(--accent-red);">⚠ Running stadia (${formatPointStadia(ts)}) exceeds total distance. Cannot balance on this leg.</span>`;
+        } else {
+            balResult.innerHTML=`Place level <b>${formatDist(idealBS)}</b> from current TP<br>Resulting FS distance: <b>${formatDist(idealFS)}</b>`;
+        }
+    };
+}
+stadiaCheckBtn.addEventListener('click', openStadiaModal);
+stadiaCheckClose.onclick=()=>{
+    stadiaCheckModal.classList.add('hidden');
+    confirmModalConfirm.textContent='Confirm';
+    confirmModalCancel.textContent='Cancel';
+};
+document.getElementById('editHistoryClose').onclick=()=>document.getElementById('editHistoryModal').classList.add('hidden');
+function showEditHistory(row){
+    const modal=document.getElementById('editHistoryModal');
+    document.getElementById('editHistoryTitle').textContent=`Edit History: ${row.pointName||'Unnamed'}`;
+    const typeLbl=row.type==='BM'?'BM':row.type==='SETUP_BS'?'BS':row.type==='IP'?'IP':'FS';
+    document.getElementById('editHistorySubtitle').textContent=`${typeLbl} — ${(row.editLog||[]).length} edit(s)`;
+    const body=document.getElementById('editHistoryBody');
+    if(!row.editLog||row.editLog.length===0){body.innerHTML='<p style="color:var(--text-muted);font-size:0.88em;text-align:center;padding:20px 0;">No edits recorded.</p>';modal.classList.remove('hidden');return;}
+    body.innerHTML=row.editLog.map((e,i)=>{
+        const changes=e.changes.map(c=>`<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid var(--border-primary);font-size:0.82em;"><span style="color:var(--text-muted);min-width:90px;">${c.field}</span><span style="color:var(--accent-red,#ef4444);text-decoration:line-through;margin-right:4px;">${c.oldValue}</span><span style="color:var(--accent-green,#22c55e);">→ ${c.newValue}</span></div>`).join('');
+        return `<div style="padding:10px 0;${i>0?'border-top:1.5px solid var(--border-secondary);':''}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-weight:700;font-size:0.85em;">Edit ${i+1}</span><span style="font-size:0.78em;color:var(--text-muted);">${e.timestamp}</span></div>${changes}</div>`;
+    }).join('');
+    modal.classList.remove('hidden');
+}
 
 // --- Accuracy Calculation ---
 function calculateAccuracy(){
@@ -637,65 +823,156 @@ function updateButtonStates(){
 
 // Edit row
 function handleEditRow(event){
-    const rid=event.target.dataset.rowId;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return;const rte=levelRows[ri];editingRowIdInput.value=rid;let fields=[];
-    let mt=`Edit ${rte.type}: ${rte.pointName||'Unnamed'}`;
-    if(rte.type!=='BM')fields.push({id:'editIsVoid',name:'isVoid',label:'',type:'checkbox',checkboxLabel:rte.isVoid?'Mark as VALID':'Mark as VOID',checked:rte.isVoid});
-    fields.push({id:'editRemarks',name:'remarks',label:'Remarks:',type:'text',value:(rte.remarks||'').replace(/\s*<span[^>]*>\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'').replace(/\s*<span[^>]*>\[DiNi LL\]<\/span>$/,'')});
-    switch(rte.type){
-        case 'BM':fields.unshift({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName},{id:'editElevation',name:'elevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',value:rte.elevation});break;
-        case 'SETUP_BS':case 'IP':case 'TP_FS':case 'CLOSING_FS':
-            fields.unshift({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
-            if(rte.type==='IP')fields.push({id:'editDiNiLL',name:'isDiNiLineLeveling',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:!!rte.isDiNiLineLeveling});
-            fields.push({type:'info',text:'Editing readings/distances not enabled. Use Void/Delete and re-enter.'});
-            if(rte.bs!=null)fields.push({id:'cBs',name:'cBs',label:'Current BS:',type:'text',value:formatNumber(rte.bs),disabled:true});
-            if(rte.bsDist!=null)fields.push({id:'cBsD',name:'cBsD',label:'Current BS Dist:',type:'text',value:formatDist(rte.bsDist),disabled:true});
-            if(rte.ifs!=null)fields.push({id:'cIfs',name:'cIfs',label:'Current IFS:',type:'text',value:formatNumber(rte.ifs),disabled:true});
-            if(rte.ifsDist!=null)fields.push({id:'cIfsD',name:'cIfsD',label:'Current IFS Dist:',type:'text',value:formatDist(rte.ifsDist),disabled:true});
-            if(rte.fs!=null)fields.push({id:'cFs',name:'cFs',label:'Current FS:',type:'text',value:formatNumber(rte.fs),disabled:true});
-            if(rte.fsDist!=null)fields.push({id:'cFsD',name:'cFsD',label:'Current FS Dist:',type:'text',value:formatDist(rte.fsDist),disabled:true});break;
+    const rid=event.target.dataset.rowId;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return;const rte=levelRows[ri];editingRowIdInput.value=rid;
+    const typeLbl=rte.type==='BM'?'BM':rte.type==='SETUP_BS'?'BS':rte.type==='IP'?'IP':'FS';
+    const mt=`Edit ${typeLbl}: ${rte.pointName||'Unnamed'}`;
+    const cleanRemarks=(rte.remarks||'').replace(/\s*<span[^>]*>\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'').replace(/\s*<span[^>]*>\[DiNi LL\]<\/span>$/,'');
+    const u=projectDetails.units||'ft';
+
+    // Build read-only summary rows for the info card
+    let summaryRows='';
+    if(rte.type==='BM'){
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Name</span><span style="font-weight:600;font-size:0.88em;">${rte.pointName||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--text-muted);font-size:0.82em;">Elevation (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.elevation)||'—'}</span></div>`;
+    } else if(rte.type==='SETUP_BS'){
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Name</span><span style="font-weight:600;font-size:0.88em;">${rte.pointName||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">BS Reading (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.bs)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">HI (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.hi)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--text-muted);font-size:0.82em;">BS Distance (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatDist(rte.bsDist)||'—'}</span></div>`;
+    } else if(rte.type==='IP'){
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Name</span><span style="font-weight:600;font-size:0.88em;">${rte.pointName||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">${rte.isDiNiLineLeveling?'Delta':'IFS'} Reading (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.ifs)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Elevation (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.elevation)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--text-muted);font-size:0.82em;">IFS Distance (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatDist(rte.ifsDist)||'—'}</span></div>`;
+    } else {
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Name</span><span style="font-weight:600;font-size:0.88em;">${rte.pointName||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">FS Reading (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.fs)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border-primary);"><span style="color:var(--text-muted);font-size:0.82em;">Elevation (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatNumber(rte.elevation)||'—'}</span></div>`;
+        summaryRows+=`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--text-muted);font-size:0.82em;">FS Distance (${u})</span><span style="font-weight:600;font-size:0.88em;">${formatDist(rte.fsDist)||'—'}</span></div>`;
     }
-    showModal(mt,fields,handleEditSubmit);
+
+    // Phase 1 fields: void toggle + remarks + summary card (read-only)
+    const phase1Fields=[];
+    if(rte.type!=='BM') phase1Fields.push({id:'editIsVoid',name:'isVoid',label:'',type:'checkbox',checkboxLabel:rte.isVoid?'Mark as VALID':'Mark as VOID',checked:rte.isVoid});
+    phase1Fields.push({id:'editRemarks',name:'remarks',label:'Remarks / Notes:',type:'text',value:cleanRemarks});
+    const hasHistory=rte.editLog&&rte.editLog.length>0;
+    const historyBtn=hasHistory?`<button type="button" id="viewHistoryBtn" style="margin-top:8px;width:100%;padding:8px;border-radius:8px;border:1.5px solid var(--accent-blue,#3b82f6);background:transparent;color:var(--accent-blue,#3b82f6);font-weight:700;font-size:0.82em;cursor:pointer;">📋 View Edit History (${rte.editLog.length} edit${rte.editLog.length>1?'s':''})</button>`:'';
+    phase1Fields.push({type:'info',text:`<div style="border:1px solid var(--border-secondary);border-radius:8px;padding:10px 12px;margin-top:2px;">${summaryRows}</div>${historyBtn}<button type="button" id="unlockEditBtn" style="margin-top:8px;width:100%;padding:9px;border-radius:8px;border:1.5px solid var(--accent-orange,#f59e0b);background:transparent;color:var(--accent-orange,#f59e0b);font-weight:700;font-size:0.85em;cursor:pointer;">✏️ Edit Point Data</button>`});
+
+    showModal(mt,phase1Fields,handleEditSubmit,()=>{
+        // Wire up history button
+        const histBtn=document.getElementById('viewHistoryBtn');
+        if(histBtn) histBtn.addEventListener('click',()=>{inputModal.classList.add('hidden');showEditHistory(rte);});
+        // Wire up the unlock button after modal renders
+        const unlockBtn=document.getElementById('unlockEditBtn');
+        if(!unlockBtn)return;
+        unlockBtn.addEventListener('click',()=>{
+            unlockBtn.style.display='none';
+            // Insert warning banner
+            const warn=document.createElement('div');
+            warn.style.cssText='margin-top:10px;padding:9px 12px;border-radius:8px;background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.35);color:var(--accent-red,#ef4444);font-size:0.8em;font-weight:600;';
+            warn.textContent='⚠ Changes to readings or distances will recalculate the full loop and log an edit timestamp in remarks.';
+            unlockBtn.parentElement.appendChild(warn);
+            // Build and insert editable fields
+            const mfc=document.getElementById('modalFieldsContainer');
+            const editFields=[];
+            if(rte.type==='BM'){
+                editFields.push({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editElevation',name:'elevation',label:`Known Elevation (${u}):`,type:'number',step:'0.001',value:rte.elevation});
+            } else if(rte.type==='SETUP_BS'){
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editBs',name:'bs',label:`BS Reading (${u}):`,type:'number',step:'0.001',value:rte.bs});
+                editFields.push({id:'editBsDist',name:'bsDist',label:`BS Distance (${u}):`,type:'number',step:'0.001',value:rte.bsDist});
+            } else if(rte.type==='IP'){
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editDiNiLL',name:'isDiNiLineLeveling',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:!!rte.isDiNiLineLeveling});
+                editFields.push({id:'editIfs',name:'ifs',label:rte.isDiNiLineLeveling?`Delta Reading (${u}):`:`IFS Reading (${u}):`,type:'number',step:'0.001',value:rte.ifs});
+                editFields.push({id:'editIfsDist',name:'ifsDist',label:`IFS Distance (${u}):`,type:'number',step:'0.001',value:rte.ifsDist});
+            } else {
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editFs',name:'fs',label:`FS Reading (${u}):`,type:'number',step:'0.001',value:rte.fs});
+                editFields.push({id:'editFsDist',name:'fsDist',label:`FS Distance (${u}):`,type:'number',step:'0.001',value:rte.fsDist});
+            }
+            editFields.forEach(f=>{const el=createFieldElement(f);el.style.marginTop='8px';mfc.appendChild(el);});
+            // Focus first new input
+            const first=mfc.querySelector('input:not([type="hidden"]):not([type="checkbox"]):not([disabled])');
+            if(first){first.focus();first.select();}
+        });
+    });
 }
 function handleEditSubmit(data){
-    const rid=editingRowIdInput.value;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return false;const er=levelRows[ri];const ovs=er.isVoid;const nvs=!!data.isVoid;let vsc=er.type!=='BM'&&ovs!==nvs;er.remarks=data.remarks||'';
-    if(er.type==='BM'){
-        if(er.pointName!==data.pointName){levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`BS on ${er.pointName}`))r.remarks=r.remarks.replace(`BS on ${er.pointName}`,`BS on ${data.pointName}`);if(r.prevPointNameForM5===er.pointName)r.prevPointNameForM5=data.pointName;});if(lastPointNameForBS===er.pointName)lastPointNameForBS=data.pointName;}
+    const rid=editingRowIdInput.value;const ri=levelRows.findIndex(r=>r.id===rid);if(ri===-1)return false;const er=levelRows[ri];
+    const ovs=er.isVoid;const nvs=!!data.isVoid;let vsc=er.type!=='BM'&&ovs!==nvs;
+    let dataChanged=false; // track if any reading/distance changed (for timestamp)
+
+    // --- Point name changes ---
+    if(data.pointName!==undefined&&data.pointName!==er.pointName){
+        const oldName=er.pointName;
+        if(er.type==='BM'){levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`BS on ${oldName}`))r.remarks=r.remarks.replace(`BS on ${oldName}`,`BS on ${data.pointName}`);if(r.prevPointNameForM5===oldName)r.prevPointNameForM5=data.pointName;});if(lastPointNameForBS===oldName)lastPointNameForBS=data.pointName;}
+        else if(er.type==='SETUP_BS'||er.type==='TP_FS'||er.type==='CLOSING_FS'){levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`via ${oldName}`))r.remarks=r.remarks.replace(`via ${oldName}`,`via ${data.pointName}`);if(r.remarks&&r.remarks.includes(`FS for ${oldName}`))r.remarks=r.remarks.replace(`FS for ${oldName}`,`FS for ${data.pointName}`);});if(lastPointNameForBS===oldName)lastPointNameForBS=data.pointName;if(activeSetupData&&activeSetupData.setupTPName===oldName)activeSetupData.setupTPName=data.pointName;}
         er.pointName=data.pointName;
-        if(parseFloat(er.elevation)!==data.elevation){alert("BM elevation changed. Recalculating...");er.elevation=data.elevation;recalculateChainFromRow(ri);updateLastValidPointForLiveCalcs();
-            const lv=levelRows.filter(r=>!r.isVoid).pop();if(lv&&lv.type==='CLOSING_FS'){const ob=levelRows.find(r=>r.type==='BM'&&r.pointName===lv.pointName&&!r.isVoid);if(ob){const nm=lv.elevation-ob.elevation;misclosureValue.textContent=`${formatNumber(nm)} (Calc: ${formatNumber(lv.elevation)}, Known: ${formatNumber(ob.elevation)})`;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');}else misclosureDisplay.classList.add('hidden');}
-    } else if(data.pointName!==undefined&&data.pointName!==er.pointName){
-        // Non-BM point name change
-        const oldName=er.pointName;er.pointName=data.pointName;
-        // Update references if it's a TP/setup
-        if(er.type==='SETUP_BS'||er.type==='TP_FS'||er.type==='CLOSING_FS'){
-            levelRows.forEach(r=>{if(r.remarks&&r.remarks.includes(`via ${oldName}`))r.remarks=r.remarks.replace(`via ${oldName}`,`via ${data.pointName}`);if(r.remarks&&r.remarks.includes(`FS for ${oldName}`))r.remarks=r.remarks.replace(`FS for ${oldName}`,`FS for ${data.pointName}`);});
-            if(lastPointNameForBS===oldName)lastPointNameForBS=data.pointName;
-            if(activeSetupData&&activeSetupData.setupTPName===oldName)activeSetupData.setupTPName=data.pointName;
-        }
     } else if(data.pointName!==undefined){er.pointName=data.pointName;}
-    // Handle DiNi Line Leveling toggle for IPs
-    if(er.type==='IP'&&data.isDiNiLineLeveling!==undefined){
+
+    // --- BM elevation ---
+    if(er.type==='BM'&&data.elevation!==undefined&&parseFloat(data.elevation)!==parseFloat(er.elevation)){
+        // Handled below after confirm
+    }
+
+    // --- Capture changes with old→new values ---
+    const editChanges=[];
+    // --- BS reading / distance ---
+    if(er.type==='SETUP_BS'){
+        if(data.bs!==undefined&&!isNaN(parseFloat(data.bs))&&parseFloat(data.bs)!==parseFloat(er.bs)){editChanges.push({field:'BS Reading',oldValue:formatNumber(er.bs),newValue:formatNumber(parseFloat(data.bs))});er.bs=parseFloat(data.bs);dataChanged=true;}
+        if(data.bsDist!==undefined&&!isNaN(parseFloat(data.bsDist))&&parseFloat(data.bsDist)!==parseFloat(er.bsDist)){editChanges.push({field:'BS Distance',oldValue:formatDist(er.bsDist),newValue:formatDist(parseFloat(data.bsDist))});er.bsDist=parseFloat(data.bsDist);dataChanged=true;}
+    }
+    // --- IP reading / distance / DiNi toggle ---
+    if(er.type==='IP'){
         const newDiNi=!!data.isDiNiLineLeveling;
-        if(newDiNi!==er.isDiNiLineLeveling){
-            er.isDiNiLineLeveling=newDiNi;
-            // Recalculate elevation: find the BS point for this IP's setup
-            const bsRow=[...levelRows].slice(0,ri).reverse().find(r=>!r.isVoid&&r.type==='SETUP_BS');
-            if(bsRow){
-                const bsPtName=(bsRow.remarks.match(/BS on (.*)/)||[])[1];
-                const bsPt=levelRows.find(r=>!r.isVoid&&r.pointName===bsPtName&&(r.type==='BM'||r.type==='TP_FS'));
-                if(newDiNi&&bsPt){
-                    er.elevation=bsPt.elevation+parseFloat(er.ifs);
-                    er.diNiRodReading=bsRow.hi-er.elevation;
-                    er.remarks=er.remarks.replace(/\s*\[Rod:[^\]]*\]/,'')+` [Rod: ${formatNumber(er.diNiRodReading)}]`;
-                }else if(!newDiNi){
-                    er.elevation=bsRow.hi-parseFloat(er.ifs);
-                    er.diNiRodReading=null;
-                    er.remarks=er.remarks.replace(/\s*\[Rod:[^\]]*\]/,'');
-                }
-            }
+        if(data.ifs!==undefined&&!isNaN(parseFloat(data.ifs))&&parseFloat(data.ifs)!==parseFloat(er.ifs)){editChanges.push({field:'IFS Reading',oldValue:formatNumber(er.ifs),newValue:formatNumber(parseFloat(data.ifs))});er.ifs=parseFloat(data.ifs);dataChanged=true;}
+        if(data.ifsDist!==undefined&&!isNaN(parseFloat(data.ifsDist))&&parseFloat(data.ifsDist)!==parseFloat(er.ifsDist)){editChanges.push({field:'IFS Distance',oldValue:formatDist(er.ifsDist),newValue:formatDist(parseFloat(data.ifsDist))});er.ifsDist=parseFloat(data.ifsDist);dataChanged=true;}
+        if(newDiNi!==er.isDiNiLineLeveling){editChanges.push({field:'DiNi LL',oldValue:String(er.isDiNiLineLeveling),newValue:String(newDiNi)});er.isDiNiLineLeveling=newDiNi;dataChanged=true;}
+        // Update DiNi rod reading annotation
+        const bsRow=[...levelRows].slice(0,ri).reverse().find(r=>!r.isVoid&&r.type==='SETUP_BS');
+        if(bsRow){
+            const bsPtName=(bsRow.remarks.match(/BS on (.*)/)||[])[1];
+            const bsPt=levelRows.find(r=>!r.isVoid&&r.pointName===bsPtName&&(r.type==='BM'||r.type==='TP_FS'));
+            if(er.isDiNiLineLeveling&&bsPt){er.elevation=bsPt.elevation+parseFloat(er.ifs);er.diNiRodReading=bsRow.hi-er.elevation;}
+            else if(!er.isDiNiLineLeveling){er.elevation=bsRow.hi-parseFloat(er.ifs);er.diNiRodReading=null;}
         }
     }
-    if(vsc){er.isVoid=nvs;applyVoidChangeSideEffects(er);}renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;
+    // --- FS reading / distance ---
+    if(er.type==='TP_FS'||er.type==='CLOSING_FS'){
+        if(data.fs!==undefined&&!isNaN(parseFloat(data.fs))&&parseFloat(data.fs)!==parseFloat(er.fs)){editChanges.push({field:'FS Reading',oldValue:formatNumber(er.fs),newValue:formatNumber(parseFloat(data.fs))});er.fs=parseFloat(data.fs);dataChanged=true;}
+        if(data.fsDist!==undefined&&!isNaN(parseFloat(data.fsDist))&&parseFloat(data.fsDist)!==parseFloat(er.fsDist)){editChanges.push({field:'FS Distance',oldValue:formatDist(er.fsDist),newValue:formatDist(parseFloat(data.fsDist))});er.fsDist=parseFloat(data.fsDist);dataChanged=true;}
+    }
+
+    // --- BM elevation change: confirm then apply ---
+    let bmElevChanged=false;
+    if(er.type==='BM'&&data.elevation!==undefined&&parseFloat(data.elevation)!==parseFloat(er.elevation)){
+        if(!confirm('Changing the BM elevation will recalculate all downstream elevations. Proceed?')){renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;}
+        editChanges.push({field:'Elevation',oldValue:formatNumber(er.elevation),newValue:formatNumber(parseFloat(data.elevation))});
+        er.elevation=parseFloat(data.elevation);
+        bmElevChanged=true;
+        dataChanged=true;
+    }
+
+    // --- Log changes to editLog and append timestamp to remarks ---
+    if(dataChanged){
+        if(!er.editLog)er.editLog=[];
+        er.editLog.push({timestamp:editTimestamp().replace(/[\[\]]/g,''),changes:editChanges});
+    }
+
+    // --- Remarks: set base then append edit timestamp if data changed ---
+    const baseRemarks=data.remarks||'';
+    er.remarks=er.isDiNiLineLeveling&&er.diNiRodReading!=null
+        ? baseRemarks.replace(/\s*\[Rod:[^\]]*\]/,'')+` [Rod: ${formatNumber(er.diNiRodReading)}]`
+        : baseRemarks;
+    if(dataChanged) er.remarks=er.remarks.trimEnd()+' '+editTimestamp();
+
+    if(bmElevChanged||dataChanged) recalculateFullLoop();
+
+    if(vsc){er.isVoid=nvs;applyVoidChangeSideEffects(er);}
+    renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;
 }
 
 function recalculateChainFromRow(si){
@@ -705,12 +982,24 @@ function recalculateChainFromRow(si){
             if(ppe!==null&&r.bs!=null&&!isNaN(parseFloat(r.bs))){r.hi=ppe+parseFloat(r.bs);cvhi=r.hi;const cf=levelRows.find(f=>!f.isVoid&&(f.type==='TP_FS'||f.type==='CLOSING_FS')&&f.pointName===r.pointName&&f.prevPointNameForM5===bsn);if(cf){cf.hiFromBSForM5=r.hi;cf.bsOnPrevForM5=r.bs;}}else cvhi=null;
         }else if(r.type==='IP'&&cvhi!==null){
             if(r.isDiNiLineLeveling){
-                // DiNi: elevation = BS point elevation + delta
                 const bsn2=levelRows.slice(0,i).reverse().find(p=>!p.isVoid&&p.type==='SETUP_BS');
                 if(bsn2){const bsPtName=bsn2.remarks.match(/BS on (.*)/)?.[1];const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null){r.elevation=bsPt.elevation+parseFloat(r.ifs);r.diNiRodReading=cvhi-r.elevation;}}
             }else if(r.ifs!=null&&!isNaN(parseFloat(r.ifs))){r.elevation=cvhi-parseFloat(r.ifs);}
             r.hi=cvhi;
         }else if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&cvhi!==null){if(r.fs!=null&&!isNaN(parseFloat(r.fs))){r.elevation=cvhi-parseFloat(r.fs);r.hi=cvhi;cve=r.elevation;lkgepn=r.pointName;r.hiFromBSForM5=cvhi;r.elevOfThis=r.elevation;if(r.type==='CLOSING_FS'){cve=null;lkgepn=null;}cvhi=null;}}
+    }
+}
+// Recalculate the full loop from the first BM — used after any reading/distance edit
+function recalculateFullLoop(){
+    const bmIdx=levelRows.findIndex(r=>r.type==='BM'&&!r.isVoid);
+    if(bmIdx===-1)return;
+    recalculateChainFromRow(bmIdx);
+    // Update misclosure if loop is closed
+    updateLastValidPointForLiveCalcs();
+    const lv=levelRows.filter(r=>!r.isVoid).pop();
+    if(lv&&lv.type==='CLOSING_FS'){
+        const ob=levelRows.find(r=>r.type==='BM'&&!r.isVoid);
+        if(ob){const nm=lv.elevation-ob.elevation;misclosureValue.textContent=`${formatNumber(nm)} (Calc: ${formatNumber(lv.elevation)}, Known: ${formatNumber(ob.elevation)})`;misclosureDisplay.classList.remove('hidden');}
     }
 }
 
@@ -725,15 +1014,42 @@ function toggleDistanceFields(mfc,method,prefix){
 function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();return true;});}
 addBMButton.onclick=handleAddBM;addBMButtonMobile.onclick=handleAddBM;addBMButtonPinned.onclick=handleAddBM;
 
-function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculatedElevation){alert("No valid previous point.");updateButtonStates();return;}tpCounter++;const tpn=`TP${tpCounter}`;
-    showModal(`Setup ${tpn}`,[{id:'bsReading',name:'bsReading',label:`BS on ${lastPointNameForBS} (${formatNumber(lastCalculatedElevation)} ${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDist',name:'bsDist',label:`BS Distance (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDistMethod',name:'bsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'bs')},{id:'bsUpperWire',name:'bsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'bsMiddleWire',name:'bsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'bsLowerWire',name:'bsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
-    let fbr,fbd;if(data.bsDistMethod==='threeWire'){if(isNaN(data.bsUpperWire)||isNaN(data.bsMiddleWire)||isNaN(data.bsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.bsUpperWire>data.bsMiddleWire&&data.bsMiddleWire>data.bsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.bsUpperWire-data.bsMiddleWire,i2=data.bsMiddleWire-data.bsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals (${i1.toFixed(3)},${i2.toFixed(3)}) differ. OK?`))return false;fbr=(data.bsUpperWire+data.bsMiddleWire+data.bsLowerWire)/3;fbd=(data.bsUpperWire-data.bsLowerWire)*STADIA_FACTOR;}else{fbr=data.bsReading;fbd=data.bsDist;if(isNaN(fbr)||isNaN(fbd)){alert("Valid BS required.");tpCounter--;return false;}}
-    currentHI=lastCalculatedElevation+fbr;const brid=`bs-${Date.now()}`;levelRows.push({id:brid,pointName:tpn,bs:fbr,hi:currentHI,bsDist:fbd,fsDist:null,remarks:`BS on ${lastPointNameForBS}`,type:'SETUP_BS',pointStadia:null,isVoid:false,isDiNiLineLeveling:false});
-    activeSetupData={bsReading:fbr,bsDist:fbd,hi:currentHI,prevPointName:lastPointNameForBS,prevPointElevation:lastCalculatedElevation,setupTPName:tpn,ips:[],bsRowId:brid};renderTable();saveStateToLocalStorage();return true;},(mfc)=>toggleDistanceFields(mfc,'direct','bs'));}
+function editTimestamp(){
+    const n=new Date();
+    const mo=String(n.getMonth()+1).padStart(2,'0');
+    const d=String(n.getDate()).padStart(2,'0');
+    const y=String(n.getFullYear()).slice(2);
+    const h=String(n.getHours()).padStart(2,'0');
+    const mi=String(n.getMinutes()).padStart(2,'0');
+    return `[Edited ${mo}/${d}/${y} ${h}:${mi}]`;
+}
+function generateUniqueTPName(tpNum){
+    const now=new Date();
+    const mo=String(now.getMonth()+1).padStart(2,'0');
+    const d=String(now.getDate()).padStart(2,'0');
+    const y=String(now.getFullYear()).slice(2);
+    const h=String(now.getHours()).padStart(2,'0');
+    const mi=String(now.getMinutes()).padStart(2,'0');
+    return `TP${tpNum}_${mo}${d}${y}${h}${mi}`;
+}
+function handleStartSetup(){updateLastValidPointForLiveCalcs();if(!lastCalculatedElevation){alert("No valid previous point.");updateButtonStates();return;}
+    // tpCounter incremented inside submit only — prevents skipping numbers on cancel
+    const nextTPNum=tpCounter+1;const defaultTpn=`TP${nextTPNum}`;
+    showModal(`New Setup`,[{id:'bsReading',name:'bsReading',label:`BS on ${lastPointNameForBS} (${formatNumber(lastCalculatedElevation)} ${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDist',name:'bsDist',label:`BS Distance (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'bsDistMethod',name:'bsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'bs')},{id:'bsUpperWire',name:'bsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'bsMiddleWire',name:'bsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'bsLowerWire',name:'bsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
+    let fbr,fbd;if(data.bsDistMethod==='threeWire'){if(isNaN(data.bsUpperWire)||isNaN(data.bsMiddleWire)||isNaN(data.bsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.bsUpperWire>data.bsMiddleWire&&data.bsMiddleWire>data.bsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.bsUpperWire-data.bsMiddleWire,i2=data.bsMiddleWire-data.bsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals (${i1.toFixed(3)},${i2.toFixed(3)}) differ. OK?`))return false;fbr=(data.bsUpperWire+data.bsMiddleWire+data.bsLowerWire)/3;fbd=(data.bsUpperWire-data.bsLowerWire)*STADIA_FACTOR;}else{fbr=data.bsReading;fbd=data.bsDist;if(isNaN(fbr)||isNaN(fbd)){alert("Valid BS required.");return false;}}
+    tpCounter=nextTPNum;
+    // BS point name comes from the previous FS/BM — not user-entered
+    const tpn=lastPointNameForBS;
+    currentHI=lastCalculatedElevation+fbr;const brid=`bs-${Date.now()}`;levelRows.push({id:brid,pointName:defaultTpn,bs:fbr,hi:currentHI,bsDist:fbd,fsDist:null,remarks:`BS on ${lastPointNameForBS}`,type:'SETUP_BS',pointStadia:null,isVoid:false,isDiNiLineLeveling:false});
+    activeSetupData={bsReading:fbr,bsDist:fbd,hi:currentHI,prevPointName:lastPointNameForBS,prevPointElevation:lastCalculatedElevation,setupTPName:defaultTpn,bsPtName:tpn,ips:[],bsRowId:brid};renderTable();saveStateToLocalStorage();return true;},(mfc)=>toggleDistanceFields(mfc,'direct','bs'));}
 startSetupButton.onclick=handleStartSetup;startSetupButtonMobile.onclick=handleStartSetup;startSetupButtonPinned.onclick=handleStartSetup;
 
 function handleAddIP(){if(!activeSetupData)return;
-    showModal('Add IP',[{id:'ipName',name:'ipName',label:'IP Name:',type:'text',placeholder:'e.g., MH-1',required:true},{id:'ipCode',name:'ipCode',label:'Code (CSV):',type:'text',placeholder:'e.g., INV EL',required:false},{id:'isDiNiLL',name:'isDiNiLL',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:lastDiNiLL},{id:'ifsReading',name:'ifsReading',label:`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'ifsDist',name:'ifsDist',label:`IFS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'ifsDistMethod',name:'ifsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'ifs')},{id:'ifsUpperWire',name:'ifsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'ifsMiddleWire',name:'ifsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'ifsLowerWire',name:'ifsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
+    // Build last IP banner
+    const lastIPs=levelRows.filter(r=>r.type==='IP'&&!r.isVoid&&activeSetupData.ips.some(ip=>ip.id===r.id));
+    const lastIP=lastIPs.length>0?lastIPs[lastIPs.length-1]:null;
+    const lastIPBannerText=lastIP?`Last IP — ${lastIP.pointName}: ${formatNumber(lastIP.elevation)} ${projectDetails.units||'ft'}`:'No IPs recorded yet for this setup.';
+    showModal('Add IP',[{id:'lastIPBanner',name:'lastIPBanner',label:'',type:'info',text:lastIPBannerText},{id:'ipName',name:'ipName',label:'IP Name:',type:'text',placeholder:'e.g., MH-1',required:true},{id:'ipCode',name:'ipCode',label:'Code (CSV):',type:'text',placeholder:'e.g., INV EL',required:false},{id:'isDiNiLL',name:'isDiNiLL',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:lastDiNiLL},{id:'ifsReading',name:'ifsReading',label:`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'ifsDist',name:'ifsDist',label:`IFS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'ifsDistMethod',name:'ifsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'ifs')},{id:'ifsUpperWire',name:'ifsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'ifsMiddleWire',name:'ifsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'ifsLowerWire',name:'ifsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false}],(data)=>{
     let fir=data.ifsReading,fid=data.ifsDist;const isDiNi=!!data.isDiNiLL;lastDiNiLL=isDiNi;
     if(data.ifsDistMethod==='threeWire'){if(isNaN(data.ifsUpperWire)||isNaN(data.ifsMiddleWire)||isNaN(data.ifsLowerWire)){alert("Valid three-wire required.");return false;}if(!(data.ifsUpperWire>data.ifsMiddleWire&&data.ifsMiddleWire>data.ifsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.ifsUpperWire-data.ifsMiddleWire,i2=data.ifsMiddleWire-data.ifsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;fir=(data.ifsUpperWire+data.ifsMiddleWire+data.ifsLowerWire)/3;fid=(data.ifsUpperWire-data.ifsLowerWire)*STADIA_FACTOR;}else{if(isNaN(fir)||isNaN(fid)||!data.ipName){alert("Valid IP data required.");return false;}}
     let ie;
@@ -753,11 +1069,15 @@ function handleAddIP(){if(!activeSetupData)return;
 addIPButton.onclick=handleAddIP;addIPButtonMobile.onclick=handleAddIP;addIPButtonPinned.onclick=handleAddIP;
 
 function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.setupTPName;
-    showModal('Add FS / Close',[{id:'fsReading',name:'fsReading',label:`FS for ${dfpn} (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'fsDist',name:'fsDist',label:`FS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'fsDistMethod',name:'fsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'fs')},{id:'fsUpperWire',name:'fsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'fsMiddleWire',name:'fsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'fsLowerWire',name:'fsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false},{id:'isClosing',name:'isClosing',label:'',type:'checkbox',checkboxLabel:'Closing shot to known BM',dependentFields:[{id:'closingPointName',name:'closingPointName',label:'Closing BM Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'closingPointKnownElev',name:'closingPointKnownElev',label:`Known Elev (${projectDetails.units}):`,type:'number',step:'0.001',required:true}]}],(data)=>{
+    showModal('Add FS / Close',[{id:'tpName',name:'tpName',label:'Turning Point Name:',type:'text',placeholder:`e.g., ${dfpn} or existing point name`,value:dfpn,required:true},{id:'fsReading',name:'fsReading',label:`FS (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'fsDist',name:'fsDist',label:`FS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'fsDistMethod',name:'fsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'fs')},{id:'fsUpperWire',name:'fsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'fsMiddleWire',name:'fsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'fsLowerWire',name:'fsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false},{id:'isClosing',name:'isClosing',label:'',type:'checkbox',checkboxLabel:'Closing shot to known BM',dependentFields:[{id:'closingPointName',name:'closingPointName',label:'Closing BM Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'closingPointKnownElev',name:'closingPointKnownElev',label:`Known Elev (${projectDetails.units}):`,type:'number',step:'0.001',required:true}]}],(data)=>{
     let ffr=data.fsReading,ffd=data.fsDist;if(data.fsDistMethod==='threeWire'){if(isNaN(data.fsUpperWire)||isNaN(data.fsMiddleWire)||isNaN(data.fsLowerWire)){alert("Valid three-wire.");return false;}if(!(data.fsUpperWire>data.fsMiddleWire&&data.fsMiddleWire>data.fsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.fsUpperWire-data.fsMiddleWire,i2=data.fsMiddleWire-data.fsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;ffr=(data.fsUpperWire+data.fsMiddleWire+data.fsLowerWire)/3;ffd=(data.fsUpperWire-data.fsLowerWire)*STADIA_FACTOR;}else{if(isNaN(ffr)||isNaN(ffd)){alert("Valid FS required.");return false;}}
     if(data.isClosing&&(!data.closingPointName||isNaN(data.closingPointKnownElev))){alert("Enter closing BM info.");return false;}
-    const tpn=data.isClosing?data.closingPointName:dfpn;const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
-    levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
+    const tpn=data.isClosing?data.closingPointName:((data.tpName||'').trim()||dfpn);
+    // uniqueTPName: custom names used as-is for TBC; default TP# names get a timestamp for uniqueness
+    const isDefaultFSName=/^TP\d+$/.test(tpn);
+    const fsTBCName=data.isClosing?tpn:(isDefaultFSName?generateUniqueTPName(tpCounter):tpn);
+    const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
+    levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
     if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
     activeSetupData=null;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
     // Auto-fill closing BM from starting BM
@@ -778,17 +1098,49 @@ addFSButton.onclick=handleAddFS;addFSButtonMobile.onclick=handleAddFS;addFSButto
 deleteLastIPButton.onclick=()=>{if(activeSetupData&&activeSetupData.ips.length>0)showConfirmModal('Delete Last IP','Delete last IP?',()=>{const r=activeSetupData.ips.pop();levelRows=levelRows.filter(x=>x.id!==r.id);renderTable();saveStateToLocalStorage();});};
 cancelSetupButton.onclick=()=>{if(activeSetupData)showConfirmModal('Cancel Setup','Remove BS and IPs from this setup?',()=>{const ids=[activeSetupData.bsRowId];if(activeSetupData.ips)activeSetupData.ips.forEach(ip=>ids.push(ip.id));levelRows=levelRows.filter(r=>!ids.includes(r.id));tpCounter--;activeSetupData=null;currentHI=null;updateLastValidPointForLiveCalcs();misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});};
 deleteLastSetupButton.onclick=()=>{const vrr=levelRows.filter(r=>!r.isVoid).reverse();const lvf=vrr.find(r=>r.type==='TP_FS'||r.type==='CLOSING_FS');if(lvf){showConfirmModal('Delete Last Setup',`Delete setup for ${lvf.pointName}?`,()=>{let ids=[lvf.id];const cb=levelRows.find(lr=>lr.type==='SETUP_BS'&&lr.pointName===lvf.pointName&&Math.abs(lr.bs-lvf.bsOnPrevForM5)<0.0001&&Math.abs(lr.bsDist-lvf.bsDistForM5)<0.0001&&lr.remarks.includes(lvf.prevPointNameForM5)&&!lr.isVoid);if(cb){ids.push(cb.id);levelRows.forEach(lr=>{if(lr.type==='IP'&&lr.remarks.includes(`via ${cb.pointName}`)&&!lr.isVoid&&lr.hi===cb.hi)ids.push(lr.id);});}levelRows=levelRows.filter(r=>!ids.includes(r.id));updateLastValidPointForLiveCalcs();tpCounter=levelRows.filter(r=>!r.isVoid&&(r.type==='TP_FS'||(r.type==='SETUP_BS'&&r.pointName.startsWith('TP')))).reduce((m,r)=>{const mt=r.pointName.match(/^TP(\d+)$/);return mt?Math.max(m,parseInt(mt[1])):m;},0);misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});}else{const lb=vrr.find(r=>r.type==='BM');if(lb&&vrr.length===1)showConfirmModal('Delete BM','Delete starting BM?',()=>{levelRows=levelRows.filter(r=>r.id!==lb.id);updateLastValidPointForLiveCalcs();tpCounter=0;misclosureDisplay.classList.add('hidden');renderTable();saveStateToLocalStorage();});else alert("No completed setup to delete.");}};
-clearAllButton.onclick=()=>{showConfirmModal('Clear All','Erase everything? Cannot be undone.',()=>{projectDetails={units:'ft'};levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;document.getElementById('date').valueAsDate=new Date();['projectNumber','description','operator','recorder','instrument'].forEach(id=>document.getElementById(id).value='');rodTypeSelect.value='Philly Rod';rodTypeOtherInput.classList.add('hidden');rodTypeOtherInput.value='';misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';renderTable();saveStateToLocalStorage();});};
+clearAllButton.onclick=()=>{
+    // Custom two-button confirm: Yes = clear everything, No = keep project info
+    confirmModalTitle.textContent='Clear All Leveling Data';
+    confirmModalMessage.textContent='Also clear project information (operator, instrument, etc.)?';
+    confirmModalConfirm.textContent='Yes — Clear Everything';
+    confirmModalConfirm.onclick=()=>{
+        // Clear everything including project info
+        projectDetails={units:'ft'};levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;
+        document.getElementById('date').valueAsDate=new Date();
+        ['projectNumber','description','operator','recorder','instrument'].forEach(id=>document.getElementById(id).value='');
+        rodTypeSelect.value='Philly Rod';rodTypeOtherInput.classList.add('hidden');rodTypeOtherInput.value='';
+        misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';
+        confirmModal.classList.add('hidden');renderTable();saveStateToLocalStorage();
+    };
+    confirmModalCancel.textContent='No — Keep Project Info';
+    confirmModalCancel.onclick=()=>{
+        // Keep project info, only clear description (loop name) and leveling data
+        const savedDetails={...projectDetails};
+        levelRows=[];tpCounter=0;currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;activeSetupData=null;
+        projectDetails={...savedDetails,description:''};
+        document.getElementById('description').value='';
+        misclosureDisplay.classList.add('hidden');misclosureValue.textContent='';accuracyDetail.style.display='none';
+        confirmModal.classList.add('hidden');renderTable();saveStateToLocalStorage();
+    };
+    confirmModal.classList.remove('hidden');
+};
 
 // CSV Exports
 exportLevelingDataCSVButton.onclick=()=>{
     updateProjectDetails();if(levelRows.length===0){alert("No data.");return;}const rn=projectDetails.description||"DefaultRun";let csv=[];csv.push("Point ID,Enabled,Measurement,Measurement Code,Elevation,Horizontal Distance,Description,Error mm/km,Error per Turn,RunName,Runcode");
     const vr=levelRows.filter(r=>!r.isVoid);if(vr.length===0){alert("No valid data.");return;}let fbmp=false;
+    // Build lookup: display TP name → uniqueTPName (for BS point references)
+    const tpUniqueMap={};vr.forEach(r=>{if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.uniqueTPName)tpUniqueMap[r.pointName]=r.uniqueTPName;if(r.type==='BM')tpUniqueMap[r.pointName]=r.pointName;});
+    const getTBCPid=(row)=>{
+        if(row.type==='TP_FS'||row.type==='CLOSING_FS') return row.uniqueTPName||row.pointName;
+        if(row.type==='SETUP_BS'){const bsOn=row.remarks.match(/BS on (.*)/)?.[1]||row.pointName;return tpUniqueMap[bsOn]||bsOn;}
+        return row.pointName||'';
+    };
     vr.forEach((row,idx)=>{let cr=[],skip=false,pid=row.pointName||'',en='Y',meas='',mc='',el='',hd='',desc='',rc='';
-    if(row.type==='BM'&&!fbmp){const fbs=vr.find(r=>r.type==='SETUP_BS'&&r.remarks.includes(`BS on ${row.pointName}`)&&!r.isVoid);if(fbs){pid=row.pointName;meas=formatNumber(fbs.bs);mc='BS';el=formatNumber(row.elevation);hd=formatDist(fbs.bsDist);desc=row.pointCode||'';rc='ST';fbmp=true;const bi=vr.indexOf(fbs);if(bi>-1)vr[bi]._cp=true;}else{pid=row.pointName;mc='BM_INFO';el=formatNumber(row.elevation);desc=row.pointCode||'';if(idx===0)rc='ST';}}
-    else if(row.type==='SETUP_BS'&&!row._cp){pid=row.remarks.match(/BS on (.*)/)?.[1]||row.pointName;meas=formatNumber(row.bs);mc='BS';hd=formatDist(row.bsDist);if(idx===0&&vr[0].type!=='BM')rc='ST';}
+    if(row.type==='BM'&&!fbmp){const fbs=vr.find(r=>r.type==='SETUP_BS'&&r.remarks.includes(`BS on ${row.pointName}`)&&!r.isVoid);if(fbs){pid=getTBCPid(fbs);meas=formatNumber(fbs.bs);mc='BS';el=formatNumber(row.elevation);hd=formatDist(fbs.bsDist);desc=row.pointCode||'';rc='ST';fbmp=true;const bi=vr.indexOf(fbs);if(bi>-1)vr[bi]._cp=true;}else{pid=row.pointName;mc='BM_INFO';el=formatNumber(row.elevation);desc=row.pointCode||'';if(idx===0)rc='ST';}}
+    else if(row.type==='SETUP_BS'&&!row._cp){pid=getTBCPid(row);meas=formatNumber(row.bs);mc='BS';hd=formatDist(row.bsDist);if(idx===0&&vr[0].type!=='BM')rc='ST';}
     else if(row.type==='IP'){pid=row.pointName;meas=row.isDiNiLineLeveling&&row.diNiRodReading!=null?formatNumber(row.diNiRodReading):formatNumber(row.ifs);mc='SS';hd=formatDist(row.ifsDist);desc=row.pointCode||'';}
-    else if(row.type==='TP_FS'||row.type==='CLOSING_FS'){pid=row.pointName;meas=formatNumber(row.fs);mc='FS';hd=formatDist(row.fsDist);if(vr.indexOf(row)===vr.length-1)rc='END';}
+    else if(row.type==='TP_FS'||row.type==='CLOSING_FS'){pid=getTBCPid(row);meas=formatNumber(row.fs);mc='FS';hd=formatDist(row.fsDist);if(vr.indexOf(row)===vr.length-1)rc='END';}
     else if(row._cp){skip=true;}else return;
     if(!skip){cr.push(pid,en,meas,mc,el,hd,desc,'','',rn,rc);csv.push(cr.map(v=>String(v==null?'':v).replace(/"/g,'""')).join(','));}});
     vr.forEach(r=>delete r._cp);
@@ -801,7 +1153,7 @@ exportTableCSVButton.onclick=()=>{
     updateProjectDetails();if(levelRows.length===0){alert("No data.");return;}let csv="Project Information\r\n";
     Object.entries(projectDetails).forEach(([k,v])=>{csv+=`"${k.replace(/([A-Z])/g,' $1').replace(/^./,s=>s.toUpperCase())}","${String(v||'').replace(/"/g,'""')}"\r\n`;});
     csv+="\r\nLeveling Data\r\n";csv+='"Station","BS","HI","FS/IFS","Elevation","BS Dist","FS/IFS Dist","Point Stadia","Total Stadia","Remarks","Status"\r\n';
-    let cts=0;levelRows.forEach(row=>{let dr=(row.remarks||'').replace(/<span[^>]*>\[VOID\]<\/span>/g,'').replace(/\[VOID\]/g,'');let st=row.isVoid?'VOID':'Valid';if(row.isVoid)dr+=' [VOID]';if(row.isDiNiLineLeveling)dr+=' [DiNi LL]';const psv=calculatePointStadia(row);let tsc='',hfc='';
+    let cts=0;levelRows.forEach(row=>{let dr=(row.remarks||'').replace(/<span[^>]*>\[VOID\]<\/span>/g,'').replace(/\[VOID\]/g,'');let st=row.isVoid?'VOID':'Valid';if(row.isVoid)dr+=' [VOID]';if(row.isDiNiLineLeveling)dr+=' [DiNi LL]';if(row.editLog&&row.editLog.length>0){dr+=' | EDITS: '+row.editLog.map(e=>e.timestamp+': '+e.changes.map(c=>c.field+' '+c.oldValue+'->'+c.newValue).join(', ')).join(' | ');}const psv=calculatePointStadia(row);let tsc='',hfc='';
     if(row.type==='SETUP_BS'&&!row.isVoid)hfc=formatNumber(row.hi);if(!row.isVoid&&psv!==null){cts+=psv;tsc=formatPointStadia(cts);}
     csv+=[row.pointName||'',formatNumber(row.bs),hfc,formatNumber(row.fs??row.ifs),formatNumber(row.elevation),formatDist(row.bsDist),formatDist(row.fsDist??row.ifsDist),formatPointStadia(psv),tsc,dr.replace(/"/g,'""'),st].map(v=>String(v==null?'':v).replace(/"/g,'""')).join(',')+"\r\n";});
     const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const link=document.createElement("a");const df=new Date(projectDetails.date||Date.now());const dfs=`${df.getFullYear()}${(df.getMonth()+1).toString().padStart(2,'0')}${df.getDate().toString().padStart(2,'0')}`;
@@ -821,7 +1173,8 @@ printViewButton.onclick=()=>{
     let ctsp=0;levelRows.forEach(row=>{let dr=(row.remarks||'').replace(/\s*<span[^>]*>\[VOID\]<\/span>$/,'').replace(/\s*\[VOID\]$/,'');let psf='',tsf='',hfp='';
     if(row.isVoid)dr+=`<span class="void-remark-print">[VOID]</span>`;if(row.isDiNiLineLeveling)dr+=' [DiNi LL]';if(row.type==='SETUP_BS'&&!row.isVoid)hfp=formatNumber(row.hi);
     const psv=calculatePointStadia(row);psf=formatPointStadia(psv);if(!row.isVoid&&psv!==null){ctsp+=psv;tsf=formatPointStadia(ctsp);}
-    pw.document.write(`<tr class="${row.isVoid?'voided-row':''}"><td>${row.pointName||''}</td><td>${formatNumber(row.bs)}</td><td>${hfp}</td><td>${formatNumber(row.fs??row.ifs)}</td><td>${formatNumber(row.elevation)}</td><td>${formatDist(row.bsDist)}</td><td>${formatDist(row.fsDist??row.ifsDist)}</td><td>${psf}</td><td>${tsf}</td><td>${dr}</td></tr>`);});
+    pw.document.write(`<tr class="${row.isVoid?'voided-row':''}"><td>${row.pointName||''}</td><td>${formatNumber(row.bs)}</td><td>${hfp}</td><td>${formatNumber(row.fs??row.ifs)}</td><td>${formatNumber(row.elevation)}</td><td>${formatDist(row.bsDist)}</td><td>${formatDist(row.fsDist??row.ifsDist)}</td><td>${psf}</td><td>${tsf}</td><td>${dr}</td></tr>`);
+    if(row.editLog&&row.editLog.length>0){pw.document.write(`<tr style="background:#fefce8;"><td colspan="10" style="font-size:8pt;color:#92400e;padding:3px 6px;"><strong>Edit History:</strong> `+row.editLog.map(e=>`<span style="margin-right:10px;">${e.timestamp} — ${e.changes.map(c=>`${c.field}: ${c.oldValue} → ${c.newValue}`).join(', ')}</span>`).join('')+`</td></tr>`);}});
     pw.document.write('</tbody></table>');
     if(!misclosureDisplay.classList.contains('hidden')){
         pw.document.write(`<div style="margin-top:12px;padding:8px;border:1px solid #93c5fd;border-radius:4px;font-size:10pt;background:#eff6ff;"><strong>Misclosure:</strong> ${misclosureValue.textContent}</div>`);
@@ -834,7 +1187,7 @@ printViewButton.onclick=()=>{
 // JSON Export/Import
 exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccuracy();const a={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent,accuracy:acc?{misclosureMM:acc.misclosureMM,misclosureFt:acc.misclosureFt,totalDistFt:acc.totalDistFt,totalDistKm:acc.totalDistKm,sqrtK:acc.sqrtK,standards:acc.specs.map(s=>({name:s.name,factor:s.factor,allowableMM:s.allowable,pass:s.pass}))}:null};const j=JSON.stringify(a,null,2);const blob=new Blob([j],{type:"application/json"});const now=new Date();const dts=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'LEVELING').replace(/[^a-zA-Z0-9_-]/g,'_');const sd=(projectDetails.description||'DATA').substring(0,5).replace(/[^a-zA-Z0-9_-]/g,'_');const link=document.createElement('a');link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${sd}_${dts}.json`);document.body.appendChild(link);link.click();};
 
-importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();alert("Imported!");});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
+importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null)r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();alert("Imported!");});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
 
 // Init
 loadStateFromLocalStorage();
