@@ -280,8 +280,8 @@
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 12, 2026 — 19:00</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.6 — Changelog</button>
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 12, 2026 — 20:00</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.7 — Changelog</button>
         </div>
     </div>
 </div>
@@ -292,6 +292,28 @@
         <h3 style="margin-bottom:4px;">Changelog</h3>
         <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.8</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li><b>Fixed:</b> Editing a BS reading (or any reading) was not recalculating HI and downstream elevations — the edit timestamp was appended to remarks <i>before</i> recalculation, corrupting the "BS on [PointName]" parsing so the recalc couldn't find the previous point</li>
+                    <li>Edit timestamp now appended <i>after</i> recalculation completes</li>
+                    <li>Hardened all "BS on" regex patterns to stop at bracket characters, protecting against residual timestamps in remarks from prior edits</li>
+                </ul>
+            </div>
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.7</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026 — 20:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Fixed root cause of edits not recalculating — dynamically unlocked fields (BS, FS, IFS, distances) were not being type-coerced on form submit, so changes were silently ignored</li>
+                    <li>All number inputs in the edit form are now explicitly coerced to float at submit time, regardless of how they were added to the modal</li>
+                    <li>Dynamically added edit fields now have required:false to prevent silent browser validation blocks on submit</li>
+                </ul>
+            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.6</span>
@@ -559,7 +581,12 @@ function showModal(title,fieldsConfig,submitHandler,onModalCreateCallback){
     fieldsConfig.forEach(f=>modalFieldsContainer.appendChild(createFieldElement(f)));
     if(onModalCreateCallback)onModalCreateCallback(modalFieldsContainer);
     modalForm.onsubmit=(e)=>{e.preventDefault();const fd=new FormData(modalForm);const data=Object.fromEntries(fd.entries());
+        // Coerce types for declared fieldsConfig fields
         fieldsConfig.forEach(f=>{if(f.type==='info')return;if(f.type==='number'&&data[f.name]!==undefined&&data[f.name]!=='')data[f.name]=parseFloat(data[f.name]);if(f.type==='checkbox')data[f.name]=fd.has(f.name);if(f.dependentFields&&data[f.name])f.dependentFields.forEach(df=>{if(df.type==='number'&&data[df.name]!==undefined&&data[df.name]!=='')data[df.name]=parseFloat(data[df.name]);});});
+        // Also coerce ALL number inputs in the form (catches dynamically unlocked fields)
+        modalForm.querySelectorAll('input[type="number"]').forEach(inp=>{if(inp.name&&data[inp.name]!==undefined&&data[inp.name]!=='')data[inp.name]=parseFloat(data[inp.name]);});
+        // Also collect any checkboxes not in fieldsConfig (e.g. dynamically added isDiNiLineLeveling)
+        modalForm.querySelectorAll('input[type="checkbox"]').forEach(inp=>{if(inp.name)data[inp.name]=inp.checked;});
         if(submitHandler(data))inputModal.classList.add('hidden');
     };
     inputModal.classList.remove('hidden');
@@ -887,21 +914,21 @@ function handleEditRow(event){
             const mfc=document.getElementById('modalFieldsContainer');
             const editFields=[];
             if(rte.type==='BM'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName});
-                editFields.push({id:'editElevation',name:'elevation',label:`Known Elevation (${u}):`,type:'number',step:'0.001',value:rte.elevation});
+                editFields.push({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName,required:false});
+                editFields.push({id:'editElevation',name:'elevation',label:`Known Elevation (${u}):`,type:'number',step:'0.001',value:rte.elevation,required:false});
             } else if(rte.type==='SETUP_BS'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
-                editFields.push({id:'editBs',name:'bs',label:`BS Reading (${u}):`,type:'number',step:'0.001',value:rte.bs});
-                editFields.push({id:'editBsDist',name:'bsDist',label:`BS Distance (${u}):`,type:'number',step:'0.001',value:rte.bsDist});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
+                editFields.push({id:'editBs',name:'bs',label:`BS Reading (${u}):`,type:'number',step:'0.001',value:rte.bs,required:false});
+                editFields.push({id:'editBsDist',name:'bsDist',label:`BS Distance (${u}):`,type:'number',step:'0.001',value:rte.bsDist,required:false});
             } else if(rte.type==='IP'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
                 editFields.push({id:'editDiNiLL',name:'isDiNiLineLeveling',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:!!rte.isDiNiLineLeveling});
-                editFields.push({id:'editIfs',name:'ifs',label:rte.isDiNiLineLeveling?`Delta Reading (${u}):`:`IFS Reading (${u}):`,type:'number',step:'0.001',value:rte.ifs});
-                editFields.push({id:'editIfsDist',name:'ifsDist',label:`IFS Distance (${u}):`,type:'number',step:'0.001',value:rte.ifsDist});
+                editFields.push({id:'editIfs',name:'ifs',label:rte.isDiNiLineLeveling?`Delta Reading (${u}):`:`IFS Reading (${u}):`,type:'number',step:'0.001',value:rte.ifs,required:false});
+                editFields.push({id:'editIfsDist',name:'ifsDist',label:`IFS Distance (${u}):`,type:'number',step:'0.001',value:rte.ifsDist,required:false});
             } else {
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
-                editFields.push({id:'editFs',name:'fs',label:`FS Reading (${u}):`,type:'number',step:'0.001',value:rte.fs});
-                editFields.push({id:'editFsDist',name:'fsDist',label:`FS Distance (${u}):`,type:'number',step:'0.001',value:rte.fsDist});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
+                editFields.push({id:'editFs',name:'fs',label:`FS Reading (${u}):`,type:'number',step:'0.001',value:rte.fs,required:false});
+                editFields.push({id:'editFsDist',name:'fsDist',label:`FS Distance (${u}):`,type:'number',step:'0.001',value:rte.fsDist,required:false});
             }
             editFields.forEach(f=>{const el=createFieldElement(f);el.style.marginTop='8px';mfc.appendChild(el);});
             // Focus first new input
@@ -944,7 +971,7 @@ function handleEditSubmit(data){
         // Update DiNi rod reading annotation
         const bsRow=[...levelRows].slice(0,ri).reverse().find(r=>!r.isVoid&&r.type==='SETUP_BS');
         if(bsRow){
-            const bsPtName=(bsRow.remarks.match(/BS on (.*)/)||[])[1];
+            const bsPtName=(bsRow.remarks.match(/BS on ([^\[]+)/)||[])[1]?.trim();
             const bsPt=levelRows.find(r=>!r.isVoid&&r.pointName===bsPtName&&(r.type==='BM'||r.type==='TP_FS'));
             if(er.isDiNiLineLeveling&&bsPt){er.elevation=bsPt.elevation+parseFloat(er.ifs);er.diNiRodReading=bsRow.hi-er.elevation;}
             else if(!er.isDiNiLineLeveling){er.elevation=bsRow.hi-parseFloat(er.ifs);er.diNiRodReading=null;}
@@ -970,15 +997,17 @@ function handleEditSubmit(data){
     const preHI=er.hi!=null?formatNumber(er.hi):null;
     const preElev=er.elevation!=null?formatNumber(er.elevation):null;
 
-    // --- Remarks: set base then append edit timestamp if data changed ---
+    // --- Remarks: set base (timestamp appended AFTER recalc to avoid polluting 'BS on ...' parsing) ---
     const baseRemarks=data.remarks||'';
     er.remarks=er.isDiNiLineLeveling&&er.diNiRodReading!=null
         ? baseRemarks.replace(/\s*\[Rod:[^\]]*\]/,'')+` [Rod: ${formatNumber(er.diNiRodReading)}]`
         : baseRemarks;
-    if(dataChanged) er.remarks=er.remarks.trimEnd()+' '+editTimestamp();
 
     // --- Recalculate FIRST so log captures post-recalc HI/elevation ---
     if(bmElevChanged||dataChanged) recalculateFullLoop();
+
+    // --- Now append edit timestamp AFTER recalc (so 'BS on TP14' isn't corrupted to 'BS on TP14 [Edited ...]') ---
+    if(dataChanged) er.remarks=er.remarks.trimEnd()+' '+editTimestamp();
 
     // --- Log changes to editLog AFTER recalc so we have new HI/elevation ---
     if(dataChanged){
@@ -1001,12 +1030,12 @@ function handleEditSubmit(data){
 function recalculateChainFromRow(si){
     if(si<0||si>=levelRows.length||levelRows[si].type!=='BM'||levelRows[si].isVoid)return;let cve=levelRows[si].elevation,cvhi=null,lkgepn=levelRows[si].pointName;
     for(let i=si+1;i<levelRows.length;i++){const r=levelRows[i];if(r.isVoid)continue;
-        if(r.type==='SETUP_BS'){let ppe=null;const bsn=r.remarks.match(/BS on (.*)/)?.[1];if(bsn===lkgepn)ppe=cve;else{const ap=[...levelRows].slice(0,i).reverse().find(p=>!p.isVoid&&p.pointName===bsn&&(p.type==='BM'||p.type==='TP_FS'||p.type==='CLOSING_FS'));if(ap){ppe=ap.elevation;lkgepn=ap.pointName;cve=ap.elevation;}}
+        if(r.type==='SETUP_BS'){let ppe=null;const bsn=r.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim();if(bsn===lkgepn)ppe=cve;else{const ap=[...levelRows].slice(0,i).reverse().find(p=>!p.isVoid&&p.pointName===bsn&&(p.type==='BM'||p.type==='TP_FS'||p.type==='CLOSING_FS'));if(ap){ppe=ap.elevation;lkgepn=ap.pointName;cve=ap.elevation;}}
             if(ppe!==null&&r.bs!=null&&!isNaN(parseFloat(r.bs))){r.hi=ppe+parseFloat(r.bs);cvhi=r.hi;const cf=levelRows.find(f=>!f.isVoid&&(f.type==='TP_FS'||f.type==='CLOSING_FS')&&f.pointName===r.pointName&&f.prevPointNameForM5===bsn);if(cf){cf.hiFromBSForM5=r.hi;cf.bsOnPrevForM5=r.bs;}}else cvhi=null;
         }else if(r.type==='IP'&&cvhi!==null){
             if(r.isDiNiLineLeveling){
                 const bsn2=levelRows.slice(0,i).reverse().find(p=>!p.isVoid&&p.type==='SETUP_BS');
-                if(bsn2){const bsPtName=bsn2.remarks.match(/BS on (.*)/)?.[1];const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null){r.elevation=bsPt.elevation+parseFloat(r.ifs);r.diNiRodReading=cvhi-r.elevation;}}
+                if(bsn2){const bsPtName=bsn2.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim();const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null){r.elevation=bsPt.elevation+parseFloat(r.ifs);r.diNiRodReading=cvhi-r.elevation;}}
             }else if(r.ifs!=null&&!isNaN(parseFloat(r.ifs))){r.elevation=cvhi-parseFloat(r.ifs);}
             r.hi=cvhi;
         }else if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&cvhi!==null){if(r.fs!=null&&!isNaN(parseFloat(r.fs))){r.elevation=cvhi-parseFloat(r.fs);r.hi=cvhi;cve=r.elevation;lkgepn=r.pointName;r.hiFromBSForM5=cvhi;r.elevOfThis=r.elevation;if(r.type==='CLOSING_FS'){cve=null;lkgepn=null;}cvhi=null;}}
@@ -1161,7 +1190,7 @@ exportLevelingDataCSVButton.onclick=()=>{
     const tpUniqueMap={};vr.forEach(r=>{if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.uniqueTPName)tpUniqueMap[r.pointName]=r.uniqueTPName;if(r.type==='BM')tpUniqueMap[r.pointName]=r.pointName;});
     const getTBCPid=(row)=>{
         if(row.type==='TP_FS'||row.type==='CLOSING_FS') return row.uniqueTPName||row.pointName;
-        if(row.type==='SETUP_BS'){const bsOn=row.remarks.match(/BS on (.*)/)?.[1]||row.pointName;return tpUniqueMap[bsOn]||bsOn;}
+        if(row.type==='SETUP_BS'){const bsOn=row.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim()||row.pointName;return tpUniqueMap[bsOn]||bsOn;}
         return row.pointName||'';
     };
     vr.forEach((row,idx)=>{let cr=[],skip=false,pid=row.pointName||'',en='Y',meas='',mc='',el='',hd='',desc='',rc='';
