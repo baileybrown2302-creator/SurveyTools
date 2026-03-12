@@ -280,8 +280,8 @@
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 10, 2026 — 20:00</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.5 — Changelog</button>
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 12, 2026 — 19:00</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.6 — Changelog</button>
         </div>
     </div>
 </div>
@@ -292,6 +292,16 @@
         <h3 style="margin-bottom:4px;">Changelog</h3>
         <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.6</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026 — 19:00</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Fixed BS edit not updating HI — recalculation now correctly propagates through the full loop and syncs the active setup if currently in-progress</li>
+                    <li>Edit history now shows the resulting HI (for BS edits) or resulting Elevation (for IP/FS edits) after each change, logged post-recalculation</li>
+                </ul>
+            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.5</span>
@@ -956,11 +966,9 @@ function handleEditSubmit(data){
         dataChanged=true;
     }
 
-    // --- Log changes to editLog and append timestamp to remarks ---
-    if(dataChanged){
-        if(!er.editLog)er.editLog=[];
-        er.editLog.push({timestamp:editTimestamp().replace(/[\[\]]/g,''),changes:editChanges});
-    }
+    // --- Capture pre-recalc HI/elevation for log ---
+    const preHI=er.hi!=null?formatNumber(er.hi):null;
+    const preElev=er.elevation!=null?formatNumber(er.elevation):null;
 
     // --- Remarks: set base then append edit timestamp if data changed ---
     const baseRemarks=data.remarks||'';
@@ -969,7 +977,22 @@ function handleEditSubmit(data){
         : baseRemarks;
     if(dataChanged) er.remarks=er.remarks.trimEnd()+' '+editTimestamp();
 
+    // --- Recalculate FIRST so log captures post-recalc HI/elevation ---
     if(bmElevChanged||dataChanged) recalculateFullLoop();
+
+    // --- Log changes to editLog AFTER recalc so we have new HI/elevation ---
+    if(dataChanged){
+        // Append resulting HI or elevation to the change log
+        if(er.type==='SETUP_BS'&&er.hi!=null){
+            const newHI=formatNumber(er.hi);
+            if(preHI!==newHI) editChanges.push({field:'HI (result)',oldValue:preHI||'—',newValue:newHI});
+        } else if((er.type==='IP'||er.type==='TP_FS'||er.type==='CLOSING_FS')&&er.elevation!=null){
+            const newElev=formatNumber(er.elevation);
+            if(preElev!==newElev) editChanges.push({field:'Elevation (result)',oldValue:preElev||'—',newValue:newElev});
+        }
+        if(!er.editLog)er.editLog=[];
+        er.editLog.push({timestamp:editTimestamp().replace(/[\[\]]/g,''),changes:editChanges});
+    }
 
     if(vsc){er.isVoid=nvs;applyVoidChangeSideEffects(er);}
     renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;
@@ -994,6 +1017,11 @@ function recalculateFullLoop(){
     const bmIdx=levelRows.findIndex(r=>r.type==='BM'&&!r.isVoid);
     if(bmIdx===-1)return;
     recalculateChainFromRow(bmIdx);
+    // Sync activeSetupData.hi if the active BS was recalculated
+    if(activeSetupData&&activeSetupData.bsRowId){
+        const bsr=levelRows.find(r=>r.id===activeSetupData.bsRowId&&!r.isVoid);
+        if(bsr&&bsr.hi!=null){activeSetupData.hi=bsr.hi;currentHI=bsr.hi;}
+    }
     // Update misclosure if loop is closed
     updateLastValidPointForLiveCalcs();
     const lv=levelRows.filter(r=>!r.isVoid).pop();
