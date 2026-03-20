@@ -282,11 +282,11 @@
 
     // ─── Init ────────────────────────────────────────────────────────────
     async function init() {
-        await applyTheme();
-        await loadProjects();
-        await syncFromRegistry();
-        await migrateLegacyData();
-        await renderAll();
+        try { await applyTheme(); } catch(e) { console.error('[init] applyTheme', e); }
+        try { await loadProjects(); } catch(e) { console.error('[init] loadProjects', e); }
+        try { await syncFromRegistry(); } catch(e) { console.error('[init] syncFromRegistry', e); }
+        try { await migrateLegacyData(); } catch(e) { console.error('[init] migrateLegacyData', e); }
+        try { await renderAll(); } catch(e) { console.error('[init] renderAll', e); }
         bindEvents();
     }
 
@@ -860,10 +860,6 @@
     }
 
     // ─── Sync on return from leveling.html ───────────────────────────────
-    window.addEventListener('focus', onReturnFromLeveling);
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') onReturnFromLeveling();
-    });
     async function onReturnFromLeveling() {
         await loadProjects();
         await syncFromRegistry();
@@ -959,6 +955,10 @@
         document.getElementById('lmName').addEventListener('keydown',   e => { if(e.key==='Enter') startLoop(); });
         document.getElementById('pmNumber').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('pmDesc').focus(); });
         document.getElementById('pmDesc').addEventListener('keydown',   e => { if(e.key==='Enter') saveProjectModal(); });
+        window.addEventListener('focus', onReturnFromLeveling);
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') onReturnFromLeveling();
+        });
     }
 
     init();
