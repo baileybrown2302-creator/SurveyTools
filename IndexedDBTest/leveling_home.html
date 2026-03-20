@@ -58,14 +58,6 @@
         .section-title{font-size:1.05em;font-weight:800;color:var(--text-primary);}
 
         /* Import bar */
-        .import-bar{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-        .import-bar-icon{font-size:1.4em;flex-shrink:0;}
-        .import-bar-info{flex:1;min-width:160px;}
-        .import-bar-title{font-size:0.88em;font-weight:700;color:var(--text-primary);}
-        .import-bar-sub{font-size:0.72em;color:var(--text-muted);margin-top:2px;}
-        .import-bar.folder-linked{border-color:var(--accent-purple);}
-        .folder-pill{display:inline-flex;align-items:center;gap:4px;font-size:0.8em;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;}
-        [data-theme="high-contrast"] .folder-pill{background:#2e1065;color:#c4b5fd;border-color:#7c3aed;}
 
         /* Project cards */
         .project-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:border-color 0.15s;}
@@ -169,26 +161,16 @@
             <button class="btn btn-primary btn-small" style="flex-shrink:0;" onclick="event.stopPropagation();openActiveLoop()">Open</button>
         </div>
 
-        <!-- Import bar (adapts to desktop FSA vs mobile file picker) -->
-        <div id="importBar" class="import-bar">
-            <div class="import-bar-icon" id="importBarIcon">📂</div>
-            <div class="import-bar-info">
-                <div class="import-bar-title" id="importBarTitle">Loading…</div>
-                <div class="import-bar-sub"  id="importBarSub"></div>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
-                <button class="btn btn-purple btn-small" id="importBarBtn">…</button>
-                <button class="btn btn-secondary btn-small" id="folderRescanBtn" style="display:none;">↻ Rescan</button>
-                <button class="btn btn-secondary btn-small" id="folderClearBtn"  style="display:none;">✕ Unlink</button>
-            </div>
-        </div>
-        <!-- Hidden file input for mobile multi-import -->
+        <!-- Hidden file input for JSON loop import -->
         <input type="file" id="multiFileInput" accept=".json" multiple style="display:none;">
 
         <!-- Projects section -->
         <div class="section-header">
             <span class="section-title">Projects</span>
-            <button class="btn btn-primary btn-small" id="newProjectBtn">+ New Project</button>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('multiFileInput').click()">&#8595; Import</button>
+                <button class="btn btn-primary btn-small" id="newProjectBtn">+ New Project</button>
+            </div>
         </div>
 
         <label class="archive-toggle">
@@ -296,15 +278,6 @@
     let targetProjectIdForLoop = null;
     let pendingConfirmFn = null;
     let pendingImportBatch = [];
-    let folderHandle = null;
-
-    // ─── Feature detection ───────────────────────────────────────────────
-    const hasFSA = ('showDirectoryPicker' in window);
-    // Treat as mobile if: standalone PWA OR mobile UA (even in browser)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-                   || window.matchMedia('(display-mode: standalone)').matches
-                   || navigator.standalone === true;
-    const useFolder = hasFSA && !isMobile; // desktop Chrome/Edge only
 
     // ─── Init ────────────────────────────────────────────────────────────
     async function init() {
@@ -312,9 +285,7 @@
         await loadProjects();
         await syncFromRegistry();
         await migrateLegacyData();
-        setupImportBar();
-        if (useFolder) await restoreFolderHandle();
-        renderAll();
+        await renderAll();
         bindEvents();
     }
 
@@ -452,161 +423,8 @@
         } catch(e) {}
     }
 
-    // ─── Import bar setup ─────────────────────────────────────────────────
-    function setupImportBar() {
-        const icon  = document.getElementById('importBarIcon');
-        const title = document.getElementById('importBarTitle');
-        const sub   = document.getElementById('importBarSub');
-        const btn   = document.getElementById('importBarBtn');
-        const rescan= document.getElementById('folderRescanBtn');
-        const clear = document.getElementById('folderClearBtn');
 
-        if (useFolder) {
-            // Desktop: folder watcher
-            icon.textContent  = '🗂️';
-            title.textContent = 'Watch a Folder';
-            sub.textContent   = 'Point to a folder of exported JSON loops — auto-sorted by contract number. Re-scans when you return from the leveling tool.';
-            btn.textContent   = 'Select Folder';
-            btn.onclick       = pickFolder;
-            rescan.style.display = 'inline-flex';
-            clear.style.display  = 'inline-flex';
-            rescan.onclick = () => scanFolder(true);
-            clear.onclick  = unlinkFolder;
-        } else {
-            // Mobile / non-FSA: multi-file picker
-            icon.textContent  = '📥';
-            title.textContent = 'Import JSON Loops';
-            sub.textContent   = 'Select one or more exported loop files — auto-sorted by contract number.';
-            btn.textContent   = 'Select Files';
-            btn.onclick       = () => document.getElementById('multiFileInput').click();
-            rescan.style.display = 'none';
-            clear.style.display  = 'none';
-        }
-    }
-
-    // ─── IndexedDB helpers for FSA DirectoryHandle persistence ───────────
-    function openIDB() {
-        return new Promise((res, rej) => {
-            const req = indexedDB.open('LevelingAppDB', 1);
-            req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
-            req.onsuccess = e => res(e.target.result);
-            req.onerror   = () => rej(new Error('IDB open failed'));
-        });
-    }
-    async function saveHandleIDB(handle) {
-        try { const db = await openIDB(); const tx = db.transaction('handles','readwrite'); tx.objectStore('handles').put(handle,'folder'); }
-        catch(e) {}
-    }
-    async function loadHandleIDB() {
-        try {
-            const db = await openIDB();
-            return await new Promise((res) => {
-                const req = db.transaction('handles','readonly').objectStore('handles').get('folder');
-                req.onsuccess = e => res(e.target.result || null);
-                req.onerror   = () => res(null);
-            });
-        } catch(e) { return null; }
-    }
-    async function clearHandleIDB() {
-        try { const db = await openIDB(); db.transaction('handles','readwrite').objectStore('handles').delete('folder'); }
-        catch(e) {}
-    }
-
-    // ─── Desktop folder: restore, pick, scan, unlink ─────────────────────
-    async function restoreFolderHandle() {
-        const h = await loadHandleIDB();
-        if (!h) return;
-        try {
-            const perm = await h.queryPermission({ mode: 'read' });
-            if (perm === 'granted') {
-                folderHandle = h;
-                updateFolderLinkedUI();
-                await scanFolder(false); // silent on load
-            } else {
-                await clearHandleIDB();
-            }
-        } catch(e) { await clearHandleIDB(); }
-    }
-
-    async function pickFolder() {
-        try {
-            const h = await window.showDirectoryPicker({ mode: 'read' });
-            folderHandle = h;
-            await saveHandleIDB(h);
-            updateFolderLinkedUI();
-            await scanFolder(true);
-        } catch(e) { /* cancelled */ }
-    }
-
-    async function unlinkFolder() {
-        folderHandle = null;
-        await clearHandleIDB();
-        setupImportBar(); // resets to default text
-        showToast('Folder unlinked');
-    }
-
-    function updateFolderLinkedUI() {
-        if (!folderHandle) return;
-        const bar   = document.getElementById('importBar');
-        const icon  = document.getElementById('importBarIcon');
-        const title = document.getElementById('importBarTitle');
-        const sub   = document.getElementById('importBarSub');
-        const btn   = document.getElementById('importBarBtn');
-        bar.classList.add('folder-linked');
-        icon.textContent = '🗂️';
-        title.innerHTML  = `Watching: <span class="folder-pill">📁 ${escHtml(folderHandle.name)}</span>`;
-        sub.textContent  = 'All .json files auto-sorted by contract number · Re-scans on return from leveling tool';
-        btn.textContent  = 'Change Folder';
-        btn.onclick      = pickFolder;
-    }
-
-    async function scanFolder(showPreview) {
-        if (!folderHandle) return;
-        const parsed = [];
-        try {
-            for await (const entry of folderHandle.values()) {
-                if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.json')) continue;
-                try {
-                    const file = await entry.getFile();
-                    const text = await file.text();
-                    const data = JSON.parse(text);
-                    if (data.projectDetails && Array.isArray(data.levelRows)) {
-                        parsed.push({ data, filename: entry.name });
-                    }
-                } catch(e) {}
-            }
-        } catch(e) {
-            showToast('Folder permission expired — please re-select folder');
-            folderHandle = null;
-            await clearHandleIDB();
-            setupImportBar();
-            return;
-        }
-
-        if (parsed.length === 0) {
-            if (showPreview) showToast('No valid leveling JSON files found in folder');
-            return;
-        }
-
-        const batch   = buildImportBatch(parsed);
-        const newOnes = batch.filter(b => !b.alreadyExists && !b.error);
-
-        if (newOnes.length === 0) {
-            if (showPreview) showToast(`All ${parsed.length} file(s) already imported`);
-            return;
-        }
-
-        if (showPreview) {
-            pendingImportBatch = batch;
-            showImportPreviewModal(`Found ${parsed.length} file(s) in folder`);
-        } else {
-            // Silent auto-import of only new files
-            pendingImportBatch = newOnes;
-            commitImport(true);
-        }
-    }
-
-    // ─── Mobile: multi-file handler ───────────────────────────────────────
+    // ─── File import handler ──────────────────────────────────────────────
     function handleMultiFileSelect(files) {
         if (!files || files.length === 0) return;
         const readers = Array.from(files).map(file => new Promise(res => {
@@ -783,7 +601,7 @@
     }
 
     // ─── Render ───────────────────────────────────────────────────────────
-    async function renderAll() { await renderActiveBanner(); renderProjects(); }
+    async function renderAll() { await renderActiveBanner(); await renderProjects(); }
 
     async function getActiveLoop() {
         return await ftGetSetting(ACTIVE_LOOP_KEY, null);
@@ -1046,8 +864,10 @@
         if (document.visibilityState === 'visible') onReturnFromLeveling();
     });
     async function onReturnFromLeveling() {
+        await loadProjects();
+        await syncFromRegistry();
         await syncActiveLoopMeta();
-        if (useFolder && folderHandle) await scanFolder(false); // silent re-scan
+        await renderAll();
     }
     async function syncActiveLoopMeta() {
         const active = await getActiveLoop(); if (!active) return;
