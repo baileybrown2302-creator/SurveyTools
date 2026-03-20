@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v3';
+const CACHE_NAME = 'survey-tool-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -27,18 +27,35 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: serve from cache first, fall back to network, update cache
+// Fetch: HTML files = network-first (always fresh); everything else = cache-first
 self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(cached => {
-      const fetchPromise = fetch(event.request).then(response => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+  const req = event.request;
+  const url = new URL(req.url);
+  const isHtml = req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
+  if (isHtml) {
+    // Network-first for HTML so updates are always picked up
+    event.respondWith(
+      fetch(req).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(req, clone));
         }
-        return response;
-      }).catch(() => cached);
-      return cached || fetchPromise;
-    })
-  );
+        return res;
+      }).catch(() => caches.match(req))
+    );
+  } else {
+    // Cache-first for JS, CSS, images, etc.
+    event.respondWith(
+      caches.match(req).then(cached => {
+        const networkFetch = fetch(req).then(res => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE_NAME).then(c => c.put(req, clone));
+          }
+          return res;
+        }).catch(() => cached);
+        return cached || networkFetch;
+      })
+    );
+  }
 });

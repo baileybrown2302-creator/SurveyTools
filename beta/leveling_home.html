@@ -9,8 +9,8 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="../beta/icon.png">
-    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
     <script src="db.js"></script>
     <title>Leveling — Survey Tool</title>
     <style>
@@ -54,6 +54,7 @@
         .btn-purple{background:var(--accent-purple);}
         .btn-small{padding:6px 12px;font-size:0.78em;min-height:34px;border-radius:8px;}
         .btn-ghost{background:none;color:var(--accent-blue);border:1.5px solid var(--accent-blue);padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;font-weight:700;cursor:pointer;}
+        .btn-full{width:100%;margin-bottom:14px;}
 
         .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
         .section-title{font-size:1.05em;font-weight:800;color:var(--text-primary);}
@@ -165,12 +166,14 @@
         <!-- Hidden file input for JSON loop import -->
         <input type="file" id="multiFileInput" accept=".json" multiple style="display:none;">
 
+        <!-- Start New Loop — prominent top button -->
+        <button class="btn btn-primary btn-full" id="startNewLoopBtn">＋ Start New Loop</button>
+
         <!-- Projects section -->
         <div class="section-header">
             <span class="section-title">Projects</span>
             <div style="display:flex;gap:6px;">
                 <button class="btn btn-secondary btn-small" onclick="document.getElementById('multiFileInput').click()">&#8595; Import</button>
-                <button class="btn btn-primary btn-small" id="newProjectBtn">+ New Project</button>
             </div>
         </div>
 
@@ -180,10 +183,10 @@
 
         <div id="projectsList"></div>
 
-        <div id="emptyState" class="empty-state" style="display:none;">
+        <div id="emptyState" class="empty-state">
             <div class="empty-icon">🔭</div>
             <div class="empty-title">No projects yet</div>
-            <div class="empty-sub">Create a project to organize your level loops, or import exported JSON files above.</div>
+            <div class="empty-sub">Use "Start New Loop" above to begin, or create projects in the Project Manager and they'll appear here automatically.</div>
         </div>
     </div>
 
@@ -216,6 +219,12 @@
         <div class="modal-sheet">
             <div class="modal-handle"></div>
             <div class="modal-title">New Level Loop</div>
+            <div class="field-group">
+                <label class="label">Project <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                <select class="input" id="lmProject">
+                    <option value="">— No project —</option>
+                </select>
+            </div>
             <div class="field-group">
                 <label class="label">Loop Name *</label>
                 <input class="input" id="lmName" type="text" placeholder="e.g., Loop 1 — STA 10+00 to 15+00" autocomplete="off">
@@ -271,29 +280,30 @@
     const LOOP_DATA_PREFIX = 'levelingLoopData_';
     const LEGACY_KEY       = 'levelingAppData_singleLoop';
     const SURVEY_PROJECTS_KEY = 'surveyProjects';
+    const UNASSIGNED_ID    = 'unassigned_loops';
 
     // ─── State ───────────────────────────────────────────────────────────
     let projects = [];
     let showArchived = false;
     let editingProjectId = null;
-    let targetProjectIdForLoop = null;
     let pendingConfirmFn = null;
     let pendingImportBatch = [];
+    let _cachedActiveLoop = null;
 
     // ─── Init ────────────────────────────────────────────────────────────
     async function init() {
-        try { await applyTheme(); } catch(e) { console.error('[init] applyTheme', e); }
+        bindEvents();
+        applyTheme();
         try { await loadProjects(); } catch(e) { console.error('[init] loadProjects', e); }
         try { await syncFromRegistry(); } catch(e) { console.error('[init] syncFromRegistry', e); }
         try { await migrateLegacyData(); } catch(e) { console.error('[init] migrateLegacyData', e); }
         try { await renderAll(); } catch(e) { console.error('[init] renderAll', e); }
-        bindEvents();
     }
 
     // ─── Theme ───────────────────────────────────────────────────────────
-    async function applyTheme() {
-        const saved = await ftGetSetting('surveyTheme');
-        if (saved === 'high-contrast') {
+    function applyTheme() {
+        const isHC = localStorage.getItem('ft_theme') === 'high-contrast';
+        if (isHC) {
             document.documentElement.setAttribute('data-theme', 'high-contrast');
             document.getElementById('themeBtn').textContent = '☀️ Light';
         }
@@ -557,7 +567,7 @@
         });
 
         // Process projects in alphabetical order
-        Object.keys(byProject).sort().forEach(key => {
+        for (const key of Object.keys(byProject).sort()) {
             const items = byProject[key];
             // Find or create project
             let proj = projects.find(p => p.number.trim().toLowerCase() === key);
@@ -585,7 +595,7 @@
                 proj.loops.push(loopMeta);
                 await ftSaveLevelLoop({ ...b.data, id: lId, projectId: proj.id });
             }
-        });
+        }
 
         // Keep projects sorted alphabetically by project number
         projects.sort((a, b) => a.number.localeCompare(b.number));
@@ -708,9 +718,6 @@
         </div>`;
     }
 
-    // _cachedActiveLoop is updated before renderProjects is called
-    let _cachedActiveLoop = null;
-
     function renderLoopItem(pid, l, active) {
         const isCurrent  = active?.projectId === pid && active?.loopId === l.id;
         const isImported = l.source === 'imported';
@@ -794,10 +801,17 @@
     }
 
     // ─── Loop management ──────────────────────────────────────────────────
-    function openNewLoopModal(pid) {
-        targetProjectIdForLoop = pid;
-        const p = projects.find(x => x.id === pid);
-        document.getElementById('lmName').value    = `Loop ${(p?.loops?.length||0)+1}`;
+    function openNewLoopModal(preSelectedPid) {
+        // Populate project dropdown
+        const sel = document.getElementById('lmProject');
+        sel.innerHTML = '<option value="">— No project —</option>' +
+            projects.filter(p => !p.archived && p.id !== UNASSIGNED_ID)
+                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.number)}</option>`)
+                .join('');
+        sel.value = preSelectedPid || '';
+        const p = preSelectedPid ? projects.find(x => x.id === preSelectedPid) : null;
+        const loopNum = p ? (p.loops?.length || 0) + 1 : 1;
+        document.getElementById('lmName').value    = `Loop ${loopNum}`;
         document.getElementById('lmDate').value    = new Date().toISOString().split('T')[0];
         document.getElementById('lmOperator').value= '';
         document.getElementById('loopModal').classList.remove('hidden');
@@ -806,7 +820,20 @@
     async function startLoop() {
         const name = document.getElementById('lmName').value.trim();
         if (!name) { document.getElementById('lmName').focus(); return; }
-        const p = projects.find(x => x.id === targetProjectIdForLoop); if (!p) return;
+        let projectId = document.getElementById('lmProject').value;
+        if (!projectId) {
+            // No project selected — use/create the unassigned bucket
+            let unassigned = projects.find(x => x.id === UNASSIGNED_ID);
+            if (!unassigned) {
+                unassigned = { id: UNASSIGNED_ID, number: 'Unassigned Loops',
+                    desc: 'Loops not linked to a project', notes: '',
+                    created: Date.now(), archived: false, loops: [] };
+                projects.push(unassigned);
+                await ftSaveLevelProject(unassigned);
+            }
+            projectId = UNASSIGNED_ID;
+        }
+        const p = projects.find(x => x.id === projectId); if (!p) return;
         const lId = 'loop_' + Date.now();
         const loop = {
             id: lId, name,
@@ -921,7 +948,7 @@
             localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
             ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
         });
-        document.getElementById('newProjectBtn').addEventListener('click', openNewProjectModal);
+        document.getElementById('startNewLoopBtn').addEventListener('click', () => openNewLoopModal(''));
         document.getElementById('projectModalSave').addEventListener('click', () => saveProjectModal());
         document.getElementById('projectModalCancel').addEventListener('click', () => document.getElementById('projectModal').classList.add('hidden'));
         document.getElementById('loopModalStart').addEventListener('click', () => startLoop());
@@ -953,11 +980,23 @@
             });
         });
         document.getElementById('lmName').addEventListener('keydown',   e => { if(e.key==='Enter') startLoop(); });
+        document.getElementById('lmProject').addEventListener('change', e => {
+            const p = projects.find(x => x.id === e.target.value);
+            const cur = document.getElementById('lmName').value;
+            // Only auto-update if user hasn't typed something custom (still matches "Loop N" pattern)
+            if (/^Loop \d+$/.test(cur)) {
+                document.getElementById('lmName').value = `Loop ${(p?.loops?.length||0)+1}`;
+            }
+        });
         document.getElementById('pmNumber').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('pmDesc').focus(); });
         document.getElementById('pmDesc').addEventListener('keydown',   e => { if(e.key==='Enter') saveProjectModal(); });
         window.addEventListener('focus', onReturnFromLeveling);
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') onReturnFromLeveling();
+        });
+        // Handle browser back-forward cache (bfcache) restore
+        window.addEventListener('pageshow', e => {
+            if (e.persisted) onReturnFromLeveling();
         });
     }
 

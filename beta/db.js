@@ -73,6 +73,7 @@ function ftOpenDB() {
     };
     req.onsuccess = e => resolve(e.target.result);
     req.onerror = e => { _dbPromise = null; reject(e.target.error); };
+    req.onblocked = () => { _dbPromise = null; reject(new Error('DB blocked — close other tabs and reload.')); };
   });
   return _dbPromise;
 }
