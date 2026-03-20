@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Material Reference — Survey Tool</title>
     <style>
         :root{
@@ -380,12 +381,10 @@
 <script>
 // ── Theme ──────────────────────────────────────────────
 const themeBtn=document.getElementById('themeBtn');
-const savedTheme=localStorage.getItem('surveyTheme');
-if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
-themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';ftSetSetting('surveyTheme',isHC?'':'high-contrast');});
+(async function(){const saved=await ftGetSetting('surveyTheme');if(saved==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}})();
 
 // ── State ──────────────────────────────────────────────
-const STORAGE_KEY='materialReferenceData_v1';
 let data={contracts:[]};
 let currentContractId=null;
 let currentCat='all';
@@ -393,42 +392,43 @@ let editingMaterialId=null;
 let editingContractId=null;
 let pendingImportData=null; // holds parsed import JSON
 
-function loadData(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)data=JSON.parse(s);}catch(e){}if(!data.contracts)data.contracts=[];}
-function saveData(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){alert('Storage error: '+e.message);}syncToSurveyRegistry();}
-function syncToSurveyRegistry(){
-    try{
-        const SURVEY_KEY='surveyProjects';
-        let registry=[];
-        try{const s=localStorage.getItem(SURVEY_KEY);if(s)registry=JSON.parse(s);}catch(e){}
-        let changed=false;
-        (data.contracts||[]).forEach(c=>{
-            const existing=registry.find(r=>r.id===c.id);
-            if(!existing){registry.push({id:c.id,name:c.number||c.id,description:c.description||'',created:c.created||new Date().toISOString()});changed=true;}
-            else if(existing.name!==c.number){existing.name=c.number;changed=true;}
-        });
-        if(changed)localStorage.setItem(SURVEY_KEY,JSON.stringify(registry));
-    }catch(e){}
+async function loadData(){
+    const contracts=await ftGetAllMaterials();
+    data={contracts:Array.isArray(contracts)?contracts:[]};
 }
-function syncFromRegistry(){
-    try{
-        const SURVEY_KEY='surveyProjects';
-        let registry=[];
-        try{const s=localStorage.getItem(SURVEY_KEY);if(s)registry=JSON.parse(s);}catch(e){}
-        let changed=false;
-        registry.forEach(r=>{
-            if(!data.contracts.find(c=>c.id===r.id)){
-                data.contracts.push({id:r.id,number:r.name,description:r.description||'',archived:false,created:r.created||new Date().toISOString(),materials:[]});
-                changed=true;
-            }
-        });
-        if(changed)saveData();
-    }catch(e){}
+async function saveData(){
+    // Save each contract individually keyed by its id
+    for(const c of (data.contracts||[])){
+        await ftSaveMaterials(c);
+    }
+    syncToSurveyRegistry();
 }
-function exportContractData(contractId){
+async function syncToSurveyRegistry(){
+    const registry=await ftGetAllProjects();
+    let changed=false;
+    (data.contracts||[]).forEach(c=>{
+        const existing=registry.find(r=>r.id===c.id);
+        if(!existing){registry.push({id:c.id,projectNumber:c.number||c.id,description:c.description||'',created:c.created||new Date().toISOString()});changed=true;}
+        else if(existing.projectNumber!==c.number){existing.projectNumber=c.number;changed=true;}
+    });
+    if(changed){for(const r of registry)await ftSaveProject(r);}
+}
+async function syncFromRegistry(){
+    const registry=await ftGetAllProjects();
+    let changed=false;
+    registry.forEach(r=>{
+        if(!data.contracts.find(c=>c.id===r.id)){
+            data.contracts.push({id:r.id,number:r.projectNumber||r.name||r.id,description:r.description||'',archived:false,created:r.created||new Date().toISOString(),materials:[]});
+            changed=true;
+        }
+    });
+    if(changed)await saveData();
+}
+async function exportContractData(contractId){
     const c=getContract(contractId);if(!c)return;
-    const out={exportedAt:new Date().toISOString(),project:{id:c.id,name:c.number,description:c.description||''},materials:c,leveling:null,staking:null};
-    try{const s=localStorage.getItem('levelingData');if(s){const ld=JSON.parse(s);out.leveling=(ld.projects||[]).find(p=>p.id===contractId)||null;}}catch(e){}
-    try{const s=localStorage.getItem('slopeStakeSessions_'+contractId);if(s)out.staking=JSON.parse(s);}catch(e){}
+    const levelProj=await ftGetLevelProject(contractId);
+    const stakeSessions=await ftGetStakeSessions(contractId);
+    const out={exportedAt:new Date().toISOString(),project:{id:c.id,name:c.number,description:c.description||''},materials:c,leveling:levelProj||null,staking:stakeSessions.length?stakeSessions:null};
     const text=JSON.stringify(out,null,2);
     const filename=`project_${c.number.replace(/[^a-z0-9]/gi,'_')}_export.json`;
     if(navigator.share){navigator.share({title:'Export: '+c.number,text:text}).catch(()=>fallbackDownload(text,filename));}
@@ -463,12 +463,13 @@ function showContractView(id){
 function getContract(id){return data.contracts.find(c=>c.id===id);}
 
 // ── Contracts ──────────────────────────────────────────
-function renderContracts(){
+let _lastMatExport = null; // cached from IDB
+async function renderContracts(){
     const showArch=document.getElementById('showArchived').checked;
     const list=document.getElementById('contractsList');
 
     // Last exported banner
-    const lastExp=localStorage.getItem('materialRefLastExport');
+    const lastExp=_lastMatExport || await ftGetSetting('materialRefLastExport');
     const existing=document.getElementById('exportBanner');
     if(existing)existing.remove();
     const banner=document.createElement('div');
@@ -525,7 +526,7 @@ function openAddContract(){
     openModal('contractModal');
     setTimeout(()=>document.getElementById('cm_number').focus(),200);
 }
-function saveContract(){
+async function saveContract(){
     const num=document.getElementById('cm_number').value.trim();
     if(!num){alert('Enter a contract number.');return;}
     if(editingContractId){
@@ -533,18 +534,20 @@ function saveContract(){
     }else{
         data.contracts.push({id:uid(),number:num,description:document.getElementById('cm_desc').value.trim(),archived:false,materials:[]});
     }
-    saveData();closeModal('contractModal');renderContracts();
+    await saveData();closeModal('contractModal');renderContracts();
 }
-function toggleArchiveContract(){
-    const c=getContract(currentContractId);c.archived=!c.archived;saveData();
+async function toggleArchiveContract(){
+    const c=getContract(currentContractId);c.archived=!c.archived;await saveData();
     document.getElementById('archiveToggleBtn').textContent=c.archived?'Restore':'Archive';
     renderContracts();
 }
 function deleteCurrentContract(){
     const c=getContract(currentContractId);
-    showConfirm(`Delete Contract ${escHtml(c.number)}?`,`Permanently deletes all ${(c.materials||[]).length} material entries. Cannot be undone.`,'Delete',()=>{
-        data.contracts=data.contracts.filter(x=>x.id!==currentContractId);
-        saveData();showContractsView();
+    showConfirm(`Delete Contract ${escHtml(c.number)}?`,`Permanently deletes all ${(c.materials||[]).length} material entries. Cannot be undone.`,'Delete',async ()=>{
+        const delId=currentContractId;
+        data.contracts=data.contracts.filter(x=>x.id!==delId);
+        await ftDeleteMaterials(delId);
+        syncToSurveyRegistry();showContractsView();
     });
 }
 
@@ -660,7 +663,7 @@ function clearMaterialForm(){
      'gran_name','gran_source','gran_mdd','gran_omc','gran_mdd_corr','gran_omc_corr','gran_desc',
      'other_name','other_uw','other_notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
 }
-function saveMaterial(){
+async function saveMaterial(){
     const cat=document.getElementById('mm_cat').value;
     const c=getContract(currentContractId);
     if(!c.materials)c.materials=[];
@@ -671,12 +674,12 @@ function saveMaterial(){
     else{const name=document.getElementById('other_name').value.trim();if(!name){alert('Enter a material name.');return;}m.other_name=name;m.other_uw=parseNum('other_uw');m.other_notes=document.getElementById('other_notes').value.trim();}
     if(editingMaterialId){const idx=c.materials.findIndex(x=>x.id===editingMaterialId);if(idx>=0)c.materials[idx]=m;}
     else c.materials.push(m);
-    saveData();closeModal('materialModal');renderMaterials();
+    await saveData();closeModal('materialModal');renderMaterials();
 }
 function deleteMaterial(id){
     const c=getContract(currentContractId);
     const m=c.materials.find(x=>x.id===id);
-    showConfirm(`Delete ${escHtml(getMaterialTitle(m))}?`,'This cannot be undone.','Delete',()=>{c.materials=c.materials.filter(x=>x.id!==id);saveData();renderMaterials();});
+    showConfirm(`Delete ${escHtml(getMaterialTitle(m))}?`,'This cannot be undone.','Delete',async ()=>{c.materials=c.materials.filter(x=>x.id!==id);await saveData();renderMaterials();});
 }
 
 // ── Export Chooser ─────────────────────────────────────
@@ -764,7 +767,8 @@ function doExport(){
     a.href=URL.createObjectURL(blob);
     a.download=`material_ref_${ds}.json`;
     document.body.appendChild(a);a.click();document.body.removeChild(a);
-    localStorage.setItem('materialRefLastExport', new Date().toISOString());
+    _lastMatExport = new Date().toISOString();
+    ftSetSetting('materialRefLastExport', _lastMatExport);
     renderContracts();
     closeModal('exportModal');
 }
@@ -904,7 +908,7 @@ async function doImport(){
         // 'keep' = do nothing
     }
 
-    saveData();renderContracts();
+    await saveData();renderContracts();
     alert(`Import complete. ${importedCount} material${importedCount!==1?'s':''} imported.`);
     pendingImportData=null;
 }
@@ -949,7 +953,7 @@ function closeConfirm(){document.getElementById('confirmModal').classList.add('h
 document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===document.getElementById('confirmModal'))closeConfirm();});
 
 // ── Init ───────────────────────────────────────────────
-loadData();syncToSurveyRegistry();syncFromRegistry();renderContracts();
+(async function(){await loadData();await syncToSurveyRegistry();await syncFromRegistry();renderContracts();})();
 </script>
 </body>
 </html>

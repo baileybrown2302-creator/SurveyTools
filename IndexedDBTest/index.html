@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Field Tools">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Field Tools</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -130,7 +131,7 @@
 
     <!-- Home: section picker -->
     <div id="homeView">
-        <img src="./icon.png" class="app-icon" alt="Field Tools">
+        <img src="../beta/icon.png" class="app-icon" alt="Field Tools">
         <h1>Field Tools</h1>
         <div class="sections">
             <a href="project_manager.html" class="section-card" style="border-color:var(--accent-blue);background:var(--bg-secondary);text-decoration:none;color:inherit;">
@@ -250,17 +251,21 @@
     <script>
         // ── Theme ──
         const btn = document.getElementById('themeBtn');
-        const saved = localStorage.getItem('surveyTheme');
-        if (saved === 'high-contrast') {
-            document.documentElement.setAttribute('data-theme', 'high-contrast');
-            btn.textContent = '☀️ Light';
-        }
         btn.addEventListener('click', () => {
             const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
             document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
             btn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
-            localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
+            ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
         });
+
+        async function init() {
+            const saved = await ftGetSetting('surveyTheme');
+            if (saved === 'high-contrast') {
+                document.documentElement.setAttribute('data-theme', 'high-contrast');
+                btn.textContent = '☀️ Light';
+            }
+        }
+        init();
 
         // ── Section definitions ──
         const sections = {

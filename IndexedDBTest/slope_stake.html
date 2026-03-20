@@ -1,0 +1,2117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
+    <title>Slope Staking — Survey Tool</title>
+    <style>
+        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
+        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-orange:#fb923c;--accent-red:#f87171;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;--grade-bg:#052e16;--grade-border:#166534;--grade-text:#4ade80;--cut-bg:#431407;--cut-border:#9a3412;--cut-text:#fb923c;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        .mode-tabs{display:flex;margin:16px 16px 0;gap:8px;}
+        .mode-tab{flex:1;padding:11px 6px;border-radius:10px;border:2px solid var(--border-primary);background:var(--bg-secondary);color:var(--text-secondary);font-weight:700;font-size:0.78em;cursor:pointer;text-align:center;transition:all 0.15s;}
+        .mode-tab.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+        [data-theme="high-contrast"] .mode-tab.active{border-color:#fbbf24;background:#1c1700;color:#fbbf24;}
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        select.input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+        .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:10px;font-size:0.95em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:48px;-webkit-user-select:none;user-select:none;width:100%;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{background:var(--border-primary);}
+        .btn-danger{background:var(--accent-red);}
+        .btn-row{display:flex;gap:10px;margin-top:6px;}
+        .btn-sm{padding:8px 14px;font-size:0.82em;min-height:38px;width:auto;}
+        .result-panel{border-radius:12px;padding:16px;margin:0 16px 12px;}
+        .result-blue{background:var(--result-bg);border:1.5px solid var(--result-border);}
+        .result-green{background:var(--grade-bg);border:1.5px solid var(--grade-border);}
+        .result-orange{background:var(--cut-bg);border:1.5px solid var(--cut-border);}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:12px;opacity:0.8;}
+        .rt-blue{color:var(--result-text);}
+        .rt-green{color:var(--grade-text);}
+        .rt-orange{color:var(--cut-text);}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+        .result-label{font-size:0.7em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;opacity:0.7;}
+        .rl-blue{color:var(--result-text);}
+        .rl-green{color:var(--grade-text);}
+        .rl-orange{color:var(--cut-text);}
+        .result-value{font-size:1.15em;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px;}
+        .rv-blue{color:var(--result-text);}
+        .rv-green{color:var(--grade-text);}
+        .rv-orange{color:var(--cut-text);}
+        .result-full{grid-column:1/-1;}
+        .hidden{display:none!important;}
+        .error-msg{color:#ef4444;font-size:0.82em;font-weight:600;margin-top:8px;}
+        [data-theme="high-contrast"] .error-msg{color:#f87171;}
+        /* Type toggle */
+        .type-toggle{display:flex;border:1.5px solid var(--border-secondary);border-radius:9px;overflow:hidden;margin-bottom:0;}
+        .type-btn{flex:1;padding:9px 4px;border:none;background:var(--bg-tertiary);color:var(--text-secondary);font-size:0.75em;font-weight:700;cursor:pointer;transition:all 0.15s;text-align:center;-webkit-user-select:none;user-select:none;}
+        .type-btn+.type-btn{border-left:1px solid var(--border-secondary);}
+        .type-btn.active{background:var(--accent-blue);color:#fff;}
+        /* Side toggle */
+        .side-toggle{display:flex;gap:8px;}
+        .side-btn{flex:1;padding:10px;border:2px solid var(--border-secondary);border-radius:9px;background:var(--bg-tertiary);color:var(--text-secondary);font-weight:700;font-size:0.9em;cursor:pointer;text-align:center;-webkit-user-select:none;user-select:none;}
+        .side-btn.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+        /* Cards - divider */
+        .card-divider{border:none;border-top:1px solid var(--border-primary);margin:12px 0;}
+        /* Setup info bar */
+        .setup-info{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:10px;margin:12px 16px 0;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;box-shadow:var(--shadow);}
+        .setup-info-main{flex:1;}
+        .setup-info-label{font-size:0.68em;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);margin-bottom:2px;}
+        .setup-info-vals{font-size:0.82em;font-weight:700;color:var(--text-primary);font-variant-numeric:tabular-nums;}
+        /* Template summary in session */
+        .tpl-summary-card{background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:10px 13px;margin-bottom:14px;}
+        .tpl-summary-name{font-weight:800;font-size:0.88em;color:var(--text-primary);}
+        .tpl-summary-detail{font-size:0.76em;color:var(--text-muted);margin-top:2px;}
+        /* Trial history */
+        .trial-list{margin:12px 16px 0;}
+        .trial-list-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px;}
+        .trial-item{background:var(--bg-secondary);border:1px solid var(--border-primary);border-radius:9px;padding:9px 13px;margin-bottom:5px;cursor:pointer;transition:border-color 0.15s;}
+        .trial-item:hover{border-color:var(--accent-blue);}
+        .trial-row{display:flex;justify-content:space-between;align-items:center;font-size:0.82em;font-variant-numeric:tabular-nums;}
+        .trial-num{font-weight:700;color:var(--text-muted);min-width:24px;}
+        .trial-vals{color:var(--text-secondary);}
+        .trial-miss{font-weight:800;}
+        .miss-out{color:var(--accent-orange);}
+        .miss-in{color:var(--accent-blue);}
+        .miss-ok{color:var(--accent-green);}
+        /* Session notes */
+        .notes-section{margin:12px 16px 0;}
+        .notes-section-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+        .notes-table{width:100%;border-collapse:collapse;font-size:0.82em;font-variant-numeric:tabular-nums;background:var(--bg-secondary);border-radius:10px;overflow:hidden;border:1.5px solid var(--border-primary);}
+        .notes-table th{font-weight:700;color:var(--text-muted);text-transform:uppercase;font-size:0.68em;letter-spacing:0.5px;padding:8px 10px;text-align:left;background:var(--bg-tertiary);border-bottom:1.5px solid var(--border-primary);}
+        .notes-table td{padding:8px 10px;border-bottom:1px solid var(--border-primary);color:var(--text-primary);}
+        .notes-table tr:last-child td{border-bottom:none;}
+        .badge-fill{background:#dcfce7;color:#166534;padding:2px 7px;border-radius:5px;font-weight:700;font-size:0.82em;}
+        .badge-cut{background:#ffedd5;color:#9a3412;padding:2px 7px;border-radius:5px;font-weight:700;font-size:0.82em;}
+        .badge-custom{background:#ede9fe;color:#5b21b6;padding:2px 7px;border-radius:5px;font-weight:700;font-size:0.82em;}
+        [data-theme="high-contrast"] .badge-fill{background:#052e16;color:#4ade80;}
+        [data-theme="high-contrast"] .badge-cut{background:#431407;color:#fb923c;}
+        [data-theme="high-contrast"] .badge-custom{background:#2e1065;color:#c4b5fd;}
+        /* Template cards */
+        .tpl-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);}
+        .tpl-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;}
+        .tpl-name{font-weight:800;font-size:0.95em;color:var(--text-primary);}
+        .tpl-actions{display:flex;gap:6px;flex-shrink:0;margin-left:8px;}
+        .contract-chip{display:inline-block;background:var(--result-bg);color:var(--result-text);border-radius:5px;padding:2px 8px;font-size:0.7em;font-weight:700;margin-bottom:4px;}
+        .tpl-summary{font-size:0.77em;color:var(--text-muted);}
+        /* Btn icon */
+        .btn-icon{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:7px;padding:5px 9px;color:var(--text-muted);cursor:pointer;font-size:0.85em;-webkit-user-select:none;user-select:none;}
+        .btn-icon:hover{border-color:var(--accent-red);color:var(--accent-red);}
+        .btn-icon-edit:hover{border-color:var(--accent-blue);color:var(--accent-blue);}
+        /* Modal */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:100;display:flex;align-items:flex-end;-webkit-tap-highlight-color:transparent;}
+        .modal-sheet{background:var(--bg-secondary);border-radius:18px 18px 0 0;width:100%;max-height:90vh;overflow-y:auto;padding:20px 16px 44px;box-shadow:var(--shadow-lg);}
+        .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;}
+        .modal-title{font-weight:800;font-size:1.05em;}
+        .modal-close{background:none;border:none;font-size:1.3em;color:var(--text-muted);cursor:pointer;padding:4px 6px;line-height:1;}
+        /* Confirm modal */
+        .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;}
+        .confirm-box{background:var(--bg-secondary);border-radius:14px;padding:24px 20px;max-width:320px;width:100%;box-shadow:var(--shadow-lg);}
+        .confirm-msg{font-size:0.95em;margin-bottom:20px;line-height:1.5;color:var(--text-primary);}
+        /* Segment builder */
+        .seg-row{background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:11px 12px;margin-bottom:6px;}
+        .seg-row-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+        .seg-index{font-size:0.68em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);}
+        .seg-dir-toggle{display:flex;border:1px solid var(--border-secondary);border-radius:7px;overflow:hidden;}
+        .seg-dir-btn{padding:5px 8px;border:none;background:var(--bg-secondary);color:var(--text-secondary);font-size:0.72em;font-weight:700;cursor:pointer;-webkit-user-select:none;user-select:none;}
+        .seg-dir-btn+.seg-dir-btn{border-left:1px solid var(--border-secondary);}
+        .seg-dir-btn.active{background:var(--accent-blue);color:#fff;}
+        .seg-fields{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;}
+        .seg-last-label{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:9px;padding:10px 13px;font-size:0.82em;font-weight:700;color:var(--text-muted);text-align:center;white-space:nowrap;}
+        /* Export text */
+        .export-text-box{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:14px;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.78em;white-space:pre;overflow-x:auto;color:var(--text-primary);min-height:100px;-webkit-user-select:all;user-select:all;line-height:1.5;}
+        /* Empty state */
+        .empty-state{text-align:center;padding:32px 16px;color:var(--text-muted);font-size:0.88em;}
+        /* Catch button */
+        .catch-prompt{background:var(--grade-bg);border:2px solid var(--grade-border);border-radius:10px;padding:12px 14px;margin:0 16px 8px;display:flex;justify-content:space-between;align-items:center;}
+        .catch-prompt-cut{background:var(--cut-bg);border-color:var(--cut-border);}
+        .catch-text{font-weight:800;font-size:0.9em;color:var(--grade-text);}
+        .catch-text-cut{color:var(--cut-text);}
+        [data-theme="high-contrast"] .catch-prompt{background:var(--grade-bg);border-color:var(--grade-border);}
+        [data-theme="high-contrast"] .catch-text{color:var(--grade-text);}
+        /* Big miss display */
+        .miss-big{font-size:1.9em;font-weight:900;font-variant-numeric:tabular-nums;text-align:center;margin:4px 0;}
+        .instr-text{font-size:0.88em;font-weight:700;text-align:center;margin-top:2px;opacity:0.85;}
+        /* Stake list */
+        .stake-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:14px 16px;margin-bottom:8px;box-shadow:var(--shadow);}
+        .stake-card-done{opacity:0.5;border-style:dashed;}
+        .stake-card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;}
+        .stake-sta{font-weight:800;font-size:1em;color:var(--text-primary);}
+        .stake-detail{font-size:0.77em;color:var(--text-muted);margin-top:2px;}
+        .badge-pending{background:#fef9c3;color:#854d0e;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.72em;}
+        .badge-done{background:#dcfce7;color:#166534;padding:2px 8px;border-radius:5px;font-weight:700;font-size:0.72em;}
+        [data-theme="high-contrast"] .badge-pending{background:#451a03;color:#fde047;}
+        [data-theme="high-contrast"] .badge-done{background:#052e16;color:#4ade80;}
+        .side-badge{display:inline-block;background:var(--result-bg);color:var(--result-text);padding:1px 8px;border-radius:5px;font-weight:800;font-size:0.82em;margin-right:4px;}
+        /* BM calculator */
+        .bm-calc-toggle{font-size:0.8em;font-weight:700;color:var(--accent-blue);cursor:pointer;margin-bottom:10px;display:inline-block;-webkit-user-select:none;user-select:none;}
+        .bm-calc-section{background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:12px;margin-bottom:14px;}
+        /* Station range cards */
+        .range-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:10px;padding:11px 14px;margin-bottom:6px;box-shadow:var(--shadow);}
+        .range-card-top{display:flex;justify-content:space-between;align-items:flex-start;}
+        .range-sta{font-weight:800;font-size:0.9em;color:var(--text-primary);}
+        .range-detail{font-size:0.75em;color:var(--text-muted);margin-top:3px;}
+        .ranges-section{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:12px;margin:10px 16px 4px;padding:12px 14px;}
+        .ranges-header{display:flex;justify-content:space-between;align-items:center;cursor:pointer;-webkit-user-select:none;user-select:none;}
+        .ranges-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);}
+        /* Stake note */
+        .stake-note-box{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:14px;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.8em;white-space:pre;overflow-x:auto;color:var(--text-primary);line-height:1.65;-webkit-user-select:all;user-select:all;}
+        .note-row-catch{color:var(--accent-orange);font-weight:700;}
+        .note-row-fill{color:var(--accent-green);}
+        .note-row-cut{color:var(--accent-orange);}
+        /* GPS mode toggle (reuse type-toggle pattern but labeled) */
+        .mode-lozenge{display:inline-flex;border:1.5px solid var(--border-secondary);border-radius:9px;overflow:hidden;width:100%;}
+        .mode-lozenge-btn{flex:1;padding:9px 6px;border:none;background:var(--bg-tertiary);color:var(--text-secondary);font-size:0.78em;font-weight:700;cursor:pointer;text-align:center;-webkit-user-select:none;user-select:none;}
+        .mode-lozenge-btn+.mode-lozenge-btn{border-left:1px solid var(--border-secondary);}
+        .mode-lozenge-btn.active{background:var(--accent-blue);color:#fff;}
+    </style>
+</head>
+<body>
+<div class="top-nav">
+    <a href="slope_stake_home.html" class="nav-back">‹ Session</a>
+    <span class="nav-title">📍 Slope Staking</span>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<div class="mode-tabs">
+    <button class="mode-tab active" id="tabQuick" onclick="setTab('quick')">Quick Calc</button>
+    <button class="mode-tab" id="tabSession" onclick="setTab('session')">Field Session</button>
+    <button class="mode-tab" id="tabTemplates" onclick="setTab('templates')">Templates</button>
+    <button class="mode-tab" id="tabStakes" onclick="setTab('stakes')">Stake List</button>
+</div>
+
+<!-- ===== TAB 1: QUICK CALC ===== -->
+<div id="panelQuick">
+    <div class="card">
+        <div class="card-title">Instrument Setup</div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">HI (Height of Instrument)</label><input class="input" type="number" inputmode="decimal" id="qk_hi" placeholder="e.g. 104.825" step="0.001"></div>
+            <div class="field-group"><label class="label">Design CL Elevation</label><input class="input" type="number" inputmode="decimal" id="qk_cl" placeholder="e.g. 101.500" step="0.001"></div>
+        </div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Half-Width (ft)</label><input class="input" type="number" inputmode="decimal" id="qk_hw" placeholder="e.g. 18.0" step="0.01"></div>
+            <div class="field-group"><label class="label">Cross Slope (%) <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="qk_xs" placeholder="0" step="0.01" value="0"></div>
+        </div>
+        <div class="field-group">
+            <label class="label">Section Type</label>
+            <div class="type-toggle">
+                <button class="type-btn active" id="qk_tb_fill" onclick="qkSetType('fill')">Fill</button>
+                <button class="type-btn" id="qk_tb_cut" onclick="qkSetType('cut')">Cut</button>
+                <button class="type-btn" id="qk_tb_ditch" onclick="qkSetType('ditch')">Cut+Ditch</button>
+                <button class="type-btn" id="qk_tb_custom" onclick="qkSetType('custom')">Custom</button>
+            </div>
+        </div>
+        <div id="qk_fillFields">
+            <div class="field-group"><label class="label">Fill Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="qk_fillslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+        </div>
+        <div id="qk_cutFields" class="hidden">
+            <div class="field-group"><label class="label">Cut Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="qk_cutslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+        </div>
+        <div id="qk_ditchFields" class="hidden">
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Foreslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="qk_fore" placeholder="e.g. 4.0" step="0.1" min="0.01"></div>
+                <div class="field-group"><label class="label">Ditch Depth (ft)</label><input class="input" type="number" inputmode="decimal" id="qk_dd" placeholder="e.g. 1.5" step="0.01" min="0"></div>
+            </div>
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Ditch Width (ft)</label><input class="input" type="number" inputmode="decimal" id="qk_dw" placeholder="0 for V-ditch" step="0.01" min="0"></div>
+                <div class="field-group"><label class="label">Backslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="qk_back" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+        </div>
+        <div id="qk_customFields" class="hidden">
+            <div class="field-group">
+                <label class="label">Custom Template</label>
+                <select class="input" id="qk_customTpl" onchange="qkCustomTplChange()">
+                    <option value="">— Select saved custom template —</option>
+                </select>
+            </div>
+            <div id="qk_customSummary" class="tpl-summary-card hidden"></div>
+        </div>
+        <hr class="card-divider">
+        <div class="card-title" style="margin-bottom:10px;">Trial Shot</div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Offset from CL (ft)</label><input class="input" type="number" inputmode="decimal" id="qk_offset" placeholder="e.g. 22.5" step="0.01" min="0"></div>
+            <div class="field-group"><label class="label">Rod Reading</label><input class="input" type="number" inputmode="decimal" id="qk_rod" placeholder="e.g. 4.82" step="0.001"></div>
+        </div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="qkClear()">Clear</button>
+            <button class="btn btn-primary" onclick="qkCalc()">Calculate →</button>
+        </div>
+        <div id="qk_error" class="error-msg hidden"></div>
+    </div>
+    <div id="qk_result" class="hidden">
+        <div class="result-panel result-blue" id="qk_resultPanel">
+            <div class="result-title rt-blue" id="qk_resultTitle">Shot Result</div>
+            <div class="result-grid">
+                <div><div class="result-label rl-blue" id="qk_l1">Ground Elev</div><div class="result-value rv-blue" id="qk_groundElev">—</div></div>
+                <div><div class="result-label rl-blue" id="qk_l2">Design Elev</div><div class="result-value rv-blue" id="qk_designElev">—</div></div>
+                <div class="result-full" style="text-align:center;padding-top:4px;">
+                    <div class="result-label rl-blue" id="qk_l3" style="text-align:center;margin-bottom:4px;">Miss</div>
+                    <div class="miss-big rv-blue" id="qk_miss">—</div>
+                    <div class="instr-text rv-blue" id="qk_instr">—</div>
+                </div>
+                <div><div class="result-label rl-blue" id="qk_l4">Est. Catch Offset</div><div class="result-value rv-blue" id="qk_estCatch">—</div></div>
+                <div><div class="result-label rl-blue" id="qk_l5">Hinge Elev</div><div class="result-value rv-blue" id="qk_hingeElev">—</div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 2: FIELD SESSION ===== -->
+<div id="panelSession" class="hidden">
+    <!-- Setup card -->
+    <div class="card" id="sess_setupCard">
+        <div class="card-title">Session Setup</div>
+        <div class="field-group">
+            <label class="label">Input Mode</label>
+            <div class="mode-lozenge">
+                <button class="mode-lozenge-btn" id="sess_mode_level" onclick="sessSetMode('level')">📐 Level + Rod</button>
+                <button class="mode-lozenge-btn active" id="sess_mode_gps" onclick="sessSetMode('gps')">📡 GPS / Total Station</button>
+            </div>
+        </div>
+        <div class="field-group">
+            <label class="label">Template <span style="font-weight:400;color:var(--text-muted)">or manual entry</span></label>
+            <select class="input" id="sess_tpl" onchange="sessTplChange()">
+                <option value="">Manual Entry</option>
+            </select>
+        </div>
+        <div id="sess_tplSummary" class="tpl-summary-card hidden"></div>
+        <!-- Manual fields -->
+        <div id="sess_manualSection">
+            <div class="field-group">
+                <label class="label">Section Type</label>
+                <div class="type-toggle">
+                    <button class="type-btn active" id="sess_tb_fill" onclick="sessSetType('fill')">Fill</button>
+                    <button class="type-btn" id="sess_tb_cut" onclick="sessSetType('cut')">Cut</button>
+                    <button class="type-btn" id="sess_tb_ditch" onclick="sessSetType('ditch')">Cut+Ditch</button>
+                </div>
+            </div>
+            <div id="sess_fillFields">
+                <div class="field-group"><label class="label">Fill Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sess_fillslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+            <div id="sess_cutFields" class="hidden">
+                <div class="field-group"><label class="label">Cut Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sess_cutslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+            <div id="sess_ditchFields" class="hidden">
+                <div class="coord-row">
+                    <div class="field-group"><label class="label">Foreslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sess_fore" placeholder="4.0" step="0.1" min="0.01"></div>
+                    <div class="field-group"><label class="label">Ditch Depth (ft)</label><input class="input" type="number" inputmode="decimal" id="sess_dd" placeholder="1.5" step="0.01" min="0"></div>
+                </div>
+                <div class="coord-row">
+                    <div class="field-group"><label class="label">Ditch Width (ft)</label><input class="input" type="number" inputmode="decimal" id="sess_dw" placeholder="0" step="0.01" min="0"></div>
+                    <div class="field-group"><label class="label">Backslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sess_back" placeholder="2.0" step="0.1" min="0.01"></div>
+                </div>
+            </div>
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Half-Width (ft)</label><input class="input" type="number" inputmode="decimal" id="sess_hw" placeholder="18.0" step="0.01"></div>
+                <div class="field-group"><label class="label">Cross Slope (%) <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="sess_xs" placeholder="0" step="0.01" value="0"></div>
+            </div>
+        </div>
+        <!-- Fill/Cut toggle for simple templates -->
+        <div id="sess_fillCutToggle" class="field-group hidden">
+            <label class="label">Fill or Cut</label>
+            <div class="type-toggle" style="width:200px;">
+                <button class="type-btn active" id="sess_fc_fill" onclick="sessSetFillCut('fill')">Fill</button>
+                <button class="type-btn" id="sess_fc_cut" onclick="sessSetFillCut('cut')">Cut</button>
+            </div>
+        </div>
+        <hr class="card-divider">
+        <div id="sess_hiSection">
+            <span class="bm-calc-toggle" id="bmCalcToggle" onclick="toggleBmCalc()">▾ Calc HI from tie point</span>
+            <div id="sess_bmCalc" class="bm-calc-section hidden">
+                <div class="coord-row">
+                    <div class="field-group" style="margin-bottom:0"><label class="label">BM / Tie Elevation</label><input class="input" type="number" inputmode="decimal" id="sess_bmElev" step="0.001" placeholder="e.g. 98.000"></div>
+                    <div class="field-group" style="margin-bottom:0"><label class="label">Rod on BM</label><input class="input" type="number" inputmode="decimal" id="sess_bmRod" step="0.001" placeholder="e.g. 6.825"></div>
+                </div>
+                <button class="btn btn-secondary btn-sm" onclick="applyBmHI()" style="margin-top:8px;">Apply HI →</button>
+            </div>
+            <div class="field-group"><label class="label">HI (Height of Instrument)</label><input class="input" type="number" inputmode="decimal" id="sess_hi" placeholder="104.825" step="0.001"></div>
+        </div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Design CL Elevation</label><input class="input" type="number" inputmode="decimal" id="sess_cl" placeholder="101.500" step="0.001"></div>
+            <div class="field-group hidden" id="sess_gpsElevRow"><label class="label">Est. Ground (Guinea) <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="sess_guinea" placeholder="est. ground elev" step="0.001"></div>
+        </div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Station <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="text" id="sess_sta" placeholder="e.g. 12+50"></div>
+            <div class="field-group"><label class="label">Side</label><div class="side-toggle"><button class="side-btn active" id="sess_side_l" onclick="sessSetSide('L')">L</button><button class="side-btn" id="sess_side_r" onclick="sessSetSide('R')">R</button></div></div>
+        </div>
+        <div id="sess_error" class="error-msg hidden"></div>
+        <div class="btn-row"><button class="btn btn-primary" onclick="sessBegin()">Begin Session →</button></div>
+    </div>
+    <!-- Setup info bar (shown when locked) -->
+    <div id="sess_infoBar" class="setup-info hidden">
+        <div class="setup-info-main">
+            <div class="setup-info-label">Active Session</div>
+            <div class="setup-info-vals" id="sess_infoVals">—</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="sessUnlock()">Edit</button>
+    </div>
+    <!-- Shot entry -->
+    <div id="sess_shotSection" class="hidden">
+        <div class="card">
+            <div class="card-title">Trial Shot</div>
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Offset from CL (ft)</label><input class="input" type="number" inputmode="decimal" id="sess_offset" placeholder="e.g. 24.0" step="0.01" min="0"></div>
+                <div class="field-group hidden" id="sess_rodRow"><label class="label">Rod Reading</label><input class="input" type="number" inputmode="decimal" id="sess_rod" placeholder="e.g. 5.12" step="0.001"></div>
+                <div class="field-group" id="sess_groundRow"><label class="label">Ground Elevation</label><input class="input" type="number" inputmode="decimal" id="sess_ground_elev" placeholder="e.g. 98.52" step="0.001"></div>
+            </div>
+            <div id="sess_shotError" class="error-msg hidden"></div>
+            <button class="btn btn-primary" onclick="sessLogShot()">Log Shot →</button>
+        </div>
+        <!-- Live result -->
+        <div id="sess_result" class="hidden">
+            <div class="result-panel result-blue" id="sess_resultPanel">
+                <div class="result-title rt-blue" id="sess_resultTitle">Shot Result</div>
+                <div class="result-grid">
+                    <div><div class="result-label rl-blue" id="sess_l1">Ground Elev</div><div class="result-value rv-blue" id="sess_groundElev">—</div></div>
+                    <div><div class="result-label rl-blue" id="sess_l2">Design Elev</div><div class="result-value rv-blue" id="sess_designElev">—</div></div>
+                    <div class="result-full" style="text-align:center;padding-top:4px;">
+                        <div class="result-label rl-blue" id="sess_l3" style="text-align:center;margin-bottom:4px;">Miss</div>
+                        <div class="miss-big rv-blue" id="sess_miss">—</div>
+                        <div class="instr-text rv-blue" id="sess_instr">—</div>
+                    </div>
+                    <div><div class="result-label rl-blue" id="sess_l4">Est. Catch Offset</div><div class="result-value rv-blue" id="sess_estCatch">—</div></div>
+                    <div><div class="result-label rl-blue" id="sess_l5">Hinge Elev</div><div class="result-value rv-blue" id="sess_hingeElev">—</div></div>
+                </div>
+            </div>
+        </div>
+        <!-- Catch prompt -->
+        <div id="sess_catchPrompt" class="catch-prompt hidden">
+            <span class="catch-text" id="sess_catchText">✓ AT CATCH POINT</span>
+            <button class="btn btn-primary btn-sm" onclick="sessRecordCatch()">Record Catch</button>
+        </div>
+    </div>
+    <!-- Trial history -->
+    <div id="sess_trialSection" class="hidden">
+        <div class="trial-list">
+            <div class="trial-list-title">Trial History</div>
+            <div id="sess_trialList"></div>
+        </div>
+    </div>
+    <!-- Session notes -->
+    <div id="sess_notesSection" class="hidden">
+        <div class="notes-section">
+            <div class="notes-section-title">
+                <span>Catch Points</span>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn btn-secondary btn-sm" onclick="sessExportNotes()">Export</button>
+                    <button class="btn btn-secondary btn-sm" style="color:var(--accent-red);" onclick="sessClearSession()">Clear Session</button>
+                </div>
+            </div>
+            <table class="notes-table">
+                <thead><tr><th>Station</th><th>Side</th><th>Offset</th><th>Type</th><th>Rod</th></tr></thead>
+                <tbody id="sess_notesList"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ===== TAB 3: TEMPLATES ===== -->
+<div id="panelTemplates" class="hidden">
+    <div style="margin:12px 16px 0;display:flex;justify-content:flex-end;">
+        <button class="btn btn-primary btn-sm" onclick="openTplModal(null)">+ New Template</button>
+    </div>
+    <div id="tplList" style="margin:10px 0;"></div>
+</div>
+
+<!-- ===== TAB 4: STAKE LIST ===== -->
+<div id="panelStakes" class="hidden">
+    <!-- Station Ranges collapsible -->
+    <div class="ranges-section" id="rangesSection">
+        <div class="ranges-header" onclick="toggleRanges()">
+            <span class="ranges-title">Station Template Ranges</span>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openRangeModal(null)">+ Add Range</button>
+                <span id="rangesChevron" style="color:var(--text-muted);font-size:0.9em;">▾</span>
+            </div>
+        </div>
+        <div id="rangeList" class="hidden" style="margin-top:10px;"></div>
+    </div>
+    <div style="margin:8px 16px 0;display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);">Stakes</span>
+        <button class="btn btn-primary btn-sm" onclick="openStakeModal(null)">+ Add Stake</button>
+    </div>
+    <div id="stakeList" style="margin:6px 0;"></div>
+</div>
+
+<!-- ===== TEMPLATE MODAL ===== -->
+<div id="tplModal" class="modal-overlay hidden" onclick="if(event.target===this)closeTplModal()">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <span class="modal-title" id="tplModalTitle">New Template</span>
+            <button class="modal-close" onclick="closeTplModal()">✕</button>
+        </div>
+        <input type="hidden" id="tpl_id">
+        <div class="field-group"><label class="label">Template Name</label><input class="input" type="text" id="tpl_name" placeholder="e.g. Fill — Rt 15 Typical"></div>
+        <div class="field-group"><label class="label">Contract / Project <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="text" id="tpl_contract" placeholder="e.g. C204781"></div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Half-Width (ft)</label><input class="input" type="number" inputmode="decimal" id="tpl_hw" step="0.01"></div>
+            <div class="field-group"><label class="label">Cross Slope (%) <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="tpl_xs" placeholder="0" step="0.01" value="0"></div>
+        </div>
+        <div class="field-group">
+            <label class="label">Section Type</label>
+            <div class="type-toggle">
+                <button class="type-btn active" id="tpl_tb_simple" onclick="tplSetSection('simple')">Simple</button>
+                <button class="type-btn" id="tpl_tb_ditch" onclick="tplSetSection('ditch')">Ditch</button>
+                <button class="type-btn" id="tpl_tb_custom" onclick="tplSetSection('custom')">Custom</button>
+            </div>
+        </div>
+        <div id="tpl_simpleFields">
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Fill Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="tpl_fillslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+                <div class="field-group"><label class="label">Cut Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="tpl_cutslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+        </div>
+        <div id="tpl_ditchFields" class="hidden">
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Foreslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="tpl_fore" placeholder="e.g. 4.0" step="0.1" min="0.01"></div>
+                <div class="field-group"><label class="label">Ditch Depth (ft)</label><input class="input" type="number" inputmode="decimal" id="tpl_dd" placeholder="e.g. 1.5" step="0.01" min="0"></div>
+            </div>
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Ditch Width (ft)</label><input class="input" type="number" inputmode="decimal" id="tpl_dw" placeholder="0 for V-ditch" step="0.01" min="0"></div>
+                <div class="field-group"><label class="label">Backslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="tpl_back" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+        </div>
+        <div id="tpl_customFields" class="hidden">
+            <p style="font-size:0.79em;color:var(--text-muted);margin-bottom:10px;">Define the cross-section from the hinge outward. The last segment extends to the catch point.</p>
+            <div id="tplSegmentList"></div>
+            <button class="btn btn-secondary btn-sm" onclick="addSegment()" style="margin-top:4px;">+ Add Segment</button>
+        </div>
+        <div id="tpl_error" class="error-msg hidden"></div>
+        <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-secondary" onclick="closeTplModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveTpl()">Save Template</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== STAKE MODAL ===== -->
+<div id="stakeModal" class="modal-overlay hidden" onclick="if(event.target===this)closeStakeModal()">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <span class="modal-title" id="stakeModalTitle">New Stake</span>
+            <button class="modal-close" onclick="closeStakeModal()">✕</button>
+        </div>
+        <input type="hidden" id="sk_id">
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Station</label><input class="input" type="text" id="sk_sta" placeholder="e.g. 10+50" onblur="skAutoFillFromRange()"></div>
+            <div class="field-group"><label class="label">Side</label><div class="side-toggle"><button class="side-btn active" id="sk_side_l" onclick="skSetSide('L')">L</button><button class="side-btn" id="sk_side_r" onclick="skSetSide('R')">R</button></div></div>
+        </div>
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Design CL Elevation</label><input class="input" type="number" inputmode="decimal" id="sk_cl" step="0.001" placeholder="e.g. 101.500"></div>
+            <div class="field-group"><label class="label">Guinea Elev <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="sk_guinea" step="0.001" placeholder="est. ground"></div>
+        </div>
+        <div class="field-group">
+            <label class="label">Template <span style="font-weight:400;color:var(--text-muted)">or manual</span></label>
+            <select class="input" id="sk_tpl" onchange="skTplChange()">
+                <option value="">Manual Entry</option>
+            </select>
+        </div>
+        <div id="sk_tplSummary" class="tpl-summary-card hidden"></div>
+        <div id="sk_manualSection">
+            <div class="field-group">
+                <label class="label">Section Type</label>
+                <div class="type-toggle">
+                    <button class="type-btn active" id="sk_tb_fill" onclick="skSetType('fill')">Fill</button>
+                    <button class="type-btn" id="sk_tb_cut" onclick="skSetType('cut')">Cut</button>
+                    <button class="type-btn" id="sk_tb_ditch" onclick="skSetType('ditch')">Cut+Ditch</button>
+                </div>
+            </div>
+            <div id="sk_fillFields">
+                <div class="field-group"><label class="label">Fill Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sk_fillslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+            <div id="sk_cutFields" class="hidden">
+                <div class="field-group"><label class="label">Cut Slope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sk_cutslope" placeholder="e.g. 2.0" step="0.1" min="0.01"></div>
+            </div>
+            <div id="sk_ditchFields" class="hidden">
+                <div class="coord-row">
+                    <div class="field-group"><label class="label">Foreslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sk_fore" placeholder="4.0" step="0.1" min="0.01"></div>
+                    <div class="field-group"><label class="label">Ditch Depth (ft)</label><input class="input" type="number" inputmode="decimal" id="sk_dd" placeholder="1.5" step="0.01" min="0"></div>
+                </div>
+                <div class="coord-row">
+                    <div class="field-group"><label class="label">Ditch Width (ft)</label><input class="input" type="number" inputmode="decimal" id="sk_dw" placeholder="0" step="0.01" min="0"></div>
+                    <div class="field-group"><label class="label">Backslope (H:1V)</label><input class="input" type="number" inputmode="decimal" id="sk_back" placeholder="2.0" step="0.1" min="0.01"></div>
+                </div>
+            </div>
+            <div class="coord-row">
+                <div class="field-group"><label class="label">Half-Width (ft)</label><input class="input" type="number" inputmode="decimal" id="sk_hw" step="0.01" placeholder="e.g. 18.0"></div>
+                <div class="field-group"><label class="label">Cross Slope (%) <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="number" inputmode="decimal" id="sk_xs" placeholder="0" step="0.01" value="0"></div>
+            </div>
+        </div>
+        <div id="sk_fillCutToggle" class="field-group hidden">
+            <label class="label">Fill or Cut</label>
+            <div class="type-toggle" style="width:200px;">
+                <button class="type-btn active" id="sk_fc_fill" onclick="skSetFillCut('fill')">Fill</button>
+                <button class="type-btn" id="sk_fc_cut" onclick="skSetFillCut('cut')">Cut</button>
+            </div>
+        </div>
+        <div class="field-group"><label class="label">Notes <span style="font-weight:400;color:var(--text-muted)">opt.</span></label><input class="input" type="text" id="sk_notes" placeholder="Optional notes"></div>
+        <div id="sk_error" class="error-msg hidden"></div>
+        <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-secondary" onclick="closeStakeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveStake()">Save Stake</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== EXPORT MODAL ===== -->
+<div id="exportModal" class="modal-overlay hidden" onclick="if(event.target===this)closeExportModal()">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <span class="modal-title">Session Notes</span>
+            <button class="modal-close" onclick="closeExportModal()">✕</button>
+        </div>
+        <p style="font-size:0.81em;color:var(--text-muted);margin-bottom:10px;">Tap text to select all, then copy.</p>
+        <div class="export-text-box" id="exportTextBox" onclick="selectExportText()"></div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-primary" onclick="copyExport()">Copy</button>
+            <button class="btn btn-secondary" onclick="closeExportModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== STAKE NOTE MODAL ===== -->
+<div id="stakeNoteModal" class="modal-overlay hidden" onclick="if(event.target===this)closeStakeNoteModal()">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <span class="modal-title" id="stakeNoteTitle">Stake Face Note</span>
+            <button class="modal-close" onclick="closeStakeNoteModal()">✕</button>
+        </div>
+        <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:10px;">Pre-calculated stake face. Distances are offsets from CL. Tap to select all.</p>
+        <div class="stake-note-box" id="stakeNoteBox" onclick="selectStakeNote()"></div>
+        <div class="btn-row" style="margin-top:12px;">
+            <button class="btn btn-primary" onclick="copyStakeNote()">Copy</button>
+            <button class="btn btn-secondary" onclick="closeStakeNoteModal()">Done</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== RANGE MODAL ===== -->
+<div id="rangeModal" class="modal-overlay hidden" onclick="if(event.target===this)closeRangeModal()">
+    <div class="modal-sheet">
+        <div class="modal-header">
+            <span class="modal-title" id="rangeModalTitle">New Station Range</span>
+            <button class="modal-close" onclick="closeRangeModal()">✕</button>
+        </div>
+        <input type="hidden" id="rng_id">
+        <div class="coord-row">
+            <div class="field-group"><label class="label">Station From</label><input class="input" type="text" id="rng_from" placeholder="e.g. 10+00"></div>
+            <div class="field-group"><label class="label">Station To</label><input class="input" type="text" id="rng_to" placeholder="e.g. 25+00"></div>
+        </div>
+        <div class="field-group">
+            <label class="label">Left (L) Template</label>
+            <select class="input" id="rng_left"><option value="">None</option></select>
+        </div>
+        <div class="field-group">
+            <label class="label">Right (R) Template</label>
+            <select class="input" id="rng_right"><option value="">None</option></select>
+        </div>
+        <div id="rng_error" class="error-msg hidden"></div>
+        <div class="btn-row" style="margin-top:16px;">
+            <button class="btn btn-secondary" onclick="closeRangeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="saveRange()">Save Range</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== CONFIRM MODAL ===== -->
+<div id="confirmModal" class="confirm-overlay hidden">
+    <div class="confirm-box">
+        <div class="confirm-msg" id="confirmMsg"></div>
+        <div class="btn-row">
+            <button class="btn btn-secondary" onclick="confirmResolve(false)">Cancel</button>
+            <button class="btn btn-danger" onclick="confirmResolve(true)">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================
+// THEME
+// ============================================================
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+});
+(async function() {
+    const saved = await ftGetSetting('surveyTheme');
+    if (saved === 'high-contrast') { document.documentElement.setAttribute('data-theme', 'high-contrast'); themeBtn.textContent = '☀️ Light'; }
+})();
+
+// ============================================================
+// DATA
+// ============================================================
+let templates = [];
+let stakes = [];
+let stakeRanges = [];
+let session = null; // { setup, trials, notes, lastResult }
+let sessType = 'fill';    // manual section type in Field Session
+let sessFillCut = 'fill'; // fill/cut for simple templates in Field Session
+let sessGpsMode = true;   // default GPS/TS mode
+let qkType = 'fill';
+let qkCustomTemplate = null;
+let sessSetup = null;     // locked setup params
+let sessSide = 'L';
+let tplSectionType = 'simple';
+let editingSegments = [];
+let confirmCallback = null;
+let currentStakeId = null; // stake loaded into current session
+let skSide = 'L';
+let skType = 'fill';
+let skFillCut = 'fill';
+let rangesExpanded = false;
+
+// IDB persistence functions (replacing localStorage)
+async function saveTemplatesIDB() { await ftClear('stakeTemplates'); for (const t of templates) await ftSaveTemplate(t); }
+async function loadTemplatesIDB() { templates = await ftGetAllTemplates(); }
+async function saveStakesIDB() { await ftClear('stakesList'); for (const s of stakes) await ftSaveStake(s); }
+async function loadStakesIDB() { stakes = await ftGetAllStakesList(); }
+async function saveRangesIDB() { await ftClear('stakeRanges'); for (const r of stakeRanges) await ftSaveRange(r); }
+async function loadRangesIDB() { stakeRanges = await ftGetAllRanges(); }
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function setTab(tab) {
+    ['quick', 'session', 'templates', 'stakes'].forEach(t => {
+        document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+        document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    });
+    if (tab === 'templates') renderTemplates();
+    if (tab === 'quick') populateCustomDropdown();
+    if (tab === 'session') populateSessionDropdown();
+    if (tab === 'stakes') { renderStakes(); populateStakeDropdown(); }
+}
+
+// ============================================================
+// CORE CALCULATIONS
+// ============================================================
+function calcShot(p) {
+    const groundElev = (p.groundElevDirect !== undefined) ? p.groundElevDirect : p.hi - p.rod;
+    const hingeElev = p.clElev - (p.halfWidth * (p.crossSlope || 0) / 100);
+    const designElev = designElevAtOffset(p.offset, p.type, hingeElev, p.halfWidth, p);
+    const miss = groundElev - designElev;
+    const converged = Math.abs(miss) <= 0.10;
+    let estCatch = estCatchOffset(groundElev, p.type, hingeElev, p.halfWidth, p);
+    // Direction: miss > 0 → farther out; miss < 0 → closer in (applies to all types)
+    let instruction;
+    if (converged) {
+        instruction = '✓ AT CATCH POINT';
+    } else {
+        const moveAmt = Math.abs(estCatch - p.offset);
+        instruction = miss > 0
+            ? `Move ${moveAmt.toFixed(1)} ft farther out`
+            : `Move ${moveAmt.toFixed(1)} ft closer in`;
+    }
+    return { groundElev, designElev, miss, estCatch, hingeElev, converged, instruction };
+}
+
+function designElevAtOffset(d, type, hingeElev, halfWidth, p) {
+    if (d <= halfWidth) return hingeElev;
+    const dist = d - halfWidth;
+    if (type === 'fill') {
+        return hingeElev - dist / p.fillSlope;
+    } else if (type === 'cut') {
+        return hingeElev + dist / p.cutSlope;
+    } else if (type === 'ditch') {
+        const ditchBottomInner = halfWidth + p.foreslope * p.ditchDepth;
+        const ditchBottomOuter = ditchBottomInner + p.ditchWidth;
+        const ditchBottomElev = hingeElev - p.ditchDepth;
+        if (d <= ditchBottomInner) return hingeElev - (d - halfWidth) / p.foreslope;
+        if (d <= ditchBottomOuter) return ditchBottomElev;
+        return ditchBottomElev + (d - ditchBottomOuter) / p.backslope;
+    } else if (type === 'custom') {
+        return designElevCustom(d, halfWidth, hingeElev, p.segments);
+    }
+    return hingeElev;
+}
+
+function designElevCustom(d, halfWidth, hingeElev, segments) {
+    if (!segments || segments.length === 0) return hingeElev;
+    let curOffset = halfWidth;
+    let curElev = hingeElev;
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        const isLast = i === segments.length - 1;
+        const segEndOffset = isLast ? Infinity : curOffset + (seg.width || 0);
+        if (d <= segEndOffset || isLast) {
+            const distInto = d - curOffset;
+            if (seg.direction === 'level') return curElev;
+            if (seg.direction === 'down') return curElev - distInto / seg.slope;
+            if (seg.direction === 'up') return curElev + distInto / seg.slope;
+        }
+        // Advance
+        const w = seg.width || 0;
+        if (seg.direction === 'down') curElev -= w / seg.slope;
+        else if (seg.direction === 'up') curElev += w / seg.slope;
+        curOffset += w;
+    }
+    return curElev;
+}
+
+function estCatchOffset(groundElev, type, hingeElev, halfWidth, p) {
+    if (type === 'fill') {
+        const d = halfWidth + p.fillSlope * (hingeElev - groundElev);
+        return Math.max(halfWidth, d);
+    } else if (type === 'cut') {
+        const d = halfWidth + p.cutSlope * (groundElev - hingeElev);
+        return Math.max(halfWidth, d);
+    } else if (type === 'ditch') {
+        const ditchBottomOuter = halfWidth + p.foreslope * p.ditchDepth + p.ditchWidth;
+        const ditchBottomElev = hingeElev - p.ditchDepth;
+        const d = ditchBottomOuter + p.backslope * (groundElev - ditchBottomElev);
+        return Math.max(ditchBottomOuter, d);
+    } else if (type === 'custom') {
+        return estCatchCustom(groundElev, halfWidth, hingeElev, p.segments);
+    }
+    return halfWidth;
+}
+
+function estCatchCustom(groundElev, halfWidth, hingeElev, segments) {
+    if (!segments || segments.length === 0) return halfWidth;
+    let curOffset = halfWidth;
+    let curElev = hingeElev;
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i];
+        const isLast = i === segments.length - 1;
+        const w = isLast ? null : (seg.width || 0);
+        let segEndElev = curElev;
+        if (!isLast) {
+            if (seg.direction === 'down') segEndElev = curElev - w / seg.slope;
+            else if (seg.direction === 'up') segEndElev = curElev + w / seg.slope;
+        }
+        const inRange = isLast ||
+            (seg.direction === 'down' && groundElev <= curElev && groundElev >= segEndElev) ||
+            (seg.direction === 'up' && groundElev >= curElev && groundElev <= segEndElev) ||
+            (seg.direction === 'level' && Math.abs(groundElev - curElev) < 0.01);
+        if (inRange) {
+            if (seg.direction === 'level') return curOffset + (w || 0) / 2;
+            if (seg.direction === 'down') return curOffset + seg.slope * (curElev - groundElev);
+            if (seg.direction === 'up') return curOffset + seg.slope * (groundElev - curElev);
+        }
+        if (!isLast) { curOffset += w; curElev = segEndElev; }
+    }
+    // Fallback: use last segment
+    const last = segments[segments.length - 1];
+    if (last.direction === 'up') return curOffset + last.slope * (groundElev - curElev);
+    if (last.direction === 'down') return curOffset + last.slope * (curElev - groundElev);
+    return curOffset;
+}
+
+// ============================================================
+// RESULT RENDERING (shared)
+// ============================================================
+function applyResultTheme(panel, title, labels, values, type, converged) {
+    let cls, rt, rl, rv;
+    if (converged) {
+        cls = type === 'fill' ? 'result-panel result-green' : 'result-panel result-orange';
+        rt = type === 'fill' ? 'result-title rt-green' : 'result-title rt-orange';
+        rl = type === 'fill' ? 'result-label rl-green' : 'result-label rl-orange';
+        rv = type === 'fill' ? 'result-value rv-green' : 'result-value rv-orange';
+    } else {
+        cls = 'result-panel result-blue'; rt = 'result-title rt-blue'; rl = 'result-label rl-blue'; rv = 'result-value rv-blue';
+    }
+    panel.className = cls;
+    title.className = rt;
+    labels.forEach(el => el.className = rl);
+    values.forEach(el => { el.className = rv; });
+}
+
+function renderResult(res, pfx, type) {
+    const panel = document.getElementById(pfx + '_resultPanel');
+    const titleEl = document.getElementById(pfx + '_resultTitle');
+    const ls = ['l1','l2','l3','l4','l5'].map(id => document.getElementById(pfx + '_' + id));
+    const vs = ['groundElev','designElev','miss','estCatch','hingeElev'].map(id => document.getElementById(pfx + '_' + id));
+    // Labels may need special class for miss/instr
+    applyResultTheme(panel, titleEl, ls, vs, type, res.converged);
+    // Override miss & instr to use parent panel color class suffix
+    const suffix = res.converged ? (type === 'fill' ? 'green' : 'orange') : 'blue';
+    document.getElementById(pfx + '_miss').className = `miss-big rv-${suffix}`;
+    document.getElementById(pfx + '_instr').className = `instr-text rv-${suffix}`;
+    const missEl = document.getElementById(pfx + '_miss');
+    const instrEl = document.getElementById(pfx + '_instr');
+    // Title
+    titleEl.textContent = res.converged
+        ? (type === 'fill' ? '✓ Fill Catch Point' : '✓ Cut Catch Point')
+        : 'Shot Result';
+    document.getElementById(pfx + '_groundElev').textContent = res.groundElev.toFixed(4);
+    document.getElementById(pfx + '_designElev').textContent = res.designElev.toFixed(4);
+    missEl.textContent = (res.miss >= 0 ? '+' : '') + res.miss.toFixed(3) + ' ft';
+    instrEl.textContent = res.instruction;
+    const catchText = res.estCatch !== null ? res.estCatch.toFixed(2) + ' ft' : '—';
+    document.getElementById(pfx + '_estCatch').textContent = catchText;
+    document.getElementById(pfx + '_hingeElev').textContent = res.hingeElev.toFixed(4);
+    // l3 needs special treatment (miss label)
+    document.getElementById(pfx + '_l3').className = `result-label rl-${suffix}`;
+    document.getElementById(pfx + '_result').classList.remove('hidden');
+}
+
+// ============================================================
+// QUICK CALC
+// ============================================================
+function qkSetType(type) {
+    qkType = type;
+    ['fill','cut','ditch','custom'].forEach(t => {
+        document.getElementById('qk_tb_' + t).classList.toggle('active', t === type);
+        const el = document.getElementById('qk_' + t + 'Fields');
+        if (el) el.classList.toggle('hidden', t !== type);
+    });
+}
+
+function qkCustomTplChange() {
+    const id = document.getElementById('qk_customTpl').value;
+    qkCustomTemplate = id ? templates.find(t => t.id === id) : null;
+    const summary = document.getElementById('qk_customSummary');
+    if (qkCustomTemplate) {
+        summary.textContent = tplSummaryText(qkCustomTemplate);
+        summary.classList.remove('hidden');
+    } else {
+        summary.classList.add('hidden');
+    }
+}
+
+function qkCalc() {
+    const hi = parseFloat(document.getElementById('qk_hi').value);
+    const clElev = parseFloat(document.getElementById('qk_cl').value);
+    const halfWidth = parseFloat(document.getElementById('qk_hw').value);
+    const crossSlope = parseFloat(document.getElementById('qk_xs').value) || 0;
+    const offset = parseFloat(document.getElementById('qk_offset').value);
+    const rod = parseFloat(document.getElementById('qk_rod').value);
+    const err = document.getElementById('qk_error');
+
+    if (isNaN(hi) || isNaN(clElev) || isNaN(halfWidth) || isNaN(offset) || isNaN(rod)) {
+        err.textContent = 'Enter HI, design CL elevation, half-width, offset, and rod reading.'; err.classList.remove('hidden'); return;
+    }
+    if (halfWidth <= 0) { err.textContent = 'Half-width must be greater than zero.'; err.classList.remove('hidden'); return; }
+
+    let p = { hi, clElev, halfWidth, crossSlope, offset, rod, type: qkType };
+
+    if (qkType === 'fill') {
+        p.fillSlope = parseFloat(document.getElementById('qk_fillslope').value);
+        if (isNaN(p.fillSlope) || p.fillSlope <= 0) { err.textContent = 'Enter a valid fill slope (H:1V).'; err.classList.remove('hidden'); return; }
+    } else if (qkType === 'cut') {
+        p.cutSlope = parseFloat(document.getElementById('qk_cutslope').value);
+        if (isNaN(p.cutSlope) || p.cutSlope <= 0) { err.textContent = 'Enter a valid cut slope (H:1V).'; err.classList.remove('hidden'); return; }
+    } else if (qkType === 'ditch') {
+        p.foreslope = parseFloat(document.getElementById('qk_fore').value);
+        p.ditchDepth = parseFloat(document.getElementById('qk_dd').value);
+        p.ditchWidth = parseFloat(document.getElementById('qk_dw').value) || 0;
+        p.backslope = parseFloat(document.getElementById('qk_back').value);
+        if (isNaN(p.foreslope)||p.foreslope<=0||isNaN(p.ditchDepth)||p.ditchDepth<0||isNaN(p.backslope)||p.backslope<=0) {
+            err.textContent = 'Enter valid foreslope, ditch depth, and backslope.'; err.classList.remove('hidden'); return;
+        }
+    } else if (qkType === 'custom') {
+        if (!qkCustomTemplate) { err.textContent = 'Select a saved custom template.'; err.classList.remove('hidden'); return; }
+        p.halfWidth = qkCustomTemplate.halfWidth;
+        p.crossSlope = qkCustomTemplate.crossSlope || 0;
+        p.segments = qkCustomTemplate.segments;
+    }
+
+    err.classList.add('hidden');
+    const res = calcShot(p);
+    renderResult(res, 'qk', qkType);
+}
+
+function qkClear() {
+    ['qk_hi','qk_cl','qk_hw','qk_xs','qk_offset','qk_rod','qk_fillslope','qk_cutslope','qk_fore','qk_dd','qk_dw','qk_back'].forEach(id => { const el = document.getElementById(id); if (el) el.value = el.id === 'qk_xs' ? '0' : ''; });
+    document.getElementById('qk_result').classList.add('hidden');
+    document.getElementById('qk_error').classList.add('hidden');
+    document.getElementById('qk_customTpl').value = '';
+    document.getElementById('qk_customSummary').classList.add('hidden');
+    qkCustomTemplate = null;
+    qkSetType('fill');
+}
+
+// ============================================================
+// FIELD SESSION
+// ============================================================
+function sessSetType(type) {
+    sessType = type;
+    ['fill','cut','ditch'].forEach(t => {
+        document.getElementById('sess_tb_' + t).classList.toggle('active', t === type);
+        const el = document.getElementById('sess_' + t + 'Fields');
+        if (el) el.classList.toggle('hidden', t !== type);
+    });
+}
+
+function sessSetFillCut(fc) {
+    sessFillCut = fc;
+    ['fill','cut'].forEach(t => document.getElementById('sess_fc_' + t).classList.toggle('active', t === fc));
+}
+
+function sessSetSide(s) {
+    sessSide = s;
+    ['l','r'].forEach(t => document.getElementById('sess_side_' + t).classList.toggle('active', t === s.toLowerCase()));
+}
+
+function sessTplChange() {
+    const id = document.getElementById('sess_tpl').value;
+    const manual = document.getElementById('sess_manualSection');
+    const summary = document.getElementById('sess_tplSummary');
+    const fcToggle = document.getElementById('sess_fillCutToggle');
+    if (!id) {
+        manual.classList.remove('hidden');
+        summary.classList.add('hidden');
+        fcToggle.classList.add('hidden');
+    } else {
+        const tpl = templates.find(t => t.id === id);
+        manual.classList.add('hidden');
+        summary.classList.remove('hidden');
+        summary.innerHTML = `<div class="tpl-summary-name">${tpl.name}</div><div class="tpl-summary-detail">${tplSummaryText(tpl)}</div>`;
+        fcToggle.classList.toggle('hidden', tpl.sectionType !== 'simple');
+    }
+}
+
+function sessBegin() {
+    const tplId = document.getElementById('sess_tpl').value;
+    const hi = parseFloat(document.getElementById('sess_hi').value);
+    const clElev = parseFloat(document.getElementById('sess_cl').value);
+    const station = document.getElementById('sess_sta').value.trim();
+    const err = document.getElementById('sess_error');
+
+    if (sessGpsMode) {
+        if (isNaN(clElev)) { err.textContent = 'Enter Design CL Elevation.'; err.classList.remove('hidden'); return; }
+    } else {
+        if (isNaN(hi) || isNaN(clElev)) { err.textContent = 'Enter HI and Design CL Elevation.'; err.classList.remove('hidden'); return; }
+    }
+
+    let setup = { hi: sessGpsMode ? null : hi, clElev, station, side: sessSide, tplId, gpsMode: sessGpsMode };
+
+    if (tplId) {
+        const tpl = templates.find(t => t.id === tplId);
+        setup.halfWidth = tpl.halfWidth;
+        setup.crossSlope = tpl.crossSlope || 0;
+        setup.tplName = tpl.name;
+        if (tpl.sectionType === 'simple') {
+            setup.type = sessFillCut;
+            setup.fillSlope = tpl.fillSlope;
+            setup.cutSlope = tpl.cutSlope;
+        } else if (tpl.sectionType === 'ditch') {
+            setup.type = 'ditch';
+            setup.foreslope = tpl.foreslope; setup.ditchDepth = tpl.ditchDepth;
+            setup.ditchWidth = tpl.ditchWidth; setup.backslope = tpl.backslope;
+        } else if (tpl.sectionType === 'custom') {
+            setup.type = 'custom';
+            setup.segments = tpl.segments;
+        }
+    } else {
+        const hw = parseFloat(document.getElementById('sess_hw').value);
+        const xs = parseFloat(document.getElementById('sess_xs').value) || 0;
+        if (isNaN(hw) || hw <= 0) { err.textContent = 'Enter half-width.'; err.classList.remove('hidden'); return; }
+        setup.halfWidth = hw; setup.crossSlope = xs; setup.type = sessType;
+        if (sessType === 'fill') {
+            setup.fillSlope = parseFloat(document.getElementById('sess_fillslope').value);
+            if (isNaN(setup.fillSlope)||setup.fillSlope<=0) { err.textContent = 'Enter a valid fill slope.'; err.classList.remove('hidden'); return; }
+        } else if (sessType === 'cut') {
+            setup.cutSlope = parseFloat(document.getElementById('sess_cutslope').value);
+            if (isNaN(setup.cutSlope)||setup.cutSlope<=0) { err.textContent = 'Enter a valid cut slope.'; err.classList.remove('hidden'); return; }
+        } else if (sessType === 'ditch') {
+            setup.foreslope = parseFloat(document.getElementById('sess_fore').value);
+            setup.ditchDepth = parseFloat(document.getElementById('sess_dd').value);
+            setup.ditchWidth = parseFloat(document.getElementById('sess_dw').value) || 0;
+            setup.backslope = parseFloat(document.getElementById('sess_back').value);
+            if (isNaN(setup.foreslope)||setup.foreslope<=0||isNaN(setup.ditchDepth)||setup.ditchDepth<0||isNaN(setup.backslope)||setup.backslope<=0) {
+                err.textContent = 'Enter valid ditch section parameters.'; err.classList.remove('hidden'); return;
+            }
+        }
+    }
+
+    err.classList.add('hidden');
+    sessSetup = setup;
+    session = { setup, trials: [], notes: [] };
+
+    // Lock UI
+    document.getElementById('sess_setupCard').classList.add('hidden');
+    const staLabel = station ? `Sta ${station}  ` : '';
+    const modeLabel = sessGpsMode ? 'GPS' : `HI: ${hi.toFixed(3)}`;
+    document.getElementById('sess_infoVals').textContent =
+        `${staLabel}${setup.side}  |  ${modeLabel}  |  CL: ${clElev.toFixed(3)}  |  HW: ${setup.halfWidth.toFixed(1)} ft  |  ${setup.type.toUpperCase()}`;
+    document.getElementById('sess_infoBar').classList.remove('hidden');
+    document.getElementById('sess_shotSection').classList.remove('hidden');
+    document.getElementById('sess_result').classList.add('hidden');
+    document.getElementById('sess_catchPrompt').classList.add('hidden');
+    document.getElementById('sess_trialSection').classList.add('hidden');
+    document.getElementById('sess_trialList').innerHTML = '';
+}
+
+function sessUnlock() {
+    if (session && session.trials.length > 0) {
+        showConfirm('Reset session and clear all trial history?', ok => {
+            if (!ok) return;
+            doSessUnlock();
+        });
+    } else {
+        doSessUnlock();
+    }
+}
+
+function doSessUnlock() {
+    session = null; sessSetup = null; currentStakeId = null;
+    document.getElementById('sess_setupCard').classList.remove('hidden');
+    document.getElementById('sess_infoBar').classList.add('hidden');
+    document.getElementById('sess_shotSection').classList.add('hidden');
+    document.getElementById('sess_trialSection').classList.add('hidden');
+    document.getElementById('sess_result').classList.add('hidden');
+    document.getElementById('sess_catchPrompt').classList.add('hidden');
+    document.getElementById('sess_error').classList.add('hidden');
+}
+
+let lastShotResult = null;
+
+function sessLogShot() {
+    const offset = parseFloat(document.getElementById('sess_offset').value);
+    const err = document.getElementById('sess_shotError');
+    let p;
+    if (sessSetup.gpsMode) {
+        const groundElevDirect = parseFloat(document.getElementById('sess_ground_elev').value);
+        if (isNaN(offset) || isNaN(groundElevDirect)) { err.textContent = 'Enter offset and ground elevation.'; err.classList.remove('hidden'); return; }
+        err.classList.add('hidden');
+        p = Object.assign({}, sessSetup, { offset, groundElevDirect });
+    } else {
+        const rod = parseFloat(document.getElementById('sess_rod').value);
+        if (isNaN(offset) || isNaN(rod)) { err.textContent = 'Enter offset and rod reading.'; err.classList.remove('hidden'); return; }
+        err.classList.add('hidden');
+        p = Object.assign({}, sessSetup, { offset, rod });
+    }
+    const res = calcShot(p);
+    lastShotResult = res;
+
+    const trialEntry = sessSetup.gpsMode
+        ? { offset, groundElevDirect: p.groundElevDirect, result: res, n: session.trials.length + 1 }
+        : { offset, rod: p.rod, result: res, n: session.trials.length + 1 };
+    session.trials.push(trialEntry);
+    renderResult(res, 'sess', sessSetup.type);
+
+    // Catch prompt
+    const catchPrompt = document.getElementById('sess_catchPrompt');
+    if (res.converged) {
+        catchPrompt.className = 'catch-prompt' + (sessSetup.type === 'fill' ? '' : ' catch-prompt-cut');
+        document.getElementById('sess_catchText').className = 'catch-text' + (sessSetup.type === 'fill' ? '' : ' catch-text-cut');
+        document.getElementById('sess_catchText').textContent = sessSetup.type === 'fill' ? '✓ Fill Catch' : '✓ Cut Catch';
+        catchPrompt.classList.remove('hidden');
+    } else {
+        catchPrompt.classList.add('hidden');
+    }
+
+    renderTrials();
+    document.getElementById('sess_trialSection').classList.remove('hidden');
+}
+
+function renderTrials() {
+    const list = document.getElementById('sess_trialList');
+    list.innerHTML = '';
+    const trials = [...session.trials].reverse();
+    trials.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'trial-item';
+        const miss = t.result.miss;
+        let missClass = Math.abs(miss) <= 0.10 ? 'miss-ok' : miss > 0 ? 'miss-out' : 'miss-in';
+        const missStr = (miss >= 0 ? '+' : '') + miss.toFixed(3) + ' ft';
+        const instrShort = t.result.converged ? 'AT CATCH' : (miss > 0 ? '→ out' : '← in');
+        const shotLabel = t.groundElevDirect !== undefined
+            ? `off: ${t.offset.toFixed(2)} ft  gnd: ${t.groundElevDirect.toFixed(3)}`
+            : `off: ${t.offset.toFixed(2)} ft  rod: ${t.rod.toFixed(3)}`;
+        div.innerHTML = `<div class="trial-row"><span class="trial-num">#${t.n}</span><span class="trial-vals">${shotLabel}</span><span class="trial-miss ${missClass}">${missStr} ${instrShort}</span></div>`;
+        div.onclick = () => {
+            document.getElementById('sess_offset').value = t.offset;
+            if (t.groundElevDirect !== undefined) document.getElementById('sess_ground_elev').value = t.groundElevDirect;
+            else document.getElementById('sess_rod').value = t.rod;
+            renderResult(t.result, 'sess', sessSetup.type);
+        };
+        list.appendChild(div);
+    });
+}
+
+function sessRecordCatch() {
+    if (!lastShotResult || !session) return;
+    const offset = parseFloat(document.getElementById('sess_offset').value);
+    const typeLabel = sessSetup.type === 'fill' ? 'FILL' : sessSetup.type === 'ditch' ? 'CUT' : sessSetup.type === 'cut' ? 'CUT' : 'CUSTOM';
+    let shotVal;
+    if (sessSetup.gpsMode) {
+        const gnd = parseFloat(document.getElementById('sess_ground_elev').value);
+        shotVal = isNaN(gnd) ? '—' : gnd.toFixed(3) + ' elev';
+    } else {
+        const rod = parseFloat(document.getElementById('sess_rod').value);
+        shotVal = isNaN(rod) ? '—' : rod.toFixed(3);
+    }
+    session.notes.push({
+        station: sessSetup.station || '—',
+        side: sessSetup.side,
+        offset: offset.toFixed(2),
+        type: typeLabel,
+        rod: shotVal,
+        groundElev: lastShotResult.groundElev.toFixed(4),
+        ts: Date.now()
+    });
+    // Auto-mark corresponding stake as done
+    if (currentStakeId) {
+        const sk = stakes.find(s => s.id === currentStakeId);
+        if (sk) { sk.status = 'done'; saveStakes(); }
+    }
+    renderNotes();
+    document.getElementById('sess_notesSection').classList.remove('hidden');
+    document.getElementById('sess_catchPrompt').classList.add('hidden');
+    // Clear shot fields for next
+    document.getElementById('sess_offset').value = '';
+    document.getElementById('sess_rod').value = '';
+    document.getElementById('sess_ground_elev').value = '';
+    document.getElementById('sess_result').classList.add('hidden');
+}
+
+function renderNotes() {
+    const tbody = document.getElementById('sess_notesList');
+    tbody.innerHTML = '';
+    session.notes.forEach(n => {
+        const tr = document.createElement('tr');
+        const badgeClass = n.type === 'FILL' ? 'badge-fill' : n.type === 'CUT' ? 'badge-cut' : 'badge-custom';
+        tr.innerHTML = `<td>${n.station}</td><td>${n.side}</td><td>${n.offset} ft</td><td><span class="${badgeClass}">${n.type}</span></td><td>${n.rod}</td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function sessExportNotes() {
+    if (!session || session.notes.length === 0) return;
+    const now = new Date().toLocaleString();
+    const sta = sessSetup.station ? `Station ${sessSetup.station}` : '';
+    let txt = `SLOPE STAKE NOTES\n`;
+    txt += `${now}\n`;
+    if (sta) txt += `${sta}\n`;
+    txt += `${'─'.repeat(48)}\n`;
+    txt += `STA          SIDE  OFFSET        TYPE     ROD\n`;
+    txt += `${'─'.repeat(48)}\n`;
+    session.notes.forEach(n => {
+        txt += `${n.station.padEnd(13)}${n.side.padEnd(6)}${(n.offset + ' ft').padEnd(14)}${n.type.padEnd(9)}${n.rod}\n`;
+    });
+    document.getElementById('exportTextBox').textContent = txt;
+    document.getElementById('exportModal').classList.remove('hidden');
+}
+
+function sessClearSession() {
+    showConfirm('Clear all session data including trial history and catch notes?', ok => {
+        if (!ok) return;
+        session = null; sessSetup = null; lastShotResult = null; currentStakeId = null;
+        document.getElementById('sess_setupCard').classList.remove('hidden');
+        document.getElementById('sess_infoBar').classList.add('hidden');
+        document.getElementById('sess_shotSection').classList.add('hidden');
+        document.getElementById('sess_trialSection').classList.add('hidden');
+        document.getElementById('sess_notesSection').classList.add('hidden');
+        document.getElementById('sess_result').classList.add('hidden');
+        document.getElementById('sess_catchPrompt').classList.add('hidden');
+        document.getElementById('sess_offset').value = '';
+        document.getElementById('sess_rod').value = '';
+        document.getElementById('sess_ground_elev').value = '';
+    });
+}
+
+// ============================================================
+// TEMPLATES
+// ============================================================
+function renderTemplates() {
+    const list = document.getElementById('tplList');
+    if (templates.length === 0) {
+        list.innerHTML = '<div class="empty-state">No templates saved yet.<br>Tap "+ New Template" to create one.</div>';
+        return;
+    }
+    list.innerHTML = '';
+    templates.forEach(tpl => {
+        const div = document.createElement('div');
+        div.className = 'tpl-card';
+        const chip = tpl.contract ? `<span class="contract-chip">${tpl.contract}</span> ` : '';
+        div.innerHTML = `
+            <div class="tpl-card-top">
+                <div class="tpl-name">${tpl.name}</div>
+                <div class="tpl-actions">
+                    <button class="btn-icon btn-icon-edit" onclick="openTplModal('${tpl.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deleteTpl('${tpl.id}')">🗑</button>
+                </div>
+            </div>
+            <div>${chip}<span style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;padding:2px 8px;border-radius:5px;background:var(--bg-tertiary);color:var(--text-muted);">${tpl.sectionType.toUpperCase()}</span></div>
+            <div class="tpl-summary" style="margin-top:5px;">${tplSummaryText(tpl)}</div>`;
+        list.appendChild(div);
+    });
+}
+
+function tplSummaryText(tpl) {
+    const hw = `H/W ${(tpl.halfWidth || 0).toFixed(1)} ft`;
+    if (tpl.sectionType === 'simple') {
+        const parts = [];
+        if (tpl.fillSlope) parts.push(`Fill ${tpl.fillSlope}:1`);
+        if (tpl.cutSlope) parts.push(`Cut ${tpl.cutSlope}:1`);
+        return [hw, ...parts].join('  |  ');
+    } else if (tpl.sectionType === 'ditch') {
+        return `${hw}  |  Fore ${(tpl.foreslope||0)}:1  Ditch ${(tpl.ditchDepth||0).toFixed(2)}ft×${(tpl.ditchWidth||0).toFixed(1)}ft  Back ${(tpl.backslope||0)}:1`;
+    } else if (tpl.sectionType === 'custom') {
+        const n = (tpl.segments || []).length;
+        return `${hw}  |  ${n} segment${n !== 1 ? 's' : ''}: ${(tpl.segments||[]).map(s=>`${s.direction[0].toUpperCase()} ${s.direction!=='level'?(s.slope+':1'):''}`).join(' → ')}`;
+    }
+    return hw;
+}
+
+function openTplModal(id) {
+    const modal = document.getElementById('tplModal');
+    document.getElementById('tpl_error').classList.add('hidden');
+    if (id) {
+        const tpl = templates.find(t => t.id === id);
+        document.getElementById('tplModalTitle').textContent = 'Edit Template';
+        document.getElementById('tpl_id').value = tpl.id;
+        document.getElementById('tpl_name').value = tpl.name;
+        document.getElementById('tpl_contract').value = tpl.contract || '';
+        document.getElementById('tpl_hw').value = tpl.halfWidth;
+        document.getElementById('tpl_xs').value = tpl.crossSlope || 0;
+        document.getElementById('tpl_fillslope').value = tpl.fillSlope || '';
+        document.getElementById('tpl_cutslope').value = tpl.cutSlope || '';
+        document.getElementById('tpl_fore').value = tpl.foreslope || '';
+        document.getElementById('tpl_dd').value = tpl.ditchDepth || '';
+        document.getElementById('tpl_dw').value = tpl.ditchWidth || '';
+        document.getElementById('tpl_back').value = tpl.backslope || '';
+        editingSegments = tpl.segments ? JSON.parse(JSON.stringify(tpl.segments)) : [];
+        tplSetSection(tpl.sectionType || 'simple');
+    } else {
+        document.getElementById('tplModalTitle').textContent = 'New Template';
+        document.getElementById('tpl_id').value = '';
+        ['tpl_name','tpl_contract','tpl_hw','tpl_fillslope','tpl_cutslope','tpl_fore','tpl_dd','tpl_dw','tpl_back'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('tpl_xs').value = '0';
+        editingSegments = [{ direction: 'down', slope: 4, width: null }];
+        tplSetSection('simple');
+    }
+    modal.classList.remove('hidden');
+}
+
+function closeTplModal() { document.getElementById('tplModal').classList.add('hidden'); }
+
+function tplSetSection(type) {
+    tplSectionType = type;
+    ['simple','ditch','custom'].forEach(t => {
+        document.getElementById('tpl_tb_' + t).classList.toggle('active', t === type);
+        document.getElementById('tpl_' + t + 'Fields').classList.toggle('hidden', t !== type);
+    });
+    if (type === 'custom') renderSegments();
+}
+
+function saveTpl() {
+    const err = document.getElementById('tpl_error');
+    const name = document.getElementById('tpl_name').value.trim();
+    const hw = parseFloat(document.getElementById('tpl_hw').value);
+    if (!name) { err.textContent = 'Enter a template name.'; err.classList.remove('hidden'); return; }
+    if (isNaN(hw) || hw <= 0) { err.textContent = 'Enter a valid half-width.'; err.classList.remove('hidden'); return; }
+
+    const tpl = {
+        id: document.getElementById('tpl_id').value || Date.now().toString(),
+        name,
+        contract: document.getElementById('tpl_contract').value.trim(),
+        halfWidth: hw,
+        crossSlope: parseFloat(document.getElementById('tpl_xs').value) || 0,
+        fillSlope: parseFloat(document.getElementById('tpl_fillslope').value) || null,
+        cutSlope: parseFloat(document.getElementById('tpl_cutslope').value) || null,
+        foreslope: parseFloat(document.getElementById('tpl_fore').value) || null,
+        ditchDepth: parseFloat(document.getElementById('tpl_dd').value) || null,
+        ditchWidth: parseFloat(document.getElementById('tpl_dw').value) || 0,
+        backslope: parseFloat(document.getElementById('tpl_back').value) || null,
+        sectionType: tplSectionType,
+        segments: []
+    };
+
+    if (tplSectionType === 'simple') {
+        if (!tpl.fillSlope && !tpl.cutSlope) { err.textContent = 'Enter at least one slope (fill or cut).'; err.classList.remove('hidden'); return; }
+    } else if (tplSectionType === 'ditch') {
+        if (!tpl.foreslope || !tpl.ditchDepth || !tpl.backslope) { err.textContent = 'Enter foreslope, ditch depth, and backslope.'; err.classList.remove('hidden'); return; }
+    } else if (tplSectionType === 'custom') {
+        // Read segments from DOM
+        const segs = readSegmentsFromDOM();
+        if (!segs || segs.length === 0) { err.textContent = 'Add at least one segment.'; err.classList.remove('hidden'); return; }
+        for (let i = 0; i < segs.length - 1; i++) {
+            if (segs[i].direction !== 'level' && (!segs[i].slope || segs[i].slope <= 0)) { err.textContent = `Segment ${i + 1}: enter a valid slope.`; err.classList.remove('hidden'); return; }
+            if (!segs[i].width || segs[i].width <= 0) { err.textContent = `Segment ${i + 1}: enter a valid width.`; err.classList.remove('hidden'); return; }
+        }
+        const last = segs[segs.length - 1];
+        if (last.direction !== 'level' && (!last.slope || last.slope <= 0)) { err.textContent = 'Last segment: enter a valid slope.'; err.classList.remove('hidden'); return; }
+        tpl.segments = segs;
+    }
+
+    err.classList.add('hidden');
+    const idx = templates.findIndex(t => t.id === tpl.id);
+    if (idx >= 0) templates[idx] = tpl; else templates.push(tpl);
+    saveTemplates();
+    closeTplModal();
+    renderTemplates();
+    populateCustomDropdown();
+    populateSessionDropdown();
+}
+
+function deleteTpl(id) {
+    showConfirm('Delete this template?', ok => {
+        if (!ok) return;
+        templates = templates.filter(t => t.id !== id);
+        saveTemplates();
+        renderTemplates();
+        populateCustomDropdown();
+        populateSessionDropdown();
+    });
+}
+
+// ============================================================
+// SEGMENT BUILDER
+// ============================================================
+function renderSegments() {
+    const list = document.getElementById('tplSegmentList');
+    list.innerHTML = '';
+    editingSegments.forEach((seg, i) => {
+        const isLast = i === editingSegments.length - 1;
+        const div = document.createElement('div');
+        div.className = 'seg-row';
+        const slopeDisabled = seg.direction === 'level' ? 'disabled style="opacity:0.4"' : '';
+        const widthCell = isLast
+            ? `<div class="seg-last-label">→ catch</div>`
+            : `<div class="field-group" style="margin-bottom:0"><label class="label">Width (ft)</label><input class="input" id="seg_w_${i}" type="number" inputmode="decimal" step="0.01" min="0.01" value="${seg.width||''}" placeholder="ft"></div>`;
+        const delBtn = editingSegments.length > 1
+            ? `<button class="btn-icon" onclick="removeSegment(${i})" style="align-self:flex-end;margin-bottom:0">🗑</button>`
+            : `<div style="width:36px"></div>`;
+        div.innerHTML = `
+            <div class="seg-row-header">
+                <span class="seg-index">Segment ${i + 1}${isLast ? ' (→ catch)' : ''}</span>
+                <div class="seg-dir-toggle">
+                    <button class="seg-dir-btn${seg.direction==='down'?' active':''}" onclick="segSetDir(${i},'down')">↘ Down</button>
+                    <button class="seg-dir-btn${seg.direction==='level'?' active':''}" onclick="segSetDir(${i},'level')">→ Level</button>
+                    <button class="seg-dir-btn${seg.direction==='up'?' active':''}" onclick="segSetDir(${i},'up')">↗ Up</button>
+                </div>
+            </div>
+            <div class="seg-fields">
+                <div class="field-group" style="margin-bottom:0"><label class="label">Slope H:1V</label><input class="input" id="seg_s_${i}" type="number" inputmode="decimal" step="0.1" min="0.01" value="${seg.slope||''}" placeholder="e.g. 2.0" ${slopeDisabled}></div>
+                ${widthCell}
+                ${delBtn}
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function readSegmentsFromDOM() {
+    return editingSegments.map((seg, i) => {
+        const slopeEl = document.getElementById('seg_s_' + i);
+        const widthEl = document.getElementById('seg_w_' + i);
+        return {
+            direction: seg.direction,
+            slope: slopeEl ? parseFloat(slopeEl.value) || null : null,
+            width: widthEl ? parseFloat(widthEl.value) || null : null
+        };
+    });
+}
+
+function addSegment() {
+    // Read current values before adding
+    editingSegments = readSegmentsFromDOM();
+    editingSegments.push({ direction: 'up', slope: 2, width: null });
+    renderSegments();
+}
+
+function removeSegment(i) {
+    editingSegments = readSegmentsFromDOM();
+    if (editingSegments.length <= 1) return;
+    editingSegments.splice(i, 1);
+    // Ensure last segment has no width
+    editingSegments[editingSegments.length - 1].width = null;
+    renderSegments();
+}
+
+function segSetDir(i, dir) {
+    editingSegments = readSegmentsFromDOM();
+    editingSegments[i].direction = dir;
+    renderSegments();
+}
+
+// ============================================================
+// DROPDOWNS
+// ============================================================
+function populateCustomDropdown() {
+    const sel = document.getElementById('qk_customTpl');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">— Select saved custom template —</option>';
+    templates.filter(t => t.sectionType === 'custom').forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id; opt.textContent = t.name + (t.contract ? ` (${t.contract})` : '');
+        sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+}
+
+function populateSessionDropdown() {
+    const sel = document.getElementById('sess_tpl');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Manual Entry</option>';
+    templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id; opt.textContent = t.name + (t.contract ? ` (${t.contract})` : '');
+        sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function closeExportModal() { document.getElementById('exportModal').classList.add('hidden'); }
+
+function selectExportText() {
+    const el = document.getElementById('exportTextBox');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function copyExport() {
+    selectExportText();
+    try {
+        document.execCommand('copy');
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    } catch(e) {}
+}
+
+function showConfirm(msg, callback) {
+    confirmCallback = callback;
+    document.getElementById('confirmMsg').textContent = msg;
+    document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function confirmResolve(ok) {
+    document.getElementById('confirmModal').classList.add('hidden');
+    if (confirmCallback) { confirmCallback(ok); confirmCallback = null; }
+}
+
+// ============================================================
+// GPS / LEVEL MODE
+// ============================================================
+function sessSetMode(mode) {
+    sessGpsMode = (mode === 'gps');
+    document.getElementById('sess_mode_gps').classList.toggle('active', sessGpsMode);
+    document.getElementById('sess_mode_level').classList.toggle('active', !sessGpsMode);
+    document.getElementById('sess_hiSection').classList.toggle('hidden', sessGpsMode);
+    // Shot entry
+    document.getElementById('sess_rodRow').classList.toggle('hidden', sessGpsMode);
+    document.getElementById('sess_groundRow').classList.toggle('hidden', !sessGpsMode);
+}
+
+// ============================================================
+// BM CALCULATOR
+// ============================================================
+function toggleBmCalc() {
+    const sec = document.getElementById('sess_bmCalc');
+    const tog = document.getElementById('bmCalcToggle');
+    const hidden = sec.classList.toggle('hidden');
+    tog.textContent = (hidden ? '▾' : '▴') + ' Calc HI from tie point';
+}
+
+function applyBmHI() {
+    const bmElev = parseFloat(document.getElementById('sess_bmElev').value);
+    const bmRod = parseFloat(document.getElementById('sess_bmRod').value);
+    if (isNaN(bmElev) || isNaN(bmRod)) return;
+    document.getElementById('sess_hi').value = (bmElev + bmRod).toFixed(4);
+    // Collapse the calc section after applying
+    document.getElementById('sess_bmCalc').classList.add('hidden');
+    document.getElementById('bmCalcToggle').textContent = '▾ Calc HI from tie point';
+}
+
+// ============================================================
+// STAKE LIST
+// ============================================================
+function renderStakes() {
+    const list = document.getElementById('stakeList');
+    if (stakes.length === 0) {
+        list.innerHTML = '<div class="empty-state">No stakes added yet.<br>Tap "+ Add Stake" to prepare your stake list in the office.</div>';
+        return;
+    }
+    // Sort by station string (best-effort lexicographic, works for standard station format)
+    const sorted = [...stakes].sort((a, b) => {
+        const sta = s => { const m = s.station.replace('+',''); return parseFloat(m) || 0; };
+        return sta(a) - sta(b) || (a.side > b.side ? 1 : -1);
+    });
+    list.innerHTML = '';
+    sorted.forEach(sk => {
+        const div = document.createElement('div');
+        div.className = 'stake-card' + (sk.status === 'done' ? ' stake-card-done' : '');
+        const tpl = sk.tplId ? templates.find(t => t.id === sk.tplId) : null;
+        const tplName = tpl ? tpl.name : (sk.type ? sk.type.toUpperCase() : '');
+        const staText = sk.station ? `Sta ${sk.station}` : '(no station)';
+        const badge = sk.status === 'done'
+            ? '<span class="badge-done">✓ Done</span>'
+            : '<span class="badge-pending">Pending</span>';
+        const notesText = sk.notes ? `<div class="stake-detail" style="margin-top:3px;">${sk.notes}</div>` : '';
+        const guineaText = sk.guinea ? `  Guinea: ${sk.guinea}` : '';
+        div.innerHTML = `
+            <div class="stake-card-top">
+                <div>
+                    <span class="stake-sta">${staText}</span>
+                    <span class="side-badge" style="margin-left:6px;">${sk.side}</span>
+                    ${badge}
+                </div>
+                <div class="tpl-actions">
+                    <button class="btn-icon btn-icon-edit" onclick="openStakeModal('${sk.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deleteStake('${sk.id}')">🗑</button>
+                </div>
+            </div>
+            <div class="stake-detail">CL Elev: ${sk.clElev}${guineaText}  |  ${tplName}</div>
+            ${notesText}
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-primary btn-sm" onclick="loadStakeIntoSession('${sk.id}')">Start Staking →</button>
+                <button class="btn btn-secondary btn-sm" onclick="openStakeNote('${sk.id}')">📋 Note</button>
+                ${sk.status === 'done' ? `<button class="btn btn-secondary btn-sm" onclick="resetStakeStatus('${sk.id}')">Reset</button>` : ''}
+            </div>`;
+        list.appendChild(div);
+    });
+}
+
+function openStakeModal(id) {
+    document.getElementById('sk_error').classList.add('hidden');
+    document.getElementById('stakeModal').classList.remove('hidden');
+    populateStakeDropdown();
+    if (id) {
+        const sk = stakes.find(s => s.id === id);
+        document.getElementById('stakeModalTitle').textContent = 'Edit Stake';
+        document.getElementById('sk_id').value = sk.id;
+        document.getElementById('sk_sta').value = sk.station || '';
+        document.getElementById('sk_cl').value = sk.clElev || '';
+        document.getElementById('sk_guinea').value = sk.guinea || '';
+        document.getElementById('sk_notes').value = sk.notes || '';
+        skSetSide(sk.side || 'L');
+        if (sk.tplId && templates.find(t => t.id === sk.tplId)) {
+            document.getElementById('sk_tpl').value = sk.tplId;
+        } else {
+            document.getElementById('sk_tpl').value = '';
+            skSetType(sk.type || 'fill');
+            document.getElementById('sk_hw').value = sk.halfWidth || '';
+            document.getElementById('sk_xs').value = sk.crossSlope || 0;
+            if (sk.type === 'fill') document.getElementById('sk_fillslope').value = sk.fillSlope || '';
+            else if (sk.type === 'cut') document.getElementById('sk_cutslope').value = sk.cutSlope || '';
+            else if (sk.type === 'ditch') {
+                document.getElementById('sk_fore').value = sk.foreslope || '';
+                document.getElementById('sk_dd').value = sk.ditchDepth || '';
+                document.getElementById('sk_dw').value = sk.ditchWidth || 0;
+                document.getElementById('sk_back').value = sk.backslope || '';
+            }
+        }
+        skTplChange();
+        if (sk.fillCut) skSetFillCut(sk.fillCut);
+    } else {
+        document.getElementById('stakeModalTitle').textContent = 'New Stake';
+        document.getElementById('sk_id').value = '';
+        ['sk_sta','sk_cl','sk_guinea','sk_notes','sk_hw','sk_fillslope','sk_cutslope','sk_fore','sk_dd','sk_dw','sk_back'].forEach(i => { document.getElementById(i).value = ''; });
+        document.getElementById('sk_xs').value = '0';
+        document.getElementById('sk_tpl').value = '';
+        skSetSide('L'); skSetType('fill'); skSetFillCut('fill');
+        skTplChange();
+    }
+}
+
+function closeStakeModal() { document.getElementById('stakeModal').classList.add('hidden'); }
+
+function skSetSide(s) {
+    skSide = s;
+    ['l','r'].forEach(t => document.getElementById('sk_side_' + t).classList.toggle('active', t === s.toLowerCase()));
+}
+
+function skSetType(type) {
+    skType = type;
+    ['fill','cut','ditch'].forEach(t => {
+        document.getElementById('sk_tb_' + t).classList.toggle('active', t === type);
+        const el = document.getElementById('sk_' + t + 'Fields');
+        if (el) el.classList.toggle('hidden', t !== type);
+    });
+}
+
+function skSetFillCut(fc) {
+    skFillCut = fc;
+    ['fill','cut'].forEach(t => document.getElementById('sk_fc_' + t).classList.toggle('active', t === fc));
+}
+
+function skTplChange() {
+    const id = document.getElementById('sk_tpl').value;
+    const manual = document.getElementById('sk_manualSection');
+    const summary = document.getElementById('sk_tplSummary');
+    const fcToggle = document.getElementById('sk_fillCutToggle');
+    if (!id) {
+        manual.classList.remove('hidden'); summary.classList.add('hidden'); fcToggle.classList.add('hidden');
+    } else {
+        const tpl = templates.find(t => t.id === id);
+        manual.classList.add('hidden');
+        summary.classList.remove('hidden');
+        summary.innerHTML = `<div class="tpl-summary-name">${tpl.name}</div><div class="tpl-summary-detail">${tplSummaryText(tpl)}</div>`;
+        fcToggle.classList.toggle('hidden', tpl.sectionType !== 'simple');
+    }
+}
+
+function saveStake() {
+    const err = document.getElementById('sk_error');
+    const clElev = parseFloat(document.getElementById('sk_cl').value);
+    if (isNaN(clElev)) { err.textContent = 'Enter design CL elevation.'; err.classList.remove('hidden'); return; }
+
+    const tplId = document.getElementById('sk_tpl').value;
+    const sk = {
+        id: document.getElementById('sk_id').value || Date.now().toString(),
+        station: document.getElementById('sk_sta').value.trim(),
+        side: skSide,
+        clElev,
+        guinea: document.getElementById('sk_guinea').value.trim() || null,
+        notes: document.getElementById('sk_notes').value.trim(),
+        tplId: tplId || null,
+        status: 'pending'
+    };
+
+    if (tplId) {
+        const tpl = templates.find(t => t.id === tplId);
+        sk.type = tpl.sectionType === 'simple' ? skFillCut : tpl.sectionType;
+        sk.fillCut = tpl.sectionType === 'simple' ? skFillCut : null;
+        sk.halfWidth = tpl.halfWidth; sk.crossSlope = tpl.crossSlope || 0;
+        if (tpl.sectionType === 'simple') { sk.fillSlope = tpl.fillSlope; sk.cutSlope = tpl.cutSlope; }
+        else if (tpl.sectionType === 'ditch') { sk.foreslope = tpl.foreslope; sk.ditchDepth = tpl.ditchDepth; sk.ditchWidth = tpl.ditchWidth; sk.backslope = tpl.backslope; }
+        else if (tpl.sectionType === 'custom') { sk.segments = tpl.segments; }
+    } else {
+        const hw = parseFloat(document.getElementById('sk_hw').value);
+        if (isNaN(hw) || hw <= 0) { err.textContent = 'Enter half-width.'; err.classList.remove('hidden'); return; }
+        sk.halfWidth = hw; sk.crossSlope = parseFloat(document.getElementById('sk_xs').value) || 0;
+        sk.type = skType; sk.fillCut = null;
+        if (skType === 'fill') {
+            sk.fillSlope = parseFloat(document.getElementById('sk_fillslope').value);
+            if (!sk.fillSlope || sk.fillSlope <= 0) { err.textContent = 'Enter fill slope.'; err.classList.remove('hidden'); return; }
+        } else if (skType === 'cut') {
+            sk.cutSlope = parseFloat(document.getElementById('sk_cutslope').value);
+            if (!sk.cutSlope || sk.cutSlope <= 0) { err.textContent = 'Enter cut slope.'; err.classList.remove('hidden'); return; }
+        } else if (skType === 'ditch') {
+            sk.foreslope = parseFloat(document.getElementById('sk_fore').value);
+            sk.ditchDepth = parseFloat(document.getElementById('sk_dd').value);
+            sk.ditchWidth = parseFloat(document.getElementById('sk_dw').value) || 0;
+            sk.backslope = parseFloat(document.getElementById('sk_back').value);
+            if (!sk.foreslope||!sk.ditchDepth||!sk.backslope) { err.textContent = 'Enter ditch section parameters.'; err.classList.remove('hidden'); return; }
+        }
+    }
+
+    // Preserve existing status when editing
+    const existing = stakes.find(s => s.id === sk.id);
+    if (existing) sk.status = existing.status;
+
+    err.classList.add('hidden');
+    const idx = stakes.findIndex(s => s.id === sk.id);
+    if (idx >= 0) stakes[idx] = sk; else stakes.push(sk);
+    saveStakes();
+    closeStakeModal();
+    renderStakes();
+}
+
+function deleteStake(id) {
+    showConfirm('Delete this stake?', ok => {
+        if (!ok) return;
+        stakes = stakes.filter(s => s.id !== id);
+        saveStakes();
+        renderStakes();
+    });
+}
+
+function resetStakeStatus(id) {
+    const sk = stakes.find(s => s.id === id);
+    if (sk) { sk.status = 'pending'; saveStakes(); renderStakes(); }
+}
+
+function loadStakeIntoSession(id) {
+    const stake = stakes.find(s => s.id === id);
+    if (!stake) return;
+
+    const doLoad = () => {
+        setTab('session');
+        // Reset session state
+        if (session) doSessUnlock();
+
+        currentStakeId = stake.id;
+
+        // Load geometry
+        if (stake.tplId && templates.find(t => t.id === stake.tplId)) {
+            document.getElementById('sess_tpl').value = stake.tplId;
+            sessTplChange();
+            if (stake.fillCut) { sessFillCut = stake.fillCut; sessSetFillCut(stake.fillCut); }
+        } else {
+            document.getElementById('sess_tpl').value = '';
+            sessTplChange();
+            sessSetType(stake.type || 'fill');
+            document.getElementById('sess_hw').value = stake.halfWidth || '';
+            document.getElementById('sess_xs').value = stake.crossSlope || 0;
+            if (stake.type === 'fill') document.getElementById('sess_fillslope').value = stake.fillSlope || '';
+            else if (stake.type === 'cut') document.getElementById('sess_cutslope').value = stake.cutSlope || '';
+            else if (stake.type === 'ditch') {
+                document.getElementById('sess_fore').value = stake.foreslope || '';
+                document.getElementById('sess_dd').value = stake.ditchDepth || '';
+                document.getElementById('sess_dw').value = stake.ditchWidth || 0;
+                document.getElementById('sess_back').value = stake.backslope || '';
+            }
+        }
+        document.getElementById('sess_sta').value = stake.station || '';
+        sessSetSide(stake.side || 'L');
+        document.getElementById('sess_cl').value = stake.clElev;
+        document.getElementById('sess_hi').value = '';
+
+        // Scroll to Begin button (GPS mode: HI hidden; Level mode: focus HI)
+        setTimeout(() => {
+            if (sessGpsMode) {
+                document.getElementById('sess_cl').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('sess_cl').focus();
+            } else {
+                document.getElementById('sess_hi').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                document.getElementById('sess_hi').focus();
+            }
+        }, 150);
+    };
+
+    if (session && session.trials.length > 0) {
+        showConfirm('A session is active. Reset and load this stake?', ok => { if (ok) doLoad(); });
+    } else {
+        doLoad();
+    }
+}
+
+function populateStakeDropdown() {
+    // Populate template dropdown inside stake modal
+    const sel = document.getElementById('sk_tpl');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Manual Entry</option>';
+    templates.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id; opt.textContent = t.name + (t.contract ? ` (${t.contract})` : '');
+        sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+}
+
+// ============================================================
+// STATION RANGES
+// ============================================================
+function stationToFt(sta) {
+    // Parses "12+50" → 1250, "1250" → 1250
+    if (!sta) return NaN;
+    const s = sta.toString().replace(/\s+/g, '');
+    const m = s.match(/^(\d+)\+(\d+(?:\.\d+)?)$/);
+    if (m) return parseFloat(m[1]) * 100 + parseFloat(m[2]);
+    return parseFloat(s.replace('+', '')) || NaN;
+}
+
+function toggleRanges() {
+    rangesExpanded = !rangesExpanded;
+    document.getElementById('rangeList').classList.toggle('hidden', !rangesExpanded);
+    document.getElementById('rangesChevron').textContent = rangesExpanded ? '▴' : '▾';
+    if (rangesExpanded) renderRangeList();
+}
+
+function renderRangeList() {
+    const list = document.getElementById('rangeList');
+    if (stakeRanges.length === 0) {
+        list.innerHTML = '<div style="font-size:0.8em;color:var(--text-muted);text-align:center;padding:8px 0;">No ranges defined. Add a range to auto-fill templates by station.</div>';
+        return;
+    }
+    list.innerHTML = '';
+    stakeRanges.forEach(r => {
+        const lTpl = r.leftTplId ? templates.find(t => t.id === r.leftTplId) : null;
+        const rTpl = r.rightTplId ? templates.find(t => t.id === r.rightTplId) : null;
+        const div = document.createElement('div');
+        div.className = 'range-card';
+        div.innerHTML = `
+            <div class="range-card-top">
+                <div class="range-sta">Sta ${r.staFrom} — ${r.staTo}</div>
+                <div class="tpl-actions">
+                    <button class="btn-icon btn-icon-edit" onclick="openRangeModal('${r.id}')">✏️</button>
+                    <button class="btn-icon" onclick="deleteRange('${r.id}')">🗑</button>
+                </div>
+            </div>
+            <div class="range-detail">L: ${lTpl ? lTpl.name : 'None'}  |  R: ${rTpl ? rTpl.name : 'None'}</div>`;
+        list.appendChild(div);
+    });
+}
+
+function openRangeModal(id) {
+    document.getElementById('rng_error').classList.add('hidden');
+    populateRangeDropdowns();
+    if (id) {
+        const r = stakeRanges.find(x => x.id === id);
+        document.getElementById('rangeModalTitle').textContent = 'Edit Station Range';
+        document.getElementById('rng_id').value = r.id;
+        document.getElementById('rng_from').value = r.staFrom;
+        document.getElementById('rng_to').value = r.staTo;
+        document.getElementById('rng_left').value = r.leftTplId || '';
+        document.getElementById('rng_right').value = r.rightTplId || '';
+    } else {
+        document.getElementById('rangeModalTitle').textContent = 'New Station Range';
+        document.getElementById('rng_id').value = '';
+        document.getElementById('rng_from').value = '';
+        document.getElementById('rng_to').value = '';
+        document.getElementById('rng_left').value = '';
+        document.getElementById('rng_right').value = '';
+    }
+    document.getElementById('rangeModal').classList.remove('hidden');
+}
+
+function closeRangeModal() { document.getElementById('rangeModal').classList.add('hidden'); }
+
+function populateRangeDropdowns() {
+    ['rng_left', 'rng_right'].forEach(selId => {
+        const sel = document.getElementById(selId);
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">None</option>';
+        templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id; opt.textContent = t.name + (t.contract ? ` (${t.contract})` : '');
+            sel.appendChild(opt);
+        });
+        if (cur) sel.value = cur;
+    });
+}
+
+function saveRange() {
+    const err = document.getElementById('rng_error');
+    const staFrom = document.getElementById('rng_from').value.trim();
+    const staTo = document.getElementById('rng_to').value.trim();
+    if (!staFrom || !staTo) { err.textContent = 'Enter station from and to.'; err.classList.remove('hidden'); return; }
+    if (isNaN(stationToFt(staFrom)) || isNaN(stationToFt(staTo))) { err.textContent = 'Enter valid station values (e.g. 12+50).'; err.classList.remove('hidden'); return; }
+    const r = {
+        id: document.getElementById('rng_id').value || Date.now().toString(),
+        staFrom, staTo,
+        leftTplId: document.getElementById('rng_left').value || null,
+        rightTplId: document.getElementById('rng_right').value || null
+    };
+    err.classList.add('hidden');
+    const idx = stakeRanges.findIndex(x => x.id === r.id);
+    if (idx >= 0) stakeRanges[idx] = r; else stakeRanges.push(r);
+    saveRanges();
+    closeRangeModal();
+    if (rangesExpanded) renderRangeList();
+}
+
+function deleteRange(id) {
+    showConfirm('Delete this station range?', ok => {
+        if (!ok) return;
+        stakeRanges = stakeRanges.filter(r => r.id !== id);
+        saveRanges();
+        if (rangesExpanded) renderRangeList();
+    });
+}
+
+function skAutoFillFromRange() {
+    const sta = document.getElementById('sk_sta').value.trim();
+    const side = skSide;
+    if (!sta || stakeRanges.length === 0) return;
+    const staFt = stationToFt(sta);
+    if (isNaN(staFt)) return;
+    // Find first matching range
+    const match = stakeRanges.find(r => {
+        const from = stationToFt(r.staFrom);
+        const to = stationToFt(r.staTo);
+        return !isNaN(from) && !isNaN(to) && staFt >= from && staFt <= to;
+    });
+    if (!match) return;
+    const tplId = side === 'L' ? match.leftTplId : match.rightTplId;
+    if (!tplId) return;
+    const sel = document.getElementById('sk_tpl');
+    if (sel.querySelector(`option[value="${tplId}"]`)) {
+        sel.value = tplId;
+        skTplChange();
+    }
+}
+
+// ============================================================
+// STAKE FACE NOTES
+// ============================================================
+function getStakeBreakpoints(sk) {
+    // Returns array of { label, offset, designElev }
+    // ordered CL → shoulder → [ditch] → catch
+    const clElev = sk.clElev;
+    const halfWidth = sk.halfWidth || 0;
+    const crossSlope = sk.crossSlope || 0;
+    const hingeElev = clElev - (halfWidth * crossSlope / 100);
+    const type = sk.type;
+    const points = [];
+
+    // CL reference
+    points.push({ label: 'CL', offset: 0, designElev: clElev });
+    // Shoulder/Hinge
+    points.push({ label: 'Shoulder', offset: halfWidth, designElev: hingeElev });
+
+    if (type === 'fill') {
+        // Catch: estimate using guinea if provided
+        const guinea = parseFloat(sk.guinea);
+        if (!isNaN(guinea) && sk.fillSlope) {
+            const catchOff = halfWidth + sk.fillSlope * (hingeElev - guinea);
+            const catchOff2 = Math.max(halfWidth, catchOff);
+            points.push({ label: 'Est. Catch', offset: catchOff2, designElev: guinea, isCatch: true });
+        }
+    } else if (type === 'cut') {
+        const guinea = parseFloat(sk.guinea);
+        if (!isNaN(guinea) && sk.cutSlope) {
+            const catchOff = halfWidth + sk.cutSlope * (guinea - hingeElev);
+            const catchOff2 = Math.max(halfWidth, catchOff);
+            points.push({ label: 'Est. Catch', offset: catchOff2, designElev: guinea, isCatch: true });
+        }
+    } else if (type === 'ditch') {
+        const fore = sk.foreslope || 4;
+        const dd = sk.ditchDepth || 0;
+        const dw = sk.ditchWidth || 0;
+        const back = sk.backslope || 2;
+        const ditchInnerOff = halfWidth + fore * dd;
+        const ditchOuterOff = ditchInnerOff + dw;
+        const ditchBotElev = hingeElev - dd;
+        points.push({ label: 'Ditch Inner', offset: ditchInnerOff, designElev: ditchBotElev });
+        if (dw > 0) points.push({ label: 'Ditch Outer', offset: ditchOuterOff, designElev: ditchBotElev });
+        const guinea = parseFloat(sk.guinea);
+        if (!isNaN(guinea)) {
+            const catchOff = ditchOuterOff + back * (guinea - ditchBotElev);
+            const catchOff2 = Math.max(ditchOuterOff, catchOff);
+            points.push({ label: 'Est. Catch', offset: catchOff2, designElev: guinea, isCatch: true });
+        }
+    } else if (type === 'custom' && sk.segments) {
+        const guinea = parseFloat(sk.guinea);
+        // Walk custom segments to build breakpoints
+        let curOff = halfWidth;
+        let curElev = hingeElev;
+        for (let i = 0; i < sk.segments.length - 1; i++) {
+            const seg = sk.segments[i];
+            const w = seg.width || 0;
+            let endElev = curElev;
+            if (seg.direction === 'down') endElev = curElev - w / seg.slope;
+            else if (seg.direction === 'up') endElev = curElev + w / seg.slope;
+            curOff += w;
+            curElev = endElev;
+            points.push({ label: `Seg ${i+2} Boundary`, offset: curOff, designElev: curElev });
+        }
+        if (!isNaN(guinea)) {
+            const catchOff = estCatchCustom(guinea, halfWidth, hingeElev, sk.segments);
+            points.push({ label: 'Est. Catch', offset: catchOff, designElev: guinea, isCatch: true });
+        }
+    }
+
+    return points;
+}
+
+function openStakeNote(id) {
+    const sk = stakes.find(s => s.id === id);
+    if (!sk) return;
+    const guinea = parseFloat(sk.guinea);
+    const hasGuinea = !isNaN(guinea);
+    const pts = getStakeBreakpoints(sk);
+
+    let lines = [];
+    const sta = sk.station ? `Sta ${sk.station}` : '(no sta)';
+    lines.push(`STAKE NOTE  ${sta} ${sk.side}`);
+    lines.push(`CL Elev: ${parseFloat(sk.clElev).toFixed(3)}${hasGuinea ? `  Guinea: ${guinea.toFixed(3)}` : ''}`);
+    lines.push(`Type: ${(sk.type || '').toUpperCase()}  HW: ${(sk.halfWidth||0).toFixed(1)} ft`);
+    lines.push(`${'─'.repeat(48)}`);
+    lines.push(`  C/F       Offset   Design Elev  Point`);
+    lines.push(`${'─'.repeat(48)}`);
+
+    // Show from catch downward to CL (reverse pts, CL first in points so reverse)
+    const revPts = [...pts].reverse();
+    revPts.forEach(pt => {
+        let cfStr = '       ';
+        if (hasGuinea) {
+            const diff = guinea - pt.designElev; // + = cut (existing above design), - = fill
+            if (pt.isCatch) {
+                cfStr = 'C~0.00 ';
+            } else {
+                cfStr = diff >= 0
+                    ? `C~${Math.abs(diff).toFixed(2)} `
+                    : `F~${Math.abs(diff).toFixed(2)} `;
+            }
+        }
+        const offStr = pt.offset.toFixed(1).padStart(6) + ' ft';
+        const elevStr = pt.designElev.toFixed(3).padStart(9);
+        lines.push(`  ${cfStr.padEnd(8)} ${offStr}  ${elevStr}  ${pt.label}`);
+    });
+    lines.push(`${'─'.repeat(48)}`);
+
+    // Compact stake face (catch to CL, reading top of stake to bottom)
+    lines.push('');
+    lines.push('STAKE FACE (catch → CL, incremental dist):');
+    for (let i = revPts.length - 1; i >= 0; i--) {
+        const pt = revPts[i];
+        const nextPt = revPts[i - 1];
+        let cfStr;
+        if (hasGuinea) {
+            const diff = guinea - pt.designElev;
+            cfStr = pt.isCatch ? 'C~*' : (diff >= 0 ? `C~${Math.abs(diff).toFixed(2)}` : `F~${Math.abs(diff).toFixed(2)}`);
+        } else {
+            cfStr = `${pt.offset.toFixed(1)}ft`;
+        }
+        const incDist = nextPt ? (pt.offset - nextPt.offset).toFixed(1) : pt.offset.toFixed(1);
+        const lbl = pt.isCatch ? `${pt.offset.toFixed(1)} Catch` : pt.label;
+        lines.push(`  ${cfStr} / ${incDist} ft  ← ${lbl}`);
+    }
+
+    document.getElementById('stakeNoteTitle').textContent = `Stake Note — ${sta} ${sk.side}`;
+    const box = document.getElementById('stakeNoteBox');
+    box.textContent = lines.join('\n');
+    document.getElementById('stakeNoteModal').classList.remove('hidden');
+}
+
+function closeStakeNoteModal() { document.getElementById('stakeNoteModal').classList.add('hidden'); }
+
+function selectStakeNote() {
+    const el = document.getElementById('stakeNoteBox');
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function copyStakeNote() {
+    selectStakeNote();
+    try {
+        document.execCommand('copy');
+        const btn = event.target;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    } catch(e) {}
+}
+
+// ============================================================
+// PERSISTENCE (delegated to IDB functions above)
+// ============================================================
+function saveTemplates() { saveTemplatesIDB(); }
+function loadTemplates() { /* async load handled in initAsync */ }
+function saveStakes() { saveStakesIDB(); }
+function loadStakes() { /* async load handled in initAsync */ }
+function saveRanges() { saveRangesIDB(); }
+function loadRanges() { /* async load handled in initAsync */ }
+
+// ============================================================
+// INIT
+// ============================================================
+async function initAsync() {
+    await loadTemplatesIDB();
+    await loadStakesIDB();
+    await loadRangesIDB();
+    populateCustomDropdown();
+    populateSessionDropdown();
+    sessSetMode('gps');
+}
+initAsync();
+</script>
+</body>
+</html>

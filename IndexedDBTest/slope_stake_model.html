@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
+    <title>Model-Based Staking — Survey Tool</title>
+    <style>
+        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
+        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-orange:#fb923c;--accent-red:#f87171;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;--grade-bg:#052e16;--grade-border:#166534;--grade-text:#4ade80;--cut-bg:#431407;--cut-border:#9a3412;--cut-text:#fb923c;}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        /* Session info bar */
+        .session-bar{background:var(--result-bg);border-bottom:1.5px solid var(--result-border);padding:9px 16px;display:flex;flex-wrap:wrap;gap:4px 16px;}
+        .session-bar-item{font-size:0.75em;color:var(--result-text);}
+        .session-bar-label{font-weight:800;text-transform:uppercase;letter-spacing:0.5px;}
+        /* Cards */
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        select.input{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
+        .coord-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .btn{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;border:none;border-radius:10px;font-size:0.9em;font-weight:700;cursor:pointer;transition:all 0.15s;-webkit-user-select:none;user-select:none;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);color:#fff;}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-danger{background:var(--accent-red);color:#fff;}
+        .btn-green{background:var(--accent-green);color:#fff;}
+        .btn-sm{padding:8px 14px;font-size:0.82em;min-height:38px;}
+        .btn-xs{padding:5px 9px;font-size:0.72em;min-height:30px;}
+        .btn-row{display:flex;gap:10px;margin-top:8px;}
+        .hidden{display:none!important;}
+        /* Side toggle */
+        .side-toggle{display:flex;gap:8px;}
+        .side-btn{flex:1;padding:10px;border:2px solid var(--border-secondary);border-radius:9px;background:var(--bg-tertiary);color:var(--text-secondary);font-weight:700;font-size:0.9em;cursor:pointer;text-align:center;-webkit-user-select:none;user-select:none;transition:all 0.15s;}
+        .side-btn.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+        /* Grade break table */
+        .gb-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;margin-bottom:6px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:10px 12px;}
+        .gb-inputs{display:grid;grid-template-columns:1fr 1fr;gap:6px;grid-column:1;}
+        .gb-name-input{width:100%;padding:7px 9px;border:1.5px solid var(--input-border);border-radius:7px;background:var(--input-bg);color:var(--text-primary);font-size:0.85em;outline:none;}
+        .gb-name-input:focus{border-color:var(--accent-blue);}
+        .gb-num-input{width:100%;padding:7px 9px;border:1.5px solid var(--input-border);border-radius:7px;background:var(--input-bg);color:var(--text-primary);font-size:0.85em;outline:none;font-variant-numeric:tabular-nums;}
+        .gb-num-input:focus{border-color:var(--accent-blue);}
+        .cf-badge{font-size:0.8em;font-weight:700;padding:3px 8px;border-radius:5px;min-width:70px;text-align:center;}
+        .cf-fill{background:var(--grade-bg);color:var(--grade-text);}
+        .cf-cut{background:var(--cut-bg);color:var(--cut-text);}
+        .cf-neutral{background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-primary);}
+        .gb-del-btn{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:4px 6px;border-radius:6px;-webkit-user-select:none;user-select:none;}
+        .gb-del-btn:active{background:var(--cut-bg);}
+        .gb-add-row{display:flex;justify-content:flex-end;margin-top:4px;}
+        /* V indicator */
+        .v-indicator{font-size:0.72em;font-weight:700;margin-left:4px;}
+        .v-fill{color:var(--accent-green);}
+        .v-cut{color:var(--accent-orange);}
+        /* Stake face preview */
+        .stake-face-card{background:var(--bg-secondary);border:2px solid var(--border-secondary);border-radius:12px;margin:12px 16px;padding:0;overflow:hidden;}
+        .face-row{padding:12px 16px;border-bottom:1px solid var(--border-primary);}
+        .face-row:last-child{border-bottom:none;}
+        .face-label{font-size:0.62em;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:4px;}
+        .face-content{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.88em;white-space:pre;color:var(--text-primary);line-height:1.6;}
+        .face-empty{color:var(--text-muted);font-style:italic;font-size:0.85em;}
+        /* Saved stakes */
+        .stake-list-header{display:flex;justify-content:space-between;align-items:center;padding:0 16px;margin:16px 0 8px;}
+        .stake-list-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);}
+        .saved-stake-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;margin:0 16px 10px;box-shadow:var(--shadow);overflow:hidden;}
+        .saved-stake-header{padding:12px 14px 10px;}
+        .saved-stake-title{font-weight:800;font-size:0.9em;color:var(--text-primary);}
+        .saved-stake-meta{font-size:0.72em;color:var(--text-muted);margin-top:2px;}
+        .saved-stake-face{padding:0 14px 12px;}
+        .saved-face-row{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.78em;line-height:1.7;color:var(--text-secondary);white-space:pre-wrap;}
+        .saved-face-label{font-size:0.65em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);}
+        .saved-stake-actions{display:flex;gap:6px;padding:0 14px 12px;}
+        .empty-state{text-align:center;padding:30px 20px;}
+        .empty-state-text{color:var(--text-muted);font-size:0.88em;}
+        /* Toast */
+        .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:300;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
+        .toast.show{opacity:1;}
+        /* Session picker */
+        .session-picker-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:24px 16px;padding:20px;box-shadow:var(--shadow);}
+        .session-picker-title{font-weight:800;font-size:1em;color:var(--text-primary);margin-bottom:6px;}
+        .session-picker-sub{font-size:0.82em;color:var(--text-muted);margin-bottom:16px;}
+        .picker-section-label{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin:14px 0 6px;}
+        .picker-option{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1.5px solid var(--border-primary);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:border-color 0.15s;}
+        .picker-option:hover{border-color:var(--accent-blue);}
+        .picker-option.selected{border-color:var(--accent-blue);background:var(--result-bg);}
+        .picker-option-name{font-weight:700;font-size:0.9em;color:var(--text-primary);}
+        .picker-option-meta{font-size:0.75em;color:var(--text-muted);margin-top:1px;}
+        .picker-divider{text-align:center;font-size:0.75em;color:var(--text-muted);margin:14px 0;position:relative;}
+        .picker-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:1px;background:var(--border-primary);}
+        .picker-divider span{position:relative;background:var(--bg-secondary);padding:0 10px;}
+        /* Error card */
+        .error-card{background:var(--cut-bg);border:1.5px solid var(--cut-border);border-radius:14px;margin:24px 16px;padding:24px;text-align:center;}
+        .error-card-title{font-weight:800;font-size:1em;color:var(--cut-text);margin-bottom:8px;}
+        .error-card-msg{font-size:0.85em;color:var(--cut-text);margin-bottom:16px;}
+        /* Print */
+        #printContent{display:none;}
+        @media print {
+            body{background:white!important;}
+            .top-nav,.session-bar,.mode-tabs,#entrySection,.no-print{display:none!important;}
+            #printContent{display:block!important;}
+            .stake-face-print{page-break-inside:avoid;border:2px solid #000;margin:8px;border-radius:0;}
+            .stake-face-print .face-row{border-bottom:1px solid #000;padding:8px 12px;}
+            .stake-face-print .face-label{color:#666;font-size:0.62em;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+            .stake-face-print .face-content{color:#000;font-size:0.9em;font-family:'Courier New',monospace;white-space:pre;line-height:1.6;}
+            .print-header{font-size:0.78em;color:#666;margin-bottom:10px;border-bottom:1px solid #ccc;padding-bottom:6px;}
+            .saved-stake-card,.stake-list-header,.no-print{display:none!important;}
+            @page{margin:0.5in;size:letter;}
+        }
+    </style>
+</head>
+<body>
+<nav class="top-nav">
+    <a href="slope_stake_home.html" class="nav-back">&#8249; Session</a>
+    <span class="nav-title">&#128225; Model-Based Staking</span>
+    <button class="theme-btn" id="themeBtn">&#127769; Dark</button>
+</nav>
+
+<!-- Session bar (shown when context loaded) -->
+<div class="session-bar hidden" id="sessionBar">
+    <span class="session-bar-item"><span class="session-bar-label">Project:</span> <span id="barProject"></span></span>
+    <span class="session-bar-item"><span class="session-bar-label">Session:</span> <span id="barSession"></span></span>
+    <span class="session-bar-item" id="barOpWrap"><span class="session-bar-label">Operator:</span> <span id="barOperator"></span></span>
+</div>
+
+<!-- Session picker (no context) -->
+<div class="session-picker-card hidden" id="noContextCard">
+    <div class="session-picker-title">&#128225; Open a Session</div>
+    <div class="session-picker-sub">Choose an existing project session or start a quick standalone session.</div>
+
+    <div id="pickerProjectSessions"></div>
+
+    <div class="picker-divider"><span>or</span></div>
+
+    <button class="btn btn-secondary" style="width:100%;margin-bottom:10px;" onclick="startQuickSession()">&#9889; Quick Session (no project)</button>
+    <a href="slope_stake_home.html" class="btn btn-primary" style="display:flex;width:100%;">&#8962; Go to Session Home</a>
+</div>
+
+<!-- Main content (shown when context loaded) -->
+<div id="mainContent" class="hidden">
+
+    <!-- Entry section -->
+    <div class="card" id="entrySection">
+        <div class="card-title">Stake Entry</div>
+
+        <!-- Station + Side row -->
+        <div class="coord-row" style="margin-bottom:14px;">
+            <div>
+                <label class="label" for="sta">Station</label>
+                <input type="text" class="input" id="sta" placeholder="e.g. 65+00" oninput="updatePreview()">
+            </div>
+            <div>
+                <label class="label">Side</label>
+                <div class="side-toggle">
+                    <button class="side-btn active" id="sideL" onclick="setSide('L')">L</button>
+                    <button class="side-btn" id="sideR" onclick="setSide('R')">R</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Designation -->
+        <div class="field-group">
+            <label class="label" for="desig">Designation</label>
+            <select class="input" id="desig" onchange="handleDesigChange()">
+                <option value="P.O.T.">P.O.T.</option>
+                <option value="P.C.">P.C.</option>
+                <option value="P.T.">P.T.</option>
+                <option value="P.C.C.">P.C.C.</option>
+                <option value="P.I.">P.I.</option>
+                <option value="B.V.C.">B.V.C.</option>
+                <option value="E.V.C.">E.V.C.</option>
+                <option value="Custom...">Custom...</option>
+            </select>
+        </div>
+        <div class="field-group hidden" id="customDesigRow">
+            <label class="label" for="customDesig">Custom Designation</label>
+            <input type="text" class="input" id="customDesig" placeholder="Enter designation" oninput="updatePreview()">
+        </div>
+
+        <!-- Superelevation -->
+        <div class="field-group">
+            <label class="label" for="superElev">Superelevation Info</label>
+            <input type="text" class="input" id="superElev" placeholder="e.g. +.02 sup. (6.45 sh.)" oninput="updatePreview()">
+        </div>
+
+        <!-- Template -->
+        <div class="field-group">
+            <label class="label" for="templateInfo">Template Description</label>
+            <input type="text" class="input" id="templateInfo" placeholder="e.g. 1:3~0.8 Ditch@8.00~1:3B.S." oninput="updatePreview()">
+        </div>
+
+        <!-- Grade Breaks -->
+        <div style="margin-bottom:14px;">
+            <div class="card-title" style="margin-bottom:6px;">Grade Breaks (Catch &rarr; CL)</div>
+            <div style="font-size:0.75em;color:var(--text-muted);margin-bottom:10px;">Enter H and V from instrument at each break point. Points are sorted by H (smallest = catch point).</div>
+            <div id="gbList"></div>
+            <div class="gb-add-row">
+                <button class="btn btn-secondary btn-sm" onclick="addGradeBreak()">+ Add Point</button>
+            </div>
+        </div>
+
+        <!-- Save buttons -->
+        <div class="btn-row">
+            <button class="btn btn-primary" style="flex:1" onclick="saveStake(false)">Save Stake</button>
+            <button class="btn btn-green" style="flex:1" onclick="saveStake(true)">Save &amp; Next</button>
+        </div>
+        <div class="error-msg hidden" id="entryError"></div>
+    </div>
+
+    <!-- Stake face preview -->
+    <div style="margin:0 0 4px;padding:0 16px;">
+        <div style="font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);">Live Preview</div>
+    </div>
+    <div class="stake-face-card" id="facePreview">
+        <div class="face-row">
+            <div class="face-label">Back</div>
+            <div class="face-content" id="faceBack"></div>
+        </div>
+        <div class="face-row">
+            <div class="face-label">Side</div>
+            <div class="face-content" id="faceSide1"></div>
+        </div>
+        <div class="face-row">
+            <div class="face-label">Front</div>
+            <div class="face-content" id="faceFront"></div>
+        </div>
+        <div class="face-row">
+            <div class="face-label">Side</div>
+            <div class="face-content" id="faceSide2"></div>
+        </div>
+    </div>
+
+    <!-- Saved stakes section -->
+    <div class="stake-list-header no-print">
+        <span class="stake-list-title">Saved Stakes</span>
+        <button class="btn btn-secondary btn-sm" onclick="printAllStakes()">Print All</button>
+    </div>
+    <div id="savedStakesList"></div>
+
+</div><!-- end mainContent -->
+
+<!-- Print output (hidden on screen) -->
+<div id="printContent"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Error msg in entry -->
+<style>.error-msg{color:var(--accent-red);font-size:0.82em;font-weight:600;margin-top:8px;}</style>
+
+<script>
+// ---- Theme ----
+document.getElementById('themeBtn').addEventListener('click', function(){
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    this.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+});
+(async function(){
+    const saved = await ftGetSetting('surveyTheme');
+    if (saved === 'high-contrast') {
+        document.documentElement.setAttribute('data-theme','high-contrast');
+        document.getElementById('themeBtn').textContent = '☀️ Light';
+    }
+})();
+
+// ---- State ----
+let ctx = null;
+let currentSide = 'L';
+let currentDesignation = 'P.O.T.';
+let gradeBreakIdCounter = 0;
+let savedStakes = [];
+
+// ---- IDB helpers ----
+async function getSessionsIDB(projectId) {
+    return await ftGetStakeSessions(projectId);
+}
+async function saveSessionIDB(sess) {
+    await ftSaveStakeSession(sess);
+}
+
+// ---- Init ----
+async function init() {
+    // First try URL query params (from launchCalc navigation)
+    const params = new URLSearchParams(window.location.search);
+    const urlProjectId = params.get('projectId');
+    const urlSessionId = params.get('sessionId');
+
+    if (urlProjectId && urlSessionId) {
+        // Build ctx from the actual stored data
+        const projects = await ftGetAllProjects();
+        const proj = projects.find(p => p.id === urlProjectId);
+        const sessions = await getSessionsIDB(urlProjectId);
+        const sess = sessions.find(s => s.id === urlSessionId);
+        ctx = {
+            projectId: urlProjectId,
+            sessionId: urlSessionId,
+            projectName: proj ? (proj.projectNumber || proj.name || '') : '',
+            sessionDescription: sess ? (sess.description || '') : '',
+            superElevPreset: sess ? (sess.superElevPreset || '') : '',
+            templatePreset: sess ? (sess.templatePreset || '') : ''
+        };
+        await ftSetStakeContext(ctx);
+        loadSession();
+        return;
+    }
+
+    // Fall back to IDB context (e.g. returning to an open session)
+    ctx = await ftGetStakeContext();
+
+    if (!ctx || !ctx.projectId || !ctx.sessionId) {
+        await showSessionPicker();
+        return;
+    }
+
+    loadSession();
+}
+
+async function showSessionPicker() {
+    document.getElementById('noContextCard').classList.remove('hidden');
+    const container = document.getElementById('pickerProjectSessions');
+    let html = '';
+    let hasAny = false;
+    const projects = await ftGetAllProjects();
+    for (const proj of projects) {
+        const sessions = await getSessionsIDB(proj.id);
+        if (sessions.length === 0) continue;
+        hasAny = true;
+        const projLabel = proj.projectNumber || proj.name || proj.id;
+        html += `<div class="picker-section-label">${escHtml(projLabel)}</div>`;
+        sessions.forEach(s => {
+            const stakeCount = (s.stakes || []).length;
+            const meta = [s.date, s.operator, stakeCount ? stakeCount+' stake'+(stakeCount!==1?'s':'') : ''].filter(Boolean).join(' · ');
+            html += `<div class="picker-option" data-proj-id="${escHtml(proj.id)}" data-sess-id="${escHtml(s.id)}">
+                <div>
+                    <div class="picker-option-name">${escHtml(s.description || 'Session')}</div>
+                    <div class="picker-option-meta">${escHtml(meta)}</div>
+                </div>
+            </div>`;
+        });
+    }
+    if (!hasAny) {
+        html = `<div style="font-size:0.82em;color:var(--text-muted);padding:10px 0;">No saved sessions found. Create one in <a href="slope_stake_home.html" style="color:var(--accent-blue);">Session Home</a> or use Quick Session below.</div>`;
+    }
+    container.innerHTML = html;
+
+    // Attach click handlers after rendering
+    container.querySelectorAll('.picker-option').forEach(el => {
+        el.addEventListener('click', async function() {
+            const projId = this.dataset.projId;
+            const sessId = this.dataset.sessId;
+            const projects = await ftGetAllProjects();
+            const proj = projects.find(p => p.id === projId);
+            const sessions = await getSessionsIDB(projId);
+            const sess = sessions.find(s => s.id === sessId);
+            if (!proj || !sess) { showToast('Session not found.'); return; }
+            ctx = {
+                projectId: projId,
+                projectName: proj.projectNumber || proj.name || projId,
+                sessionId: sessId,
+                sessionDescription: sess.description || '',
+                superElevPreset: sess.superElevPreset || '',
+                templatePreset: sess.templatePreset || ''
+            };
+            await ftSetStakeContext(ctx);
+            document.getElementById('noContextCard').classList.add('hidden');
+            loadSession();
+        });
+    });
+}
+
+async function startQuickSession() {
+    const qid = 'quick_' + Date.now();
+    const tempProjectId = 'quickProject';
+    const sess = { id: qid, projectId: tempProjectId, description: 'Quick Session', date: new Date().toLocaleDateString(), operator: '', stakes: [] };
+    await ftSaveStakeSession(sess);
+    // Make sure project exists in registry
+    const projects = await ftGetAllProjects();
+    if (!projects.find(p => p.id === tempProjectId)) {
+        await ftSaveProject({ id: tempProjectId, projectNumber: 'Quick Sessions', description: 'Auto-created for standalone use', created: new Date().toISOString() });
+    }
+    ctx = { projectId: tempProjectId, projectName: 'Quick Sessions', sessionId: qid, sessionDescription: 'Quick Session', superElevPreset: '', templatePreset: '' };
+    await ftSetStakeContext(ctx);
+    document.getElementById('noContextCard').classList.add('hidden');
+    loadSession();
+}
+
+async function loadSession() {
+    // Show session bar
+    document.getElementById('sessionBar').classList.remove('hidden');
+    document.getElementById('barProject').textContent = ctx.projectName || '';
+    document.getElementById('barSession').textContent = ctx.sessionDescription || '';
+
+    let sess = null;
+    if (ctx.projectId && ctx.sessionId) {
+        const sessions = await getSessionsIDB(ctx.projectId);
+        sess = sessions.find(s => s.id === ctx.sessionId) || null;
+    }
+
+    if (sess && sess.operator) {
+        document.getElementById('barOperator').textContent = sess.operator;
+    } else {
+        document.getElementById('barOpWrap').classList.add('hidden');
+    }
+
+    // Pre-fill from session presets
+    document.getElementById('superElev').value = ctx.superElevPreset || '';
+    document.getElementById('templateInfo').value = ctx.templatePreset || '';
+
+    // Load existing stakes
+    savedStakes = (sess && sess.stakes) ? sess.stakes : [];
+
+    document.getElementById('mainContent').classList.remove('hidden');
+
+    // Add first grade break row to start
+    addGradeBreak();
+    updatePreview();
+    renderSavedStakes();
+}
+
+// ---- Side toggle ----
+function setSide(side) {
+    currentSide = side;
+    document.getElementById('sideL').classList.toggle('active', side === 'L');
+    document.getElementById('sideR').classList.toggle('active', side === 'R');
+    updatePreview();
+}
+
+// ---- Designation ----
+function handleDesigChange() {
+    const val = document.getElementById('desig').value;
+    currentDesignation = val;
+    const customRow = document.getElementById('customDesigRow');
+    if (val === 'Custom...') {
+        customRow.classList.remove('hidden');
+        document.getElementById('customDesig').focus();
+    } else {
+        customRow.classList.add('hidden');
+    }
+    updatePreview();
+}
+
+// ---- Grade breaks ----
+function addGradeBreak(name, h, v) {
+    const id = 'gb_' + (++gradeBreakIdCounter);
+    const list = document.getElementById('gbList');
+    const row = document.createElement('div');
+    row.className = 'gb-row';
+    row.id = id;
+    row.innerHTML = `
+        <div>
+            <input type="text" class="gb-name-input" placeholder="Name (e.g. Catch)" value="${escHtml(name || '')}" oninput="updatePreview()" style="width:100%;margin-bottom:5px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+                <div>
+                    <div style="font-size:0.68em;color:var(--text-muted);margin-bottom:3px;font-weight:700;">H (offset)</div>
+                    <input type="number" step="any" class="gb-num-input" placeholder="H" value="${h !== undefined ? h : ''}" oninput="onGBInput(this)" onblur="onGBBlur()" style="width:100%;">
+                </div>
+                <div>
+                    <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px;">
+                        <span style="font-size:0.68em;color:var(--text-muted);font-weight:700;">V (+fill/&#8722;cut)</span>
+                        <span class="v-indicator" id="${id}_vi"></span>
+                    </div>
+                    <input type="number" step="any" class="gb-num-input" placeholder="V" value="${v !== undefined ? v : ''}" oninput="onVInput(this,'${id}')" onblur="onGBBlur()" style="width:100%;">
+                </div>
+            </div>
+        </div>
+        <span class="cf-badge cf-neutral" id="${id}_badge">—</span>
+        <button class="gb-del-btn" onclick="deleteGradeBreak('${id}')" title="Remove">&times;</button>
+    `;
+    list.appendChild(row);
+    updateCFBadges();
+    updatePreview();
+}
+
+function onVInput(input, rowId) {
+    const val = parseFloat(input.value);
+    const vi = document.getElementById(rowId + '_vi');
+    if (vi) {
+        if (isNaN(val) || input.value.trim() === '') {
+            vi.textContent = '';
+            vi.className = 'v-indicator';
+        } else if (val > 0) {
+            vi.textContent = 'Fill';
+            vi.className = 'v-indicator v-fill';
+        } else if (val < 0) {
+            vi.textContent = 'Cut';
+            vi.className = 'v-indicator v-cut';
+        } else {
+            vi.textContent = '0';
+            vi.className = 'v-indicator';
+        }
+    }
+    updateCFBadges();
+    updatePreview();
+}
+
+function onGBInput(input) {
+    updateCFBadges();
+    updatePreview();
+}
+
+function onGBBlur() {
+    // Sort grade breaks by H if needed
+    const rows = getGBRows();
+    const hValues = rows.map(r => parseFloat(r.h));
+    const validH = hValues.filter(v => !isNaN(v));
+    if (validH.length < 2) { updatePreview(); return; }
+    // Check if sorted
+    let needsSort = false;
+    for (let i = 1; i < hValues.length; i++) {
+        if (!isNaN(hValues[i-1]) && !isNaN(hValues[i]) && hValues[i-1] > hValues[i]) {
+            needsSort = true; break;
+        }
+    }
+    if (!needsSort) { updatePreview(); return; }
+
+    // Filter complete rows, sort, rebuild
+    const complete = rows.filter(r => r.h !== '' && r.v !== '' && !isNaN(parseFloat(r.h)));
+    complete.sort((a,b) => parseFloat(a.h) - parseFloat(b.h));
+    const incomplete = rows.filter(r => r.h === '' || r.v === '' || isNaN(parseFloat(r.h)));
+
+    // Remove all existing rows
+    const list = document.getElementById('gbList');
+    list.innerHTML = '';
+    gradeBreakIdCounter = 0;
+
+    [...complete, ...incomplete].forEach(r => {
+        addGradeBreak(r.name, r.h !== '' ? r.h : undefined, r.v !== '' ? r.v : undefined);
+    });
+
+    showToast('Grade breaks re-sorted by H value');
+    updatePreview();
+}
+
+function deleteGradeBreak(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+    updateCFBadges();
+    updatePreview();
+}
+
+function getGBRows() {
+    const list = document.getElementById('gbList');
+    const rows = list.querySelectorAll('.gb-row');
+    return Array.from(rows).map(row => {
+        const inputs = row.querySelectorAll('input');
+        return {
+            id: row.id,
+            name: inputs[0] ? inputs[0].value.trim() : '',
+            h: inputs[1] ? inputs[1].value.trim() : '',
+            v: inputs[2] ? inputs[2].value.trim() : ''
+        };
+    });
+}
+
+function updateCFBadges() {
+    const rows = getGBRows();
+    const parsed = rows.map(r => ({
+        id: r.id,
+        name: r.name,
+        h: parseFloat(r.h),
+        v: parseFloat(r.v),
+        hStr: r.h,
+        vStr: r.v
+    })).filter(r => !isNaN(r.h) && !isNaN(r.v));
+
+    // Recompute per badge using the sorted logic
+    const sorted = [...parsed].sort((a,b) => a.h - b.h);
+
+    // Map each row's id to its badge value
+    sorted.forEach((gb, i) => {
+        const cfRaw = i === 0 ? gb.v : gb.v - sorted[i-1].v;
+        const badge = document.getElementById(gb.id + '_badge');
+        if (!badge) return;
+        const prefix = cfRaw >= 0 ? 'F' : 'C';
+        const amt = Math.abs(cfRaw).toFixed(2);
+        badge.textContent = `${prefix}~${amt}`;
+        badge.className = 'cf-badge ' + (cfRaw >= 0 ? 'cf-fill' : 'cf-cut');
+    });
+}
+
+// ---- Core computation ----
+function computeStakeFace(gbRows) {
+    const sorted = gbRows
+        .filter(g => g.h !== '' && g.v !== '')
+        .map(g => ({ ...g, h: parseFloat(g.h), v: parseFloat(g.v) }))
+        .filter(g => !isNaN(g.h) && !isNaN(g.v))
+        .sort((a,b) => a.h - b.h);
+
+    return sorted.map((gb, i) => {
+        const cfRaw = i === 0 ? gb.v : gb.v - sorted[i-1].v;
+        const atDist = i === 0 ? gb.h : gb.h - sorted[i-1].h;
+        return {
+            name: gb.name || ('Point ' + (i+1)),
+            cfRaw,
+            atDist,
+            isCatch: i === 0
+        };
+    });
+}
+
+function formatStakeFace(stake) {
+    const rows = computeStakeFace(stake.gradeBreaks);
+    const frontLines = rows.map(r => {
+        const prefix = r.cfRaw >= 0 ? 'F' : 'C';
+        const amt = Math.abs(r.cfRaw).toFixed(2);
+        const dist = r.atDist.toFixed(2);
+        return `${prefix}~${amt} / ${dist} ft  ${r.name}`;
+    }).join('\n') || '(no grade breaks)';
+
+    const desig = stake.designation === 'Custom...' ? (stake.customDesignation || 'Custom') : (stake.designation || '');
+    return {
+        back: `Sta ${stake.station || '??+??'}  ${desig}`,
+        side1: stake.superElevInfo || '',
+        front: frontLines,
+        side2: stake.templateInfo || ''
+    };
+}
+
+// ---- Live preview ----
+function updatePreview() {
+    const gbRows = getGBRows();
+    const desig = document.getElementById('desig').value;
+    const face = formatStakeFace({
+        station: document.getElementById('sta').value.trim(),
+        side: currentSide,
+        designation: desig,
+        customDesignation: document.getElementById('customDesig').value.trim(),
+        superElevInfo: document.getElementById('superElev').value.trim(),
+        templateInfo: document.getElementById('templateInfo').value.trim(),
+        gradeBreaks: gbRows
+    });
+
+    document.getElementById('faceBack').textContent = face.back;
+    document.getElementById('faceSide1').textContent = face.side1 || ' ';
+    document.getElementById('faceFront').innerHTML = face.front === '(no grade breaks)'
+        ? `<span class="face-empty">Add grade breaks above to see stake face</span>`
+        : escHtml(face.front);
+    document.getElementById('faceSide2').textContent = face.side2 || ' ';
+}
+
+// ---- Save stake ----
+async function saveStake(andNext) {
+    const errEl = document.getElementById('entryError');
+    errEl.classList.add('hidden');
+
+    const station = document.getElementById('sta').value.trim();
+    if (!station) {
+        errEl.textContent = 'Station is required.';
+        errEl.classList.remove('hidden');
+        document.getElementById('sta').focus();
+        return;
+    }
+
+    const gbRows = getGBRows();
+    const validGBs = gbRows.filter(r => r.h !== '' && r.v !== '' && !isNaN(parseFloat(r.h)) && !isNaN(parseFloat(r.v)));
+    if (validGBs.length === 0) {
+        errEl.textContent = 'At least one grade break with H and V values is required.';
+        errEl.classList.remove('hidden');
+        return;
+    }
+
+    const sessions = await getSessionsIDB(ctx.projectId);
+    const sess = sessions.find(s => s.id === ctx.sessionId);
+    if (!sess) { showToast('Session not found.'); return; }
+    if (!sess.stakes) sess.stakes = [];
+
+    const stakeNumber = sess.stakes.length + 1;
+    const desig = document.getElementById('desig').value;
+    const stake = {
+        id: Date.now().toString(),
+        stakeNumber,
+        type: 'model',
+        station,
+        side: currentSide,
+        designation: desig,
+        customDesignation: document.getElementById('customDesig').value.trim(),
+        superElevInfo: document.getElementById('superElev').value.trim(),
+        templateInfo: document.getElementById('templateInfo').value.trim(),
+        gradeBreaks: gbRows,
+        savedAt: Date.now()
+    };
+
+    sess.stakes.push(stake);
+    await saveSessionIDB(sess);
+    savedStakes = sess.stakes;
+    renderSavedStakes();
+    showToast(`Stake #${stakeNumber} saved.`);
+
+    if (andNext) {
+        // Advance station numerically if possible
+        const nextSta = advanceStation(station);
+        document.getElementById('sta').value = nextSta;
+        // Clear grade breaks
+        document.getElementById('gbList').innerHTML = '';
+        gradeBreakIdCounter = 0;
+        addGradeBreak();
+        document.getElementById('sta').focus();
+    }
+
+    updatePreview();
+}
+
+function advanceStation(staStr) {
+    // Try to increment the feet portion of a station like "65+00" -> "66+00" or "65+50" -> "65+100"
+    const m = staStr.match(/^(\d+)\+(\d+(?:\.\d+)?)$/);
+    if (!m) return staStr;
+    const hundreds = parseInt(m[1], 10);
+    const feet = parseFloat(m[2]);
+    const totalFt = hundreds * 100 + feet;
+    const next = totalFt + 100;
+    const newHundreds = Math.floor(next / 100);
+    const newFeet = next % 100;
+    const feetStr = newFeet % 1 === 0 ? String(newFeet).padStart(2,'0') : newFeet.toFixed(2).padStart(5,'0');
+    return `${newHundreds}+${feetStr}`;
+}
+
+// ---- Render saved stakes ----
+function renderSavedStakes() {
+    const el = document.getElementById('savedStakesList');
+    if (savedStakes.length === 0) {
+        el.innerHTML = `<div class="empty-state no-print"><div class="empty-state-text">No stakes saved yet in this session.</div></div>`;
+        return;
+    }
+    el.innerHTML = savedStakes.map(st => {
+        const face = formatStakeFace(st);
+        const desig = st.designation === 'Custom...' ? (st.customDesignation || 'Custom') : (st.designation || '');
+        return `
+            <div class="saved-stake-card no-print" id="saved_${st.id}">
+                <div class="saved-stake-header">
+                    <div class="saved-stake-title">#${st.stakeNumber} &nbsp;·&nbsp; Sta ${escHtml(st.station || '??')} &nbsp;${escHtml(st.side || '')} &nbsp;·&nbsp; ${escHtml(desig)}</div>
+                    <div class="saved-stake-meta">${new Date(st.savedAt).toLocaleTimeString()}</div>
+                </div>
+                <div class="saved-stake-face">
+                    <div class="saved-face-label">Back</div>
+                    <div class="saved-face-row">${escHtml(face.back)}</div>
+                    ${face.side1 ? `<div class="saved-face-label" style="margin-top:5px;">Side</div><div class="saved-face-row">${escHtml(face.side1)}</div>` : ''}
+                    <div class="saved-face-label" style="margin-top:5px;">Front</div>
+                    <div class="saved-face-row">${escHtml(face.front)}</div>
+                    ${face.side2 ? `<div class="saved-face-label" style="margin-top:5px;">Side</div><div class="saved-face-row">${escHtml(face.side2)}</div>` : ''}
+                </div>
+                <div class="saved-stake-actions">
+                    <button class="btn btn-secondary btn-xs" onclick="printStake('${st.id}')">&#128203; Print</button>
+                    <button class="btn btn-danger btn-xs" onclick="deleteStake('${st.id}')">&#128465; Delete</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// ---- Delete stake ----
+async function deleteStake(stakeId) {
+    if (!confirm('Delete this stake?')) return;
+    const sessions = await getSessionsIDB(ctx.projectId);
+    const sess = sessions.find(s => s.id === ctx.sessionId);
+    if (!sess) return;
+    sess.stakes = (sess.stakes || []).filter(s => s.id !== stakeId);
+    // Renumber
+    sess.stakes.forEach((s,i) => { s.stakeNumber = i+1; });
+    await saveSessionIDB(sess);
+    savedStakes = sess.stakes;
+    renderSavedStakes();
+    showToast('Stake deleted.');
+}
+
+// ---- Print ----
+async function buildPrintHTML(stakes) {
+    const sessions = await getSessionsIDB(ctx.projectId);
+    const sess = sessions.find(s => s.id === ctx.sessionId) || {};
+    const headerInfo = `Project: ${escHtml(ctx.projectName || '')}  |  Session: ${escHtml(ctx.sessionDescription || '')}  |  Date: ${escHtml(sess.date || '')}  |  Operator: ${escHtml(sess.operator || '')}`;
+
+    const stakeCards = stakes.map(st => {
+        const face = formatStakeFace(st);
+        const desig = st.designation === 'Custom...' ? (st.customDesignation || 'Custom') : (st.designation || '');
+        return `
+            <div class="stake-face-print">
+                <div class="face-row"><div class="face-label">Back</div><div class="face-content">${escHtml(face.back)}</div></div>
+                <div class="face-row"><div class="face-label">Side</div><div class="face-content">${escHtml(face.side1)}</div></div>
+                <div class="face-row"><div class="face-label">Front</div><div class="face-content">${escHtml(face.front)}</div></div>
+                <div class="face-row"><div class="face-label">Side</div><div class="face-content">${escHtml(face.side2)}</div></div>
+            </div>
+        `;
+    }).join('');
+
+    return `<div class="print-header">${headerInfo}</div>${stakeCards}`;
+}
+
+async function printStake(stakeId) {
+    const stake = savedStakes.find(s => s.id === stakeId);
+    if (!stake) return;
+    document.getElementById('printContent').innerHTML = await buildPrintHTML([stake]);
+    window.print();
+}
+
+async function printAllStakes() {
+    if (savedStakes.length === 0) { showToast('No stakes to print.'); return; }
+    document.getElementById('printContent').innerHTML = await buildPrintHTML(savedStakes);
+    window.print();
+}
+
+// ---- Utility ----
+function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ---- Start ----
+init(); // async, returns Promise
+</script>
+</body>
+</html>
