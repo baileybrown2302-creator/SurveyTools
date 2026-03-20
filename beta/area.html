@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Area & Volume — Survey Tool</title>
     <style>
         :root{
@@ -204,15 +205,13 @@
 <script>
 // ── Theme ──────────────────────────────────────────────
 const themeBtn=document.getElementById('themeBtn');
-const savedTheme=localStorage.getItem('surveyTheme');
-if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
-themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';ftSetSetting('surveyTheme',isHC?'':'high-contrast');});
+(async function(){const saved=await ftGetSetting('surveyTheme');if(saved==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}})();
 
 // ── State ──────────────────────────────────────────────
-const STORAGE_KEY='areaVolumeTotal_v1';
 let currentShape='rectangle';
 let lastResult=null; // {areaSF, volCF, dimStr, shapeName}
-let totalItems=JSON.parse(localStorage.getItem(STORAGE_KEY)||'[]');
+let totalItems=[];
 let heronMode=false;
 
 // ── Shape definitions ──────────────────────────────────
@@ -452,7 +451,7 @@ function showResult(r){
 }
 
 // ── Running total ──────────────────────────────────────
-function addToTotal(){
+async function addToTotal(){
     if(!lastResult)return;
     totalItems.push({
         id:Date.now().toString(36),
@@ -468,7 +467,7 @@ function addToTotal(){
     setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1200);
 }
 
-function saveTotal(){localStorage.setItem(STORAGE_KEY,JSON.stringify(totalItems));}
+async function saveTotal(){await ftSaveAreaTotals(totalItems);}
 
 function renderTotal(){
     const panel=document.getElementById('totalPanel');
@@ -501,13 +500,13 @@ function renderTotal(){
     });
 }
 
-function removeTotal(i){
-    totalItems.splice(i,1);saveTotal();renderTotal();
+async function removeTotal(i){
+    totalItems.splice(i,1);await saveTotal();renderTotal();
 }
 
 function clearTotal(){
-    showConfirm('Clear Running Total','Remove all items from the running total?','Clear All',()=>{
-        totalItems=[];saveTotal();renderTotal();
+    showConfirm('Clear Running Total','Remove all items from the running total?','Clear All',async ()=>{
+        totalItems=[];await saveTotal();renderTotal();
     });
 }
 
@@ -587,7 +586,7 @@ document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target
 
 // ── Init ───────────────────────────────────────────────
 setShape('rectangle');
-renderTotal();
+(async function(){totalItems=await ftGetAreaTotals()||[];renderTotal();})();
 </script>
 </body>
 </html>

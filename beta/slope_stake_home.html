@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Slope Staking — Survey Tool</title>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
@@ -205,63 +206,67 @@ let expandedProjects = {};
 let expandedSessions = {};
 
 // ---- Theme ----
-(function(){
-    const saved = localStorage.getItem('surveyTheme');
-    if (saved === 'high-contrast') {
-        document.documentElement.setAttribute('data-theme','high-contrast');
-        document.getElementById('themeBtn').textContent = '☀️ Light';
-    }
-})();
 document.getElementById('themeBtn').addEventListener('click', function(){
     const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
     document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
     this.textContent = isHC ? '🌙 Dark' : '☀️ Light';
-    localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 });
 
-// ---- localStorage helpers ----
-function loadProjects() {
-    try { return JSON.parse(localStorage.getItem('surveyProjects') || '[]'); } catch(e){ return []; }
+// ---- IDB helpers ----
+async function loadProjectsFromIDB() {
+    return await ftGetAllProjects();
 }
-function saveProjects(arr) {
-    localStorage.setItem('surveyProjects', JSON.stringify(arr));
+async function saveProjectToIDB(proj) {
+    await ftSaveProject(proj);
 }
-function getSessions(projectId) {
-    try { return JSON.parse(localStorage.getItem('slopeStakeSessions_' + projectId) || '[]'); } catch(e){ return []; }
+async function getSessionsFromIDB(projectId) {
+    return await ftGetStakeSessions(projectId);
 }
-function saveSessions(projectId, arr) {
-    localStorage.setItem('slopeStakeSessions_' + projectId, JSON.stringify(arr));
+async function saveSessionToIDB(sess) {
+    await ftSaveStakeSession(sess);
 }
+async function saveSessionsForProject(projectId, arr) {
+    // Delete all sessions for this project and re-save
+    await ftDeleteStakeSessionsForProject(projectId);
+    for (const s of arr) await ftSaveStakeSession({ ...s, projectId });
+}
+
 // ---- Sync ----
-function syncExternalData() {
-    let levelProjs = [];
-    try { levelProjs = JSON.parse(localStorage.getItem('levelingProjects') || '[]'); } catch(e){}
-    levelProjs.forEach(lp => {
+async function syncExternalData() {
+    const levelProjs = await ftGetAllLevelProjects();
+    for (const lp of levelProjs) {
         if (!projects.find(p => p.id === lp.id)) {
-            projects.push({ id: lp.id, name: lp.number || lp.desc || ('Leveling ' + lp.id), description: lp.desc || '', created: lp.created || Date.now() });
+            const newProj = { id: lp.id, projectNumber: lp.number || lp.desc || ('Leveling ' + lp.id), contractNumber: '', fundingSource: '', contractor: '', route: '', description: lp.desc || '', archived: lp.archived || false, created: new Date(lp.created || Date.now()).toISOString() };
+            projects.push({ id: lp.id, name: newProj.projectNumber, description: newProj.description, created: newProj.created });
+            await ftSaveProject(newProj);
         }
-    });
-    let mData = null;
-    try { mData = JSON.parse(localStorage.getItem('materialReferenceData_v1') || 'null'); } catch(e){}
-    if (mData && mData.contracts) {
-        mData.contracts.forEach(c => {
-            if (!projects.find(p => p.id === c.id)) {
-                projects.push({ id: c.id, name: c.number || c.description || ('Contract ' + c.id), description: c.description || '', created: c.created || Date.now() });
-            }
-        });
     }
-    saveProjects(projects);
+    const allMaterials = await ftGetAllMaterials();
+    for (const c of allMaterials) {
+        if (!projects.find(p => p.id === c.id)) {
+            const newProj = { id: c.id, projectNumber: c.number || c.description || ('Contract ' + c.id), contractNumber: c.number || '', fundingSource: '', contractor: '', route: '', description: c.description || '', archived: c.archived || false, created: c.created || new Date().toISOString() };
+            projects.push({ id: c.id, name: newProj.projectNumber, description: newProj.description, created: newProj.created });
+            await ftSaveProject(newProj);
+        }
+    }
 }
 
 // ---- Init ----
-function init() {
-    projects = loadProjects();
-    syncExternalData();
-    renderProjects();
+async function init() {
+    const theme = await ftGetSetting('surveyTheme');
+    if (theme === 'high-contrast') {
+        document.documentElement.setAttribute('data-theme', 'high-contrast');
+        document.getElementById('themeBtn').textContent = '☀️ Light';
+    }
+    const allProjects = await loadProjectsFromIDB();
+    projects = allProjects.map(p => ({ id: p.id, name: p.projectNumber || p.name || p.id, description: p.description || '', created: p.created, archived: p.archived }));
+    await syncExternalData();
+    await renderProjects();
 }
 
 // ---- Render ----
-function renderProjects() {
+async function renderProjects() {
     const showArchived = document.getElementById('showArchived').checked;
     const visible = projects.filter(p => showArchived || !p.archived);
     const el = document.getElementById('projectsList');
@@ -270,11 +275,12 @@ function renderProjects() {
         el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📁</div><div class="empty-state-text">${msg}</div></div>`;
         return;
     }
-    el.innerHTML = visible.map(p => renderProjectCard(p)).join('');
+    const cards = await Promise.all(visible.map(p => renderProjectCard(p)));
+    el.innerHTML = cards.join('');
 }
 
-function renderProjectCard(p) {
-    const sessions = getSessions(p.id);
+async function renderProjectCard(p) {
+    const sessions = await getSessionsFromIDB(p.id);
     const sessCount = sessions.length;
     const stakeCount = sessions.reduce((n, s) => n + (s.stakes || []).length, 0);
     const isExpanded = !!expandedProjects[p.id];
@@ -385,32 +391,42 @@ function openProjectModal(projectId) {
     setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
-function saveProject() {
+async function saveProject() {
     const name = document.getElementById('projName').value.trim();
     if (!name) { document.getElementById('projName').focus(); return; }
     if (editingProjectId) {
         const p = projects.find(p => p.id === editingProjectId);
         if (p) { p.name = name; p.description = document.getElementById('projDesc').value.trim(); }
+        // Also update in IDB projects store
+        const allProj = await ftGetAllProjects();
+        const existing = allProj.find(pr => pr.id === editingProjectId);
+        if (existing) { existing.projectNumber = name; existing.description = document.getElementById('projDesc').value.trim(); await ftSaveProject(existing); }
     } else {
-        projects.push({
+        const newProj = {
             id: 'proj_' + Date.now(),
-            name,
+            projectNumber: name,
+            contractNumber: '',
+            fundingSource: '',
+            contractor: '',
+            route: '',
             description: document.getElementById('projDesc').value.trim(),
-            created: Date.now()
-        });
+            archived: false,
+            created: new Date().toISOString()
+        };
+        projects.push({ id: newProj.id, name, description: newProj.description, created: newProj.created });
+        await ftSaveProject(newProj);
     }
-    saveProjects(projects);
     closeModal('projectModal');
-    renderProjects();
+    await renderProjects();
 }
 
 // ---- Session Modal ----
-function openSessionModal(projectId, sessionId) {
+async function openSessionModal(projectId, sessionId) {
     editingSessionProjectId = projectId;
     editingSessionId = sessionId;
     const modal = document.getElementById('sessionModal');
     if (sessionId) {
-        const sessions = getSessions(projectId);
+        const sessions = await getSessionsFromIDB(projectId);
         const s = sessions.find(s => s.id === sessionId);
         document.getElementById('sessionModalTitle').textContent = 'Edit Session';
         document.getElementById('sessDesc').value = s ? (s.description || '') : '';
@@ -431,9 +447,9 @@ function openSessionModal(projectId, sessionId) {
     modal.classList.remove('hidden');
 }
 
-function saveSession() {
+async function saveSession() {
     const projectId = editingSessionProjectId;
-    const sessions = getSessions(projectId);
+    const sessions = await getSessionsFromIDB(projectId);
     if (editingSessionId) {
         const s = sessions.find(s => s.id === editingSessionId);
         if (s) {
@@ -443,10 +459,12 @@ function saveSession() {
             s.equipment = document.getElementById('sessEquip').value.trim();
             s.superElevPreset = document.getElementById('sessSuperElev').value.trim();
             s.templatePreset = document.getElementById('sessTemplate').value.trim();
+            await ftSaveStakeSession(s);
         }
     } else {
-        sessions.push({
+        const newSess = {
             id: 'sess_' + Date.now(),
+            projectId,
             description: document.getElementById('sessDesc').value.trim(),
             date: document.getElementById('sessDate').value,
             operator: document.getElementById('sessOp').value.trim(),
@@ -455,12 +473,12 @@ function saveSession() {
             templatePreset: document.getElementById('sessTemplate').value.trim(),
             stakes: [],
             created: Date.now()
-        });
+        };
+        await ftSaveStakeSession(newSess);
     }
-    saveSessions(projectId, sessions);
     closeModal('sessionModal');
     expandedProjects[projectId] = true;
-    renderProjects();
+    await renderProjects();
 }
 
 // ---- Launch calculators ----
@@ -470,35 +488,21 @@ function launchCalc(type, projectId, sessionId) {
 }
 
 // ---- Export ----
-function openExportModal(projectId) {
+async function openExportModal(projectId) {
     exportProjectId = projectId;
     const proj = projects.find(p => p.id === projectId);
-    const levelProjs = loadLevelingProjects();
-    const mData = loadMaterialsData();
-    const sessions = getSessions(projectId);
+    const levelProj = await ftGetLevelProject(projectId);
+    const levelLoops = await ftGetLoopsForProject(projectId);
+    const materialsData = await ftGetMaterials(projectId);
+    const sessions = await getSessionsFromIDB(projectId);
 
-    const lp = levelProjs.find(p => p.id === projectId);
-    let levelingData = null;
-    if (lp) {
-        levelingData = {
-            project: lp,
-            loops: (lp.loops || []).map(loop => ({
-                ...loop,
-                data: (function(){ try { return JSON.parse(localStorage.getItem('levelingLoopData_' + loop.id) || 'null'); } catch(e){ return null; } })()
-            }))
-        };
-    }
-
-    let materialsData = null;
-    if (mData && mData.contracts) {
-        materialsData = mData.contracts.find(c => c.id === projectId) || null;
-    }
+    const levelingData = levelProj ? { project: levelProj, loops: levelLoops } : null;
 
     const exportObj = {
         exportedAt: new Date().toISOString(),
         project: proj,
         leveling: levelingData,
-        materials: materialsData,
+        materials: materialsData || null,
         slopeStaking: sessions.length > 0 ? { sessions } : null
     };
 
@@ -538,9 +542,15 @@ function fallbackDownload(blob, filename) {
 }
 
 // ---- Archive ----
-function archiveProject(projectId) {
+async function archiveProject(projectId) {
     const p = projects.find(p => p.id === projectId);
-    if (p) { p.archived = !p.archived; saveProjects(projects); renderProjects(); }
+    if (p) {
+        p.archived = !p.archived;
+        const allProj = await ftGetAllProjects();
+        const existing = allProj.find(pr => pr.id === projectId);
+        if (existing) { existing.archived = p.archived; await ftSaveProject(existing); }
+        await renderProjects();
+    }
 }
 
 // ---- Delete ----
@@ -548,27 +558,25 @@ function confirmDeleteProject(projectId) {
     const p = projects.find(p => p.id === projectId);
     document.getElementById('confirmTitle').textContent = 'Delete Project';
     document.getElementById('confirmMsg').textContent = `Delete "${p ? p.name : 'this project'}"? This will also remove all slope stake sessions. Leveling and materials data will not be affected.`;
-    document.getElementById('confirmOkBtn').onclick = function() {
+    document.getElementById('confirmOkBtn').onclick = async function() {
         projects = projects.filter(p => p.id !== projectId);
-        saveProjects(projects);
-        localStorage.removeItem('slopeStakeSessions_' + projectId);
+        await ftDeleteStakeSessionsForProject(projectId);
         closeModal('confirmModal');
-        renderProjects();
+        await renderProjects();
         showToast('Project deleted.');
     };
     document.getElementById('confirmModal').classList.remove('hidden');
 }
 
-function confirmDeleteSession(projectId, sessionId) {
-    const sessions = getSessions(projectId);
+async function confirmDeleteSession(projectId, sessionId) {
+    const sessions = await getSessionsFromIDB(projectId);
     const s = sessions.find(s => s.id === sessionId);
     document.getElementById('confirmTitle').textContent = 'Delete Session';
     document.getElementById('confirmMsg').textContent = `Delete session "${s ? (s.description || 'Untitled') : 'this session'}"? All stakes in this session will be lost.`;
-    document.getElementById('confirmOkBtn').onclick = function() {
-        const updated = sessions.filter(s => s.id !== sessionId);
-        saveSessions(projectId, updated);
+    document.getElementById('confirmOkBtn').onclick = async function() {
+        await ftDeleteStakeSession(sessionId);
         closeModal('confirmModal');
-        renderProjects();
+        await renderProjects();
         showToast('Session deleted.');
     };
     document.getElementById('confirmModal').classList.remove('hidden');

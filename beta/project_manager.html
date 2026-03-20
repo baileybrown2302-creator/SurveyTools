@@ -7,9 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
     <title>Project Manager — Field Tools</title>
+    <script src="db.js"></script>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-red:#ef4444;--accent-red-hover:#dc2626;--accent-orange:#f97316;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--modal-overlay:rgba(0,0,0,0.65);}
         [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-red:#f87171;--accent-red-hover:#fca5a5;--accent-orange:#fb923c;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--modal-overlay:rgba(0,0,0,0.85);}
@@ -20,8 +21,6 @@
         .nav-title{font-weight:800;font-size:1em;}
         .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
         .page{padding:14px 16px;}
-        .view-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
-        .view-title{font-size:1.05em;font-weight:800;}
         .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;-webkit-user-select:none;user-select:none;}
         .btn:active{transform:scale(0.97);}
         .btn-primary{background:var(--accent-blue);color:#fff;}
@@ -33,13 +32,24 @@
         .btn-secondary:hover{background:var(--border-primary);}
         .btn-sm{padding:6px 12px;font-size:0.78em;min-height:34px;border-radius:8px;}
         .btn-xs{padding:5px 9px;font-size:0.72em;min-height:30px;border-radius:7px;}
-        .action-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
-        /* Project cards */
-        .project-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden;}
-        .project-header{padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:10px;}
-        .project-name{font-size:1em;font-weight:800;color:var(--text-primary);}
-        .project-desc{font-size:0.78em;color:var(--text-muted);margin-top:2px;}
-        .project-date{font-size:0.7em;color:var(--text-muted);margin-top:3px;}
+        .filter-bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+        .search-input{flex:1;min-width:160px;padding:9px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:0.9em;outline:none;transition:border-color 0.2s;}
+        .search-input:focus{border-color:var(--accent-blue);}
+        .archived-toggle{display:inline-flex;align-items:center;gap:5px;font-size:0.8em;color:var(--text-muted);cursor:pointer;white-space:nowrap;}
+        .archived-toggle input{accent-color:var(--accent-blue);}
+        .project-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden;transition:border-color 0.15s;}
+        .project-card:hover{border-color:var(--accent-blue);}
+        .project-card-body{padding:14px 16px;cursor:pointer;}
+        .project-number{font-size:1.05em;font-weight:800;color:var(--text-primary);}
+        .project-contract{font-size:0.82em;color:var(--text-muted);margin-top:2px;}
+        .project-row2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;}
+        .project-contractor{font-size:0.82em;color:var(--text-secondary);}
+        .funding-chip{font-size:0.65em;font-weight:800;padding:2px 8px;border-radius:20px;border:1px solid;}
+        .funding-state{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
+        .funding-federal{background:#f0fdf4;color:#166534;border-color:#86efac;}
+        [data-theme="high-contrast"] .funding-state{background:#1e1b4b;color:#c7d2fe;border-color:#4338ca;}
+        [data-theme="high-contrast"] .funding-federal{background:#052e16;color:#4ade80;border-color:#166534;}
+        .route-label{font-size:0.78em;color:var(--text-muted);}
         .project-chips{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 10px;}
         .chip{font-size:0.7em;font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid var(--border-primary);background:var(--bg-tertiary);color:var(--text-secondary);}
         .chip-blue{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe;}
@@ -49,23 +59,49 @@
         [data-theme="high-contrast"] .chip-green{background:#052e16;color:#4ade80;border-color:#166534;}
         [data-theme="high-contrast"] .chip-orange{background:#431407;color:#fb923c;border-color:#9a3412;}
         .project-actions{display:flex;gap:6px;padding:0 16px 14px;flex-wrap:wrap;}
+        #detailView{display:none;flex-direction:column;min-height:100vh;}
+        #detailView.show{display:flex;}
+        .detail-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .detail-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;background:none;border:none;cursor:pointer;padding:4px 0;}
+        .detail-title{font-weight:800;font-size:1em;flex:1;color:var(--text-primary);}
+        .detail-content{padding:16px;}
+        .info-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:14px;box-shadow:var(--shadow);}
+        .info-heading{font-size:1.3em;font-weight:800;color:var(--text-primary);margin-bottom:4px;}
+        .info-sub{font-size:0.85em;color:var(--text-muted);margin-bottom:12px;}
+        .info-field{margin-bottom:10px;}
+        .info-field-label{font-size:0.7em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:2px;}
+        .info-field-value{font-size:0.9em;color:var(--text-primary);font-weight:600;}
+        .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
+        .section-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:10px;box-shadow:var(--shadow);}
+        .section-card-title{font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:10px;}
+        .data-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-primary);gap:8px;}
+        .data-item:last-child{border-bottom:none;}
+        .data-item-info{flex:1;min-width:0;}
+        .data-item-name{font-size:0.88em;font-weight:700;color:var(--text-primary);}
+        .data-item-meta{font-size:0.72em;color:var(--text-muted);margin-top:2px;}
+        .data-item-actions{display:flex;gap:6px;flex-shrink:0;}
+        .badge-pass{display:inline-block;padding:1px 7px;border-radius:20px;font-size:0.7em;font-weight:800;background:#f0fdf4;color:#166534;border:1px solid #86efac;}
+        .badge-fail{display:inline-block;padding:1px 7px;border-radius:20px;font-size:0.7em;font-weight:800;background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;}
+        .badge-na{display:inline-block;padding:1px 7px;border-radius:20px;font-size:0.7em;font-weight:800;background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-primary);}
+        .data-empty{font-size:0.82em;color:var(--text-muted);padding:8px 0;}
+        .detail-action-bar{background:var(--bg-secondary);border-top:1.5px solid var(--border-primary);padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap;position:sticky;bottom:0;z-index:40;}
         .empty-state{text-align:center;padding:48px 16px;color:var(--text-muted);}
         .empty-icon{font-size:3em;margin-bottom:12px;}
         .empty-title{font-size:1em;font-weight:700;color:var(--text-secondary);margin-bottom:6px;}
         .empty-sub{font-size:0.85em;}
-        /* Modal */
         .modal-overlay{position:fixed;inset:0;background:var(--modal-overlay);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
         .modal-overlay.hidden{display:none;}
-        .modal-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:24px 20px 40px;max-height:90vh;overflow-y:auto;}
+        .modal-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-width:500px;padding:24px 20px 40px;max-height:92vh;overflow-y:auto;}
+        .modal-handle{width:40px;height:4px;background:var(--border-secondary);border-radius:2px;margin:0 auto 18px;}
         .modal-title{font-size:1.05em;font-weight:800;margin-bottom:18px;}
         .field-group{margin-bottom:14px;}
         .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
         .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
         .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        select.input{appearance:auto;}
         textarea.input{resize:vertical;min-height:70px;font-family:inherit;}
         .modal-btn-row{display:flex;gap:10px;margin-top:18px;}
         .modal-btn-row .btn{flex:1;}
-        /* Confirm modal */
         .confirm-overlay{position:fixed;inset:0;background:var(--modal-overlay);z-index:300;display:flex;align-items:center;justify-content:center;padding:20px;}
         .confirm-overlay.hidden{display:none;}
         .confirm-box{background:var(--bg-secondary);border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:var(--shadow-lg);}
@@ -73,49 +109,139 @@
         .confirm-msg{font-size:0.85em;color:var(--text-secondary);margin-bottom:18px;line-height:1.5;}
         .confirm-btns{display:flex;gap:10px;}
         .confirm-btns .btn{flex:1;}
-        /* Import modal */
+        .export-textarea{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.72em;min-height:120px;resize:none;}
         .import-textarea{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.78em;min-height:140px;}
-        .import-preview{margin-top:12px;padding:12px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:8px;font-size:0.8em;color:var(--text-secondary);line-height:1.6;display:none;}
-        .import-preview.show{display:block;}
         .import-err{color:var(--accent-red);font-size:0.82em;margin-top:8px;display:none;}
         .import-err.show{display:block;}
-        /* Export modal */
-        .export-textarea{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.72em;min-height:120px;resize:none;}
+        .import-preview{margin-top:12px;padding:12px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:8px;font-size:0.8em;color:var(--text-secondary);line-height:1.6;display:none;}
+        .import-preview.show{display:block;}
         .hidden{display:none!important;}
+        .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:400;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
+        .toast.show{opacity:1;}
     </style>
 </head>
 <body>
-<nav class="top-nav">
-    <a href="index.html" class="nav-back">&#8249; Home</a>
-    <span class="nav-title">&#128193; Project Manager</span>
-    <button class="theme-btn" id="themeBtn">&#127769; Dark</button>
-</nav>
 
-<div class="page">
-    <div class="view-header">
-        <span class="view-title">Projects</span>
+<!-- ===== LIST VIEW ===== -->
+<div id="listView">
+    <nav class="top-nav">
+        <a href="index.html" class="nav-back">&#8249; Home</a>
+        <span class="nav-title">&#128193; Project Manager</span>
+        <button class="theme-btn" id="themeBtn">&#127769; Dark</button>
+    </nav>
+    <div class="page">
+        <div class="filter-bar">
+            <input type="search" class="search-input" id="searchInput" placeholder="Search projects…" oninput="renderProjectList()">
+            <label class="archived-toggle">
+                <input type="checkbox" id="showArchived" onchange="renderProjectList()"> Show archived
+            </label>
+        </div>
+        <div class="filter-bar">
+            <button class="btn btn-primary btn-sm" onclick="openProjectModal(null)">&#43; New Project</button>
+            <button class="btn btn-secondary btn-sm" onclick="openImportModal()">&#8595; Import</button>
+        </div>
+        <div id="projectsList"></div>
     </div>
-    <div class="action-row">
-        <button class="btn btn-primary btn-sm" onclick="openProjectModal(null)">&#43; New Project</button>
-        <button class="btn btn-secondary btn-sm" onclick="openImportModal()">&#8595; Import</button>
-        <label style="display:inline-flex;align-items:center;gap:5px;font-size:0.8em;color:var(--text-muted);cursor:pointer;padding:4px 0;margin-left:auto;">
-            <input type="checkbox" id="showArchived" style="accent-color:var(--accent-blue);" onchange="renderProjects()"> Show archived
-        </label>
-    </div>
-    <div id="projectsList"></div>
 </div>
 
-<!-- Project create/edit modal -->
+<!-- ===== DETAIL VIEW ===== -->
+<div id="detailView">
+    <nav class="detail-nav">
+        <button class="detail-back" onclick="closeDetailView()">&#8249; Projects</button>
+        <span class="detail-title" id="detailTitle">Project</span>
+        <button class="theme-btn" id="themeBtnDetail">&#127769; Dark</button>
+    </nav>
+    <div class="detail-content">
+        <div class="info-card">
+            <div class="info-heading" id="detailProjectNumber">—</div>
+            <div class="info-sub" id="detailContractNumber">—</div>
+            <div class="info-grid">
+                <div class="info-field">
+                    <div class="info-field-label">Funding Source</div>
+                    <div class="info-field-value" id="detailFunding">—</div>
+                </div>
+                <div class="info-field">
+                    <div class="info-field-label">Contractor</div>
+                    <div class="info-field-value" id="detailContractor">—</div>
+                </div>
+                <div class="info-field">
+                    <div class="info-field-label">Route</div>
+                    <div class="info-field-value" id="detailRoute">—</div>
+                </div>
+                <div class="info-field">
+                    <div class="info-field-label">Created</div>
+                    <div class="info-field-value" id="detailCreated">—</div>
+                </div>
+            </div>
+            <div class="info-field">
+                <div class="info-field-label">Description / Notes</div>
+                <div class="info-field-value" id="detailDescription">—</div>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-title">Level Loops</div>
+            <div id="detailLevelLoops"><div class="data-empty">Loading…</div></div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-title">Stake Sessions</div>
+            <div id="detailStakeSessions"><div class="data-empty">Loading…</div></div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-title">Materials</div>
+            <div id="detailMaterials"><div class="data-empty">Loading…</div></div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Compaction Tests (T335)</span>
+                <a id="detailNewTestBtn" href="#" class="btn btn-primary btn-xs">＋ New Test</a>
+            </div>
+            <div id="detailCompactionTests"><div class="data-empty">Loading…</div></div>
+        </div>
+    </div>
+    <div class="detail-action-bar">
+        <button class="btn btn-secondary btn-sm" id="detailEditBtn">&#9998; Edit</button>
+        <button class="btn btn-secondary btn-sm" id="detailArchiveBtn">&#128230; Archive</button>
+        <button class="btn btn-secondary btn-sm" id="detailExportBtn">&#8593; Export</button>
+        <button class="btn btn-danger btn-sm" id="detailDeleteBtn">&#128465; Delete</button>
+    </div>
+</div>
+
+<!-- ===== Project Modal ===== -->
 <div class="modal-overlay hidden" id="projectModal">
     <div class="modal-sheet">
+        <div class="modal-handle"></div>
         <div class="modal-title" id="projectModalTitle">New Project</div>
         <div class="field-group">
-            <label class="label" for="projName">Project / Contract Name</label>
-            <input type="text" class="input" id="projName" placeholder="e.g. Contract 2025-001">
+            <label class="label" for="projNumber">Project Number *</label>
+            <input type="text" class="input" id="projNumber" placeholder="e.g. P-2024-001" autocomplete="off">
         </div>
         <div class="field-group">
-            <label class="label" for="projDesc">Description (optional)</label>
-            <textarea class="input" id="projDesc" placeholder="Project description or notes"></textarea>
+            <label class="label" for="projContract">Contract Number</label>
+            <input type="text" class="input" id="projContract" placeholder="e.g. 2024-C-015" autocomplete="off">
+        </div>
+        <div class="field-group">
+            <label class="label" for="projFunding">Funding Source</label>
+            <select class="input" id="projFunding">
+                <option value="">— Select —</option>
+                <option value="State">State</option>
+                <option value="Federal">Federal</option>
+            </select>
+        </div>
+        <div class="field-group">
+            <label class="label" for="projContractor">Contractor</label>
+            <input type="text" class="input" id="projContractor" placeholder="Contractor company name" autocomplete="off">
+        </div>
+        <div class="field-group">
+            <label class="label" for="projRoute">Route</label>
+            <input type="text" class="input" id="projRoute" placeholder="e.g. US-395, SR-28" autocomplete="off">
+        </div>
+        <div class="field-group">
+            <label class="label" for="projDesc">Description / Notes</label>
+            <textarea class="input" id="projDesc" placeholder="Free text notes"></textarea>
         </div>
         <div class="modal-btn-row">
             <button class="btn btn-secondary" onclick="closeModal('projectModal')">Cancel</button>
@@ -124,9 +250,10 @@
     </div>
 </div>
 
-<!-- Export modal -->
+<!-- ===== Export Modal ===== -->
 <div class="modal-overlay hidden" id="exportModal">
     <div class="modal-sheet">
+        <div class="modal-handle"></div>
         <div class="modal-title" id="exportModalTitle">Export Project</div>
         <div class="field-group">
             <label class="label">Export JSON</label>
@@ -140,13 +267,14 @@
     </div>
 </div>
 
-<!-- Import modal -->
+<!-- ===== Import Modal ===== -->
 <div class="modal-overlay hidden" id="importModal">
     <div class="modal-sheet">
+        <div class="modal-handle"></div>
         <div class="modal-title">Import Project Data</div>
         <div class="field-group">
             <label class="label">Paste exported JSON below</label>
-            <textarea class="input import-textarea" id="importText" placeholder='{"project":{"name":"..."},...}' oninput="previewImport()"></textarea>
+            <textarea class="input import-textarea" id="importText" placeholder='{"project":{"projectNumber":"..."},...}' oninput="previewImport()"></textarea>
             <div class="import-err" id="importErr"></div>
         </div>
         <div class="import-preview" id="importPreview"></div>
@@ -157,7 +285,7 @@
     </div>
 </div>
 
-<!-- Confirm modal -->
+<!-- ===== Confirm Modal ===== -->
 <div class="confirm-overlay hidden" id="confirmModal">
     <div class="confirm-box">
         <div class="confirm-title" id="confirmTitle"></div>
@@ -169,69 +297,16 @@
     </div>
 </div>
 
-<script>
-// ---- Theme ----
-(function(){
-    const saved = localStorage.getItem('surveyTheme');
-    if (saved === 'high-contrast') {
-        document.documentElement.setAttribute('data-theme','high-contrast');
-        document.getElementById('themeBtn').textContent = '☀️ Light';
-    }
-})();
-document.getElementById('themeBtn').addEventListener('click', function(){
-    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
-    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
-    this.textContent = isHC ? '🌙 Dark' : '☀️ Light';
-    localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
-});
+<div class="toast" id="toast"></div>
 
-// ---- State ----
+<script>
+'use strict';
+
 let editingProjectId = null;
+let currentDetailProjectId = null;
 let exportJSON = '';
 let parsedImport = null;
-
-// ---- Storage helpers ----
-function loadRegistry() {
-    try { return JSON.parse(localStorage.getItem('surveyProjects') || '[]'); } catch(e){ return []; }
-}
-function saveRegistry(arr) {
-    localStorage.setItem('surveyProjects', JSON.stringify(arr));
-}
-function loadLevelingProjects() {
-    try { return JSON.parse(localStorage.getItem('levelingProjects') || '[]'); } catch(e){ return []; }
-}
-function saveLevelingProjects(arr) {
-    localStorage.setItem('levelingProjects', JSON.stringify(arr));
-}
-function loadMaterialsData() {
-    try { return JSON.parse(localStorage.getItem('materialReferenceData_v1') || '{"contracts":[]}'); } catch(e){ return {contracts:[]}; }
-}
-function saveMaterialsData(data) {
-    localStorage.setItem('materialReferenceData_v1', JSON.stringify(data));
-}
-function getSessions(projectId) {
-    try { return JSON.parse(localStorage.getItem('slopeStakeSessions_' + projectId) || '[]'); } catch(e){ return []; }
-}
-function saveSessions(projectId, arr) {
-    localStorage.setItem('slopeStakeSessions_' + projectId, JSON.stringify(arr));
-}
-
-// ---- Data count helpers ----
-function countLoops(projectId) {
-    const lp = loadLevelingProjects().find(p => p.id === projectId);
-    return lp && lp.loops ? lp.loops.length : 0;
-}
-function countMaterials(projectId) {
-    const md = loadMaterialsData();
-    const c = (md.contracts || []).find(c => c.id === projectId);
-    return c && c.materials ? c.materials.length : 0;
-}
-function countSessions(projectId) {
-    return getSessions(projectId).length;
-}
-function countStakes(projectId) {
-    return getSessions(projectId).reduce((sum, s) => sum + (s.stakes || []).length, 0);
-}
+let existingCreated = null;
 
 function escHtml(str) {
     if (!str) return '';
@@ -240,125 +315,345 @@ function escHtml(str) {
 function uid() { return 'proj_' + Date.now() + Math.random().toString(36).slice(2,6); }
 function todayStr() { return new Date().toISOString().slice(0,10); }
 
-// ---- Render ----
-function renderProjects() {
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ---- Theme ----
+function applyThemeBtns(isHC) {
+    ['themeBtn','themeBtnDetail'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = isHC ? '☀️ Light' : '🌙 Dark';
+    });
+}
+function toggleTheme() {
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    applyThemeBtns(!isHC);
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+}
+document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+document.getElementById('themeBtnDetail').addEventListener('click', toggleTheme);
+
+// ---- Init ----
+async function init() {
+    const theme = await ftGetSetting('surveyTheme');
+    if (theme === 'high-contrast') {
+        document.documentElement.setAttribute('data-theme', 'high-contrast');
+        applyThemeBtns(true);
+    }
+    await renderProjectList();
+}
+
+// ---- Render project list ----
+async function renderProjectList() {
     const showArchived = document.getElementById('showArchived').checked;
-    const allProjects = loadRegistry();
-    const projects = allProjects.filter(p => showArchived || !p.archived);
+    const searchVal = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+    let allProjects = await ftGetAllProjects();
+    allProjects.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    let projects = allProjects.filter(p => {
+        if (!showArchived && p.archived) return false;
+        if (searchVal) {
+            const haystack = [p.projectNumber, p.contractNumber, p.contractor, p.route, p.description].join(' ').toLowerCase();
+            return haystack.includes(searchVal);
+        }
+        return true;
+    });
+
     const el = document.getElementById('projectsList');
     if (projects.length === 0) {
         el.innerHTML = `<div class="empty-state">
-            <div class="empty-icon">📁</div>
-            <div class="empty-title">${allProjects.length === 0 ? 'No projects yet' : 'No active projects'}</div>
-            <div class="empty-sub">${allProjects.length === 0 ? 'Tap + New Project to create one, or Import existing data.' : 'Check "Show archived" to see archived projects.'}</div>
+            <div class="empty-icon">&#128193;</div>
+            <div class="empty-title">${allProjects.length === 0 ? 'No projects yet' : 'No matching projects'}</div>
+            <div class="empty-sub">${allProjects.length === 0 ? 'Tap + New Project to create one, or Import existing data.' : 'Try adjusting your search or show archived projects.'}</div>
         </div>`;
         return;
     }
-    el.innerHTML = projects.map(p => {
-        const loops = countLoops(p.id);
-        const mats = countMaterials(p.id);
-        const sessions = countSessions(p.id);
-        const stakes = countStakes(p.id);
+
+    const cards = await Promise.all(projects.map(async p => {
+        const levelLoops = await ftGetLoopsForProject(p.id);
+        const stakeSessions = await ftGetStakeSessions(p.id);
+        const materialsData = await ftGetMaterials(p.id);
+
+        const loopCount = levelLoops.length;
+        const sessCount = stakeSessions.length;
+        const stakeCount = stakeSessions.reduce((n, s) => n + (s.stakes || []).length, 0);
+        const matCount = materialsData && materialsData.materials ? materialsData.materials.length : 0;
         const created = p.created ? new Date(p.created).toLocaleDateString() : '';
 
+        let fundingChip = '';
+        if (p.fundingSource === 'State') fundingChip = `<span class="funding-chip funding-state">State</span>`;
+        else if (p.fundingSource === 'Federal') fundingChip = `<span class="funding-chip funding-federal">Federal</span>`;
+
         let chips = '';
-        if (loops > 0) chips += `<span class="chip chip-blue">${loops} level loop${loops!==1?'s':''}</span>`;
-        if (mats > 0) chips += `<span class="chip chip-orange">${mats} material${mats!==1?'s':''}</span>`;
-        if (sessions > 0) chips += `<span class="chip chip-green">${sessions} session${sessions!==1?'s':''}`;
-        if (stakes > 0) chips += ` · ${stakes} stake${stakes!==1?'s':''}`;
-        if (sessions > 0) chips += `</span>`;
+        if (loopCount > 0) chips += `<span class="chip chip-blue">${loopCount} level loop${loopCount!==1?'s':''}</span>`;
+        if (sessCount > 0) chips += `<span class="chip chip-green">${sessCount} stake session${sessCount!==1?'s':''}${stakeCount>0?' \u00b7 '+stakeCount+' stake'+(stakeCount!==1?'s':''):''}</span>`;
+        if (matCount > 0) chips += `<span class="chip chip-orange">${matCount} material${matCount!==1?'s':''}</span>`;
         if (!chips) chips = `<span class="chip">No data yet</span>`;
         if (p.archived) chips += `<span class="chip" style="background:var(--bg-tertiary);color:var(--text-muted);">Archived</span>`;
 
-        return `<div class="project-card" style="${p.archived ? 'opacity:0.6;' : ''}">
-            <div class="project-header">
-                <div>
-                    <div class="project-name">${escHtml(p.name)}</div>
-                    ${p.description ? `<div class="project-desc">${escHtml(p.description)}</div>` : ''}
-                    ${created ? `<div class="project-date">Created ${created}</div>` : ''}
+        return `<div class="project-card" style="${p.archived ? 'opacity:0.65;' : ''}">
+            <div class="project-card-body" onclick="openDetailView('${escHtml(p.id)}')">
+                <div class="project-number">${escHtml(p.projectNumber || '(No Project Number)')}</div>
+                ${p.contractNumber ? `<div class="project-contract">Contract: ${escHtml(p.contractNumber)}</div>` : ''}
+                <div class="project-row2">
+                    ${p.route ? `<span class="route-label">${escHtml(p.route)}</span>` : ''}
+                    ${fundingChip}
+                    ${p.contractor ? `<span class="project-contractor">${escHtml(p.contractor)}</span>` : ''}
                 </div>
+                ${created ? `<div style="font-size:0.7em;color:var(--text-muted);margin-top:4px;">Created ${created}</div>` : ''}
             </div>
             <div class="project-chips">${chips}</div>
             <div class="project-actions">
-                <button class="btn btn-secondary btn-xs" onclick="openProjectModal('${p.id}')">&#9998; Edit</button>
-                <button class="btn btn-secondary btn-xs" onclick="archiveProject('${p.id}')">${p.archived ? '&#8617; Restore' : '&#128230; Archive'}</button>
-                <button class="btn btn-secondary btn-xs" onclick="openExportModal('${p.id}')">&#8593; Export</button>
-                <button class="btn btn-danger btn-xs" onclick="confirmDelete('${p.id}')">&#128465; Delete</button>
+                <button class="btn btn-secondary btn-xs" onclick="openProjectModal('${escHtml(p.id)}')">&#9998; Edit</button>
+                <button class="btn btn-secondary btn-xs" onclick="archiveProject('${escHtml(p.id)}')">${p.archived ? '&#8617; Restore' : '&#128230; Archive'}</button>
+                <button class="btn btn-secondary btn-xs" onclick="startExport('${escHtml(p.id)}')">&#8593; Export</button>
+                <button class="btn btn-danger btn-xs" onclick="confirmDelete('${escHtml(p.id)}')">&#128465; Delete</button>
             </div>
         </div>`;
-    }).join('');
+    }));
+
+    el.innerHTML = cards.join('');
+}
+
+// ---- Detail view ----
+async function openDetailView(projectId) {
+    currentDetailProjectId = projectId;
+    const allProjects = await ftGetAllProjects();
+    const proj = allProjects.find(p => p.id === projectId);
+    if (!proj) return;
+
+    document.getElementById('detailTitle').textContent = proj.projectNumber || 'Project';
+    document.getElementById('detailProjectNumber').textContent = proj.projectNumber || '(No Project Number)';
+    document.getElementById('detailContractNumber').textContent = proj.contractNumber ? 'Contract: ' + proj.contractNumber : '';
+    document.getElementById('detailFunding').textContent = proj.fundingSource || '—';
+    document.getElementById('detailContractor').textContent = proj.contractor || '—';
+    document.getElementById('detailRoute').textContent = proj.route || '—';
+    document.getElementById('detailCreated').textContent = proj.created ? new Date(proj.created).toLocaleDateString() : '—';
+    document.getElementById('detailDescription').textContent = proj.description || '—';
+
+    document.getElementById('detailEditBtn').onclick = () => openProjectModal(projectId);
+    document.getElementById('detailArchiveBtn').innerHTML = proj.archived ? '&#8617; Restore' : '&#128230; Archive';
+    document.getElementById('detailArchiveBtn').onclick = () => archiveProject(projectId);
+    document.getElementById('detailExportBtn').onclick = () => startExport(projectId);
+    document.getElementById('detailDeleteBtn').onclick = () => confirmDelete(projectId);
+    document.getElementById('detailNewTestBtn').href = `thinlift.html?projectId=${encodeURIComponent(projectId)}`;
+
+    const levelLoops = await ftGetLoopsForProject(projectId);
+    const stakeSessions = await ftGetStakeSessions(projectId);
+    const materialsData = await ftGetMaterials(projectId);
+    const compactionTests = await ftGetCompactionTestsByProject(projectId);
+
+    const loopsEl = document.getElementById('detailLevelLoops');
+    if (levelLoops.length === 0) {
+        loopsEl.innerHTML = '<div class="data-empty">No level loops for this project.</div>';
+    } else {
+        loopsEl.innerHTML = levelLoops.map(l => {
+            const meta = [l.date, l.operator, l.rowCount ? l.rowCount+' stations' : '', l.closed ? '&#10003; Closed' : 'Open'].filter(Boolean).join(' \u00b7 ');
+            return `<div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">${escHtml(l.name || l.id)}</div>
+                    <div class="data-item-meta">${meta}</div>
+                </div>
+                <div class="data-item-actions">
+                    <a href="leveling_home.html" class="btn btn-primary btn-xs">Open Loop</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    const sessEl = document.getElementById('detailStakeSessions');
+    if (stakeSessions.length === 0) {
+        sessEl.innerHTML = '<div class="data-empty">No stake sessions for this project.</div>';
+    } else {
+        sessEl.innerHTML = stakeSessions.map(s => {
+            const stakeCount = (s.stakes || []).length;
+            const meta = [s.date, s.operator, stakeCount ? stakeCount+' stake'+(stakeCount!==1?'s':'') : ''].filter(Boolean).join(' \u00b7 ');
+            return `<div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">${escHtml(s.description || 'Untitled Session')}</div>
+                    <div class="data-item-meta">${escHtml(meta)}</div>
+                </div>
+                <div class="data-item-actions">
+                    <a href="slope_stake_home.html" class="btn btn-primary btn-xs">Field Calc</a>
+                    <a href="slope_stake_model.html" class="btn btn-success btn-xs">Model</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    const matEl = document.getElementById('detailMaterials');
+    if (!materialsData || !materialsData.materials || materialsData.materials.length === 0) {
+        matEl.innerHTML = '<div class="data-empty">No materials for this project.</div>';
+    } else {
+        const count = materialsData.materials.length;
+        matEl.innerHTML = `<div class="data-item">
+            <div class="data-item-info">
+                <div class="data-item-name">${count} material${count!==1?'s':''}</div>
+                <div class="data-item-meta">Contract: ${escHtml(materialsData.number || proj.contractNumber || '—')}</div>
+            </div>
+            <div class="data-item-actions">
+                <a href="materials.html" class="btn btn-primary btn-xs">Open Materials</a>
+            </div>
+        </div>`;
+    }
+
+    const compEl = document.getElementById('detailCompactionTests');
+    if (!compactionTests.length) {
+        compEl.innerHTML = '<div class="data-empty">No T335 tests for this project.</div>';
+    } else {
+        compactionTests.sort((a,b) => (b.created||'').localeCompare(a.created||''));
+        compEl.innerHTML = compactionTests.map(rec => {
+            const title = rec.materialType || rec.contractNumber || 'Untitled Test';
+            const stdTests = (rec.tests||[]).filter(t=>!t.isCorrelationExtra);
+            const completed = stdTests.filter(t=>t.pctCompaction!=null);
+            let badge = '';
+            if (!completed.length) {
+                badge = '<span class="badge-na">No data</span>';
+            } else if (completed.length < stdTests.length) {
+                badge = '<span class="badge-na">Incomplete</span>';
+            } else {
+                const r = rec;
+                const isSmall = (() => {
+                    const sec = r.beginStation!=null && r.endStation!=null ? (r.endStation-r.beginStation) : null;
+                    const a = sec!=null && r.width ? (sec*r.width)/9 : null;
+                    return a!=null && a<1000;
+                })();
+                const meanPct = completed.reduce((s,t)=>s+t.pctCompaction,0)/completed.length;
+                let pass;
+                if (isSmall) {
+                    pass = completed.every(t=>t.pctCompaction>=90);
+                } else {
+                    const singleOk = completed.every(t=>t.pctCompaction>=(r.thresholdSingleMin??90)&&t.pctCompaction<=(r.thresholdSingleMax??97));
+                    const sectionOk = meanPct>=(r.thresholdSectionMin??92)&&meanPct<=(r.thresholdSectionMax??96);
+                    const jointDone = (rec.tests||[]).filter(t=>t.jointMinPct!=null);
+                    const jointOk = jointDone.every(t=>t.jointMinPct>=(r.thresholdJoint??90));
+                    pass = singleOk && sectionOk && jointOk;
+                }
+                badge = pass ? '<span class="badge-pass">PASS</span>' : '<span class="badge-fail">FAIL</span>';
+            }
+            let staMeta = '';
+            if (rec.stationType==='milemarker'&&rec.beginMM!=null&&rec.endMM!=null) {
+                staMeta = `MM ${rec.beginMM} – ${rec.endMM}`;
+            } else if (rec.beginStation!=null&&rec.endStation!=null) {
+                const fmtS = ft => { const h=Math.floor(ft/100); const r=ft-h*100; return `${h}+${Math.round(r).toString().padStart(2,'0')}`; };
+                staMeta = `${fmtS(rec.beginStation)} – ${fmtS(rec.endStation)}`;
+            }
+            const meta = [rec.date||'', staMeta].filter(Boolean).join(' · ');
+            return `<div class="data-item">
+                <div class="data-item-info">
+                    <div class="data-item-name">${escHtml(title)} ${badge}</div>
+                    <div class="data-item-meta">${escHtml(meta)}</div>
+                </div>
+                <div class="data-item-actions">
+                    <a href="thinlift.html?testId=${encodeURIComponent(rec.id)}" class="btn btn-primary btn-xs">Open</a>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').classList.add('show');
+    window.scrollTo(0, 0);
+}
+
+function closeDetailView() {
+    document.getElementById('detailView').classList.remove('show');
+    document.getElementById('listView').style.display = '';
+    currentDetailProjectId = null;
+    renderProjectList();
 }
 
 // ---- Archive ----
-function archiveProject(projectId) {
-    const projects = loadRegistry();
-    const p = projects.find(p => p.id === projectId);
-    if (p) { p.archived = !p.archived; saveRegistry(projects); renderProjects(); }
+async function archiveProject(projectId) {
+    const allProjects = await ftGetAllProjects();
+    const p = allProjects.find(p => p.id === projectId);
+    if (!p) return;
+    p.archived = !p.archived;
+    await ftSaveProject(p);
+    if (currentDetailProjectId === projectId) {
+        document.getElementById('detailArchiveBtn').innerHTML = p.archived ? '&#8617; Restore' : '&#128230; Archive';
+    }
+    await renderProjectList();
+    showToast(p.archived ? 'Project archived.' : 'Project restored.');
 }
 
-// ---- Project modal ----
-function openProjectModal(projectId) {
+// ---- Project Modal ----
+async function openProjectModal(projectId) {
     editingProjectId = projectId;
     if (projectId) {
-        const p = loadRegistry().find(p => p.id === projectId);
+        const allProjects = await ftGetAllProjects();
+        const p = allProjects.find(p => p.id === projectId);
         document.getElementById('projectModalTitle').textContent = 'Edit Project';
-        document.getElementById('projName').value = p ? p.name : '';
+        document.getElementById('projNumber').value = p ? (p.projectNumber || '') : '';
+        document.getElementById('projContract').value = p ? (p.contractNumber || '') : '';
+        document.getElementById('projFunding').value = p ? (p.fundingSource || '') : '';
+        document.getElementById('projContractor').value = p ? (p.contractor || '') : '';
+        document.getElementById('projRoute').value = p ? (p.route || '') : '';
         document.getElementById('projDesc').value = p ? (p.description || '') : '';
+        existingCreated = p ? p.created : null;
     } else {
         document.getElementById('projectModalTitle').textContent = 'New Project';
-        document.getElementById('projName').value = '';
-        document.getElementById('projDesc').value = '';
+        ['projNumber','projContract','projContractor','projRoute','projDesc'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('projFunding').value = '';
+        existingCreated = null;
     }
     document.getElementById('projectModal').classList.remove('hidden');
-    setTimeout(() => document.getElementById('projName').focus(), 100);
+    setTimeout(() => document.getElementById('projNumber').focus(), 100);
 }
 
-function saveProject() {
-    const name = document.getElementById('projName').value.trim();
-    if (!name) { document.getElementById('projName').focus(); return; }
-    const projects = loadRegistry();
+async function saveProject() {
+    const projNum = document.getElementById('projNumber').value.trim();
+    if (!projNum) { document.getElementById('projNumber').focus(); showToast('Project Number is required.'); return; }
+    const id = editingProjectId || uid();
+    const proj = {
+        id,
+        projectNumber: projNum,
+        contractNumber: document.getElementById('projContract').value.trim(),
+        fundingSource: document.getElementById('projFunding').value,
+        contractor: document.getElementById('projContractor').value.trim(),
+        route: document.getElementById('projRoute').value.trim(),
+        description: document.getElementById('projDesc').value.trim(),
+        archived: false,
+        created: existingCreated || new Date().toISOString()
+    };
     if (editingProjectId) {
-        const p = projects.find(p => p.id === editingProjectId);
-        if (p) { p.name = name; p.description = document.getElementById('projDesc').value.trim(); }
-    } else {
-        projects.push({
-            id: uid(),
-            name,
-            description: document.getElementById('projDesc').value.trim(),
-            created: new Date().toISOString()
-        });
+        const allProjects = await ftGetAllProjects();
+        const existing = allProjects.find(p => p.id === editingProjectId);
+        if (existing) proj.archived = existing.archived;
     }
-    saveRegistry(projects);
+    await ftSaveProject(proj);
+    const lp = await ftGetLevelProject(id);
+    if (lp) { lp.number = projNum; lp.desc = proj.description; await ftSaveLevelProject(lp); }
     closeModal('projectModal');
-    renderProjects();
+    await renderProjectList();
+    showToast(editingProjectId ? 'Project updated.' : 'Project created.');
 }
 
 // ---- Export ----
-function openExportModal(projectId) {
-    const projects = loadRegistry();
-    const proj = projects.find(p => p.id === projectId);
+async function startExport(projectId) {
+    const allProjects = await ftGetAllProjects();
+    const proj = allProjects.find(p => p.id === projectId);
     if (!proj) return;
+
+    const levelProj = await ftGetLevelProject(projectId);
+    const levelLoops = await ftGetLoopsForProject(projectId);
+    const stakeSessions = await ftGetStakeSessions(projectId);
+    const materialsData = await ftGetMaterials(projectId);
 
     const out = {
         exportedAt: new Date().toISOString(),
-        project: { id: proj.id, name: proj.name, description: proj.description || '', created: proj.created || '' },
-        leveling: null,
-        materials: null,
-        staking: null
+        project: proj,
+        leveling: levelProj ? { project: levelProj, loops: levelLoops } : null,
+        materials: materialsData || null,
+        slopeStaking: stakeSessions.length > 0 ? { sessions: stakeSessions } : null
     };
 
-    const lp = loadLevelingProjects().find(p => p.id === projectId);
-    if (lp) out.leveling = lp;
-
-    const md = loadMaterialsData();
-    const contract = (md.contracts || []).find(c => c.id === projectId);
-    if (contract) out.materials = contract;
-
-    const sessions = getSessions(projectId);
-    if (sessions.length > 0) out.staking = sessions;
-
     exportJSON = JSON.stringify(out, null, 2);
-    document.getElementById('exportModalTitle').textContent = `Export — ${escHtml(proj.name)}`;
+    document.getElementById('exportModalTitle').textContent = `Export \u2014 ${escHtml(proj.projectNumber || proj.id)}`;
     document.getElementById('exportText').value = exportJSON;
     document.getElementById('exportModal').classList.remove('hidden');
 }
@@ -372,8 +667,9 @@ function copyExport() {
 }
 
 function downloadExport() {
-    const proj = JSON.parse(exportJSON).project;
-    const name = (proj.name || 'project').replace(/[^a-z0-9]/gi, '_');
+    let proj;
+    try { proj = JSON.parse(exportJSON).project; } catch(e) { proj = {}; }
+    const name = (proj.projectNumber || 'project').replace(/[^a-z0-9]/gi, '_');
     const a = document.createElement('a');
     a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(exportJSON);
     a.download = `fieldtools_${name}_${todayStr()}.json`;
@@ -392,7 +688,7 @@ function openImportModal() {
     setTimeout(() => document.getElementById('importText').focus(), 100);
 }
 
-function previewImport() {
+async function previewImport() {
     const raw = document.getElementById('importText').value.trim();
     const errEl = document.getElementById('importErr');
     const previewEl = document.getElementById('importPreview');
@@ -412,21 +708,23 @@ function previewImport() {
         return;
     }
 
-    if (!data.project || !data.project.name) {
-        errEl.textContent = 'Missing project name in imported data.';
+    if (!data.project || !data.project.projectNumber) {
+        errEl.textContent = 'Missing project.projectNumber in imported data.';
         errEl.classList.add('show');
         return;
     }
 
-    const existing = loadRegistry().find(p => p.id === data.project.id);
+    const allProjects = await ftGetAllProjects();
+    const existing = allProjects.find(p => p.id === data.project.id);
     const lines = [];
-    lines.push(`<strong>Project:</strong> ${escHtml(data.project.name)}`);
-    if (existing) lines.push(`<em>⚠️ A project with this ID already exists ("${escHtml(existing.name)}") — data will be merged.</em>`);
-    else lines.push(`<em>✓ New project will be created.</em>`);
+    lines.push(`<strong>Project:</strong> ${escHtml(data.project.projectNumber)}`);
+    if (data.project.contractNumber) lines.push(`Contract: ${escHtml(data.project.contractNumber)}`);
+    if (existing) lines.push(`<em>&#9888; A project with this ID already exists ("${escHtml(existing.projectNumber)}") \u2014 data will be merged.</em>`);
+    else lines.push(`<em>&#10003; New project will be created.</em>`);
     if (data.leveling) lines.push(`Leveling: ${(data.leveling.loops || []).length} loop(s)`);
     if (data.materials) lines.push(`Materials: ${(data.materials.materials || []).length} material(s)`);
-    if (data.staking) lines.push(`Stake sessions: ${data.staking.length}`);
-    if (!data.leveling && !data.materials && !data.staking) lines.push(`No tool data included.`);
+    if (data.slopeStaking) lines.push(`Stake sessions: ${(data.slopeStaking.sessions || []).length}`);
+    if (!data.leveling && !data.materials && !data.slopeStaking) lines.push(`No tool data included.`);
 
     previewEl.innerHTML = lines.join('<br>');
     previewEl.classList.add('show');
@@ -434,95 +732,90 @@ function previewImport() {
     confirmBtn.disabled = false;
 }
 
-function doImport() {
+async function doImport() {
     if (!parsedImport) return;
     const data = parsedImport;
 
-    // Upsert project in registry
-    const projects = loadRegistry();
-    let proj = projects.find(p => p.id === data.project.id);
+    const allProjects = await ftGetAllProjects();
+    let proj = allProjects.find(p => p.id === data.project.id);
     if (proj) {
-        proj.name = data.project.name;
-        proj.description = data.project.description || proj.description || '';
+        Object.assign(proj, data.project);
     } else {
-        projects.push({
+        proj = {
             id: data.project.id || uid(),
-            name: data.project.name,
+            projectNumber: data.project.projectNumber,
+            contractNumber: data.project.contractNumber || '',
+            fundingSource: data.project.fundingSource || '',
+            contractor: data.project.contractor || '',
+            route: data.project.route || '',
             description: data.project.description || '',
+            archived: false,
             created: data.project.created || new Date().toISOString()
-        });
+        };
     }
-    saveRegistry(projects);
+    await ftSaveProject(proj);
+    const projectId = proj.id;
 
-    const projectId = data.project.id;
-
-    // Import leveling
     if (data.leveling) {
-        const lps = loadLevelingProjects();
-        const idx = lps.findIndex(p => p.id === projectId);
-        if (idx >= 0) lps[idx] = data.leveling;
-        else lps.push(data.leveling);
-        saveLevelingProjects(lps);
+        if (data.leveling.project) await ftSaveLevelProject({ ...data.leveling.project, id: projectId });
+        if (data.leveling.loops) {
+            for (const loop of data.leveling.loops) {
+                await ftSaveLevelLoop({ ...loop, projectId });
+            }
+        }
     }
 
-    // Import materials
     if (data.materials) {
-        const md = loadMaterialsData();
-        if (!md.contracts) md.contracts = [];
-        const idx = md.contracts.findIndex(c => c.id === projectId);
-        if (idx >= 0) md.contracts[idx] = data.materials;
-        else md.contracts.push(data.materials);
-        saveMaterialsData(md);
+        await ftSaveMaterials({ ...data.materials, id: projectId });
     }
 
-    // Import staking sessions (merge — add sessions not already present)
-    if (data.staking && data.staking.length > 0) {
-        const existing = getSessions(projectId);
+    if (data.slopeStaking && data.slopeStaking.sessions) {
+        const existing = await ftGetStakeSessions(projectId);
         const existingIds = new Set(existing.map(s => s.id));
-        const merged = [...existing, ...data.staking.filter(s => !existingIds.has(s.id))];
-        saveSessions(projectId, merged);
+        for (const sess of data.slopeStaking.sessions) {
+            if (!existingIds.has(sess.id)) {
+                await ftSaveStakeSession({ ...sess, projectId });
+            }
+        }
     }
 
     closeModal('importModal');
-    renderProjects();
+    await renderProjectList();
     showToast('Import complete.');
 }
 
 // ---- Delete ----
-function confirmDelete(projectId) {
-    const proj = loadRegistry().find(p => p.id === projectId);
+async function confirmDelete(projectId) {
+    const allProjects = await ftGetAllProjects();
+    const proj = allProjects.find(p => p.id === projectId);
     if (!proj) return;
-    const loops = countLoops(projectId);
-    const mats = countMaterials(projectId);
-    const sessions = countSessions(projectId);
-    const dataWarning = (loops + mats + sessions) > 0
-        ? `This will also remove ${[loops?loops+' leveling loop(s)':'', mats?mats+' material(s)':'', sessions?sessions+' session(s)':''].filter(Boolean).join(', ')}.`
-        : 'No tool data associated.';
+
+    const levelLoops = await ftGetLoopsForProject(projectId);
+    const stakeSessions = await ftGetStakeSessions(projectId);
+    const materialsData = await ftGetMaterials(projectId);
+    const loopCount = levelLoops.length;
+    const sessCount = stakeSessions.length;
+    const matCount = materialsData && materialsData.materials ? materialsData.materials.length : 0;
+
+    const dataWarning = (loopCount + matCount + sessCount) > 0
+        ? `This will also remove ${[loopCount?loopCount+' level loop(s)':'', matCount?matCount+' material(s)':'', sessCount?sessCount+' session(s)':''].filter(Boolean).join(', ')}.`
+        : 'No associated data found.';
+
     showConfirm(
-        `Delete "${proj.name}"?`,
+        `Delete "${proj.projectNumber}"?`,
         `${dataWarning} This cannot be undone.`,
-        () => deleteProject(projectId)
+        async () => { await deleteProject(projectId); }
     );
 }
 
-function deleteProject(projectId) {
-    // Remove from registry
-    const projects = loadRegistry().filter(p => p.id !== projectId);
-    saveRegistry(projects);
-
-    // Remove leveling data
-    const lps = loadLevelingProjects().filter(p => p.id !== projectId);
-    saveLevelingProjects(lps);
-
-    // Remove materials
-    const md = loadMaterialsData();
-    md.contracts = (md.contracts || []).filter(c => c.id !== projectId);
-    saveMaterialsData(md);
-
-    // Remove sessions
-    localStorage.removeItem('slopeStakeSessions_' + projectId);
-
-    renderProjects();
+async function deleteProject(id) {
+    await ftDeleteProject(id);
+    await ftDeleteLevelProject(id);
+    await ftDeleteLoopsForProject(id);
+    await ftDeleteStakeSessionsForProject(id);
+    await ftDeleteMaterials(id);
+    if (currentDetailProjectId === id) closeDetailView();
+    await renderProjectList();
     showToast('Project deleted.');
 }
 
@@ -545,7 +838,6 @@ document.getElementById('confirmOkBtn').addEventListener('click', () => {
     closeConfirm();
 });
 
-// Close modals on overlay click
 ['projectModal','exportModal','importModal'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
         if (e.target === document.getElementById(id)) closeModal(id);
@@ -555,22 +847,7 @@ document.getElementById('confirmModal').addEventListener('click', e => {
     if (e.target === document.getElementById('confirmModal')) closeConfirm();
 });
 
-// ---- Toast ----
-function showToast(msg) {
-    let t = document.getElementById('toast');
-    if (!t) {
-        t = document.createElement('div');
-        t.id = 'toast';
-        t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:400;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;';
-        document.body.appendChild(t);
-    }
-    t.textContent = msg;
-    t.style.opacity = '1';
-    setTimeout(() => { t.style.opacity = '0'; }, 2000);
-}
-
-// ---- Init ----
-renderProjects();
+init();
 </script>
 </body>
 </html>

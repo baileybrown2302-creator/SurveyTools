@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>HMA Tool — Survey Tool</title>
     <style>
         :root{
@@ -298,9 +299,8 @@
 <script>
 // ── Theme ──────────────────────────────────────────────
 const themeBtn=document.getElementById('themeBtn');
-const savedTheme=localStorage.getItem('surveyTheme');
-if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
-themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';ftSetSetting('surveyTheme',isHC?'':'high-contrast');});
+(async function(){const saved=await ftGetSetting('surveyTheme');if(saved==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}})();
 
 // ── State ──────────────────────────────────────────────
 let areaMode='ft';       // 'ft' | 'sta'
@@ -337,11 +337,11 @@ function setMixSource(src){
 }
 
 // ── Load saved material data ───────────────────────────
-function loadMaterialData(){
+async function loadMaterialData(){
     try{
-        const raw=localStorage.getItem('materialReferenceData_v1');
-        if(!raw){showNoMaterials();return;}
-        materialData=JSON.parse(raw);
+        const contracts=await ftGetAllMaterials();
+        materialData={contracts:Array.isArray(contracts)?contracts:[]};
+        if(!materialData.contracts||materialData.contracts.length===0){showNoMaterials();return;}
         const sel=document.getElementById('t_contract');
         sel.innerHTML='<option value="">— Select contract —</option>';
         const contracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));

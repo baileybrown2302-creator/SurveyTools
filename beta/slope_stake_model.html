@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Model-Based Staking — Survey Tool</title>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
@@ -263,19 +264,19 @@
 
 <script>
 // ---- Theme ----
-(function(){
-    const saved = localStorage.getItem('surveyTheme');
+document.getElementById('themeBtn').addEventListener('click', function(){
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    this.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+});
+(async function(){
+    const saved = await ftGetSetting('surveyTheme');
     if (saved === 'high-contrast') {
         document.documentElement.setAttribute('data-theme','high-contrast');
         document.getElementById('themeBtn').textContent = '☀️ Light';
     }
 })();
-document.getElementById('themeBtn').addEventListener('click', function(){
-    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
-    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
-    this.textContent = isHC ? '🌙 Dark' : '☀️ Light';
-    localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
-});
 
 // ---- State ----
 let ctx = null;
@@ -284,16 +285,16 @@ let currentDesignation = 'P.O.T.';
 let gradeBreakIdCounter = 0;
 let savedStakes = [];
 
-// ---- localStorage helpers ----
-function getSessions(projectId) {
-    try { return JSON.parse(localStorage.getItem('slopeStakeSessions_' + projectId) || '[]'); } catch(e){ return []; }
+// ---- IDB helpers ----
+async function getSessionsIDB(projectId) {
+    return await ftGetStakeSessions(projectId);
 }
-function saveSessions(projectId, arr) {
-    localStorage.setItem('slopeStakeSessions_' + projectId, JSON.stringify(arr));
+async function saveSessionIDB(sess) {
+    await ftSaveStakeSession(sess);
 }
 
 // ---- Init ----
-function init() {
+async function init() {
     // First try URL query params (from launchCalc navigation)
     const params = new URLSearchParams(window.location.search);
     const urlProjectId = params.get('projectId');
@@ -301,60 +302,57 @@ function init() {
 
     if (urlProjectId && urlSessionId) {
         // Build ctx from the actual stored data
-        const projects = JSON.parse(localStorage.getItem('surveyProjects') || '[]');
+        const projects = await ftGetAllProjects();
         const proj = projects.find(p => p.id === urlProjectId);
-        const sessions = getSessions(urlProjectId);
+        const sessions = await getSessionsIDB(urlProjectId);
         const sess = sessions.find(s => s.id === urlSessionId);
         ctx = {
             projectId: urlProjectId,
             sessionId: urlSessionId,
-            projectName: proj ? proj.name : '',
+            projectName: proj ? (proj.projectNumber || proj.name || '') : '',
             sessionDescription: sess ? (sess.description || '') : '',
             superElevPreset: sess ? (sess.superElevPreset || '') : '',
             templatePreset: sess ? (sess.templatePreset || '') : ''
         };
-        localStorage.setItem('stakeSessionContext', JSON.stringify(ctx));
+        await ftSetStakeContext(ctx);
         loadSession();
         return;
     }
 
-    // Fall back to localStorage context (e.g. returning to an open session)
-    try {
-        ctx = JSON.parse(localStorage.getItem('stakeSessionContext') || 'null');
-    } catch(e){ ctx = null; }
+    // Fall back to IDB context (e.g. returning to an open session)
+    ctx = await ftGetStakeContext();
 
     if (!ctx || !ctx.projectId || !ctx.sessionId) {
-        showSessionPicker();
+        await showSessionPicker();
         return;
     }
 
     loadSession();
 }
 
-function showSessionPicker() {
+async function showSessionPicker() {
     document.getElementById('noContextCard').classList.remove('hidden');
     const container = document.getElementById('pickerProjectSessions');
     let html = '';
     let hasAny = false;
-    try {
-        const projects = JSON.parse(localStorage.getItem('surveyProjects') || '[]');
-        projects.forEach(proj => {
-            const sessions = getSessions(proj.id);
-            if (sessions.length === 0) return;
-            hasAny = true;
-            html += `<div class="picker-section-label">${escHtml(proj.name)}</div>`;
-            sessions.forEach(s => {
-                const stakeCount = (s.stakes || []).length;
-                const meta = [s.date, s.operator, stakeCount ? stakeCount+' stake'+(stakeCount!==1?'s':'') : ''].filter(Boolean).join(' · ');
-                html += `<div class="picker-option" data-proj-id="${escHtml(proj.id)}" data-sess-id="${escHtml(s.id)}">
-                    <div>
-                        <div class="picker-option-name">${escHtml(s.description || 'Session')}</div>
-                        <div class="picker-option-meta">${escHtml(meta)}</div>
-                    </div>
-                </div>`;
-            });
+    const projects = await ftGetAllProjects();
+    for (const proj of projects) {
+        const sessions = await getSessionsIDB(proj.id);
+        if (sessions.length === 0) continue;
+        hasAny = true;
+        const projLabel = proj.projectNumber || proj.name || proj.id;
+        html += `<div class="picker-section-label">${escHtml(projLabel)}</div>`;
+        sessions.forEach(s => {
+            const stakeCount = (s.stakes || []).length;
+            const meta = [s.date, s.operator, stakeCount ? stakeCount+' stake'+(stakeCount!==1?'s':'') : ''].filter(Boolean).join(' · ');
+            html += `<div class="picker-option" data-proj-id="${escHtml(proj.id)}" data-sess-id="${escHtml(s.id)}">
+                <div>
+                    <div class="picker-option-name">${escHtml(s.description || 'Session')}</div>
+                    <div class="picker-option-meta">${escHtml(meta)}</div>
+                </div>
+            </div>`;
         });
-    } catch(e){}
+    }
     if (!hasAny) {
         html = `<div style="font-size:0.82em;color:var(--text-muted);padding:10px 0;">No saved sessions found. Create one in <a href="slope_stake_home.html" style="color:var(--accent-blue);">Session Home</a> or use Quick Session below.</div>`;
     }
@@ -362,52 +360,46 @@ function showSessionPicker() {
 
     // Attach click handlers after rendering
     container.querySelectorAll('.picker-option').forEach(el => {
-        el.addEventListener('click', function() {
+        el.addEventListener('click', async function() {
             const projId = this.dataset.projId;
             const sessId = this.dataset.sessId;
-            const projects = JSON.parse(localStorage.getItem('surveyProjects') || '[]');
+            const projects = await ftGetAllProjects();
             const proj = projects.find(p => p.id === projId);
-            const sessions = getSessions(projId);
+            const sessions = await getSessionsIDB(projId);
             const sess = sessions.find(s => s.id === sessId);
             if (!proj || !sess) { showToast('Session not found.'); return; }
             ctx = {
                 projectId: projId,
-                projectName: proj.name,
+                projectName: proj.projectNumber || proj.name || projId,
                 sessionId: sessId,
                 sessionDescription: sess.description || '',
                 superElevPreset: sess.superElevPreset || '',
                 templatePreset: sess.templatePreset || ''
             };
-            localStorage.setItem('stakeSessionContext', JSON.stringify(ctx));
+            await ftSetStakeContext(ctx);
             document.getElementById('noContextCard').classList.add('hidden');
             loadSession();
         });
     });
 }
 
-function startQuickSession() {
+async function startQuickSession() {
     const qid = 'quick_' + Date.now();
-    const sess = { id: qid, description: 'Quick Session', date: new Date().toLocaleDateString(), operator: '', stakes: [] };
-    // Save under a temp project
     const tempProjectId = 'quickProject';
-    let sessions = getSessions(tempProjectId);
-    sessions.push(sess);
-    saveSessions(tempProjectId, sessions);
+    const sess = { id: qid, projectId: tempProjectId, description: 'Quick Session', date: new Date().toLocaleDateString(), operator: '', stakes: [] };
+    await ftSaveStakeSession(sess);
     // Make sure project exists in registry
-    try {
-        let projects = JSON.parse(localStorage.getItem('surveyProjects') || '[]');
-        if (!projects.find(p => p.id === tempProjectId)) {
-            projects.push({ id: tempProjectId, name: 'Quick Sessions', description: 'Auto-created for standalone use', created: new Date().toISOString() });
-            localStorage.setItem('surveyProjects', JSON.stringify(projects));
-        }
-    } catch(e){}
+    const projects = await ftGetAllProjects();
+    if (!projects.find(p => p.id === tempProjectId)) {
+        await ftSaveProject({ id: tempProjectId, projectNumber: 'Quick Sessions', description: 'Auto-created for standalone use', created: new Date().toISOString() });
+    }
     ctx = { projectId: tempProjectId, projectName: 'Quick Sessions', sessionId: qid, sessionDescription: 'Quick Session', superElevPreset: '', templatePreset: '' };
-    localStorage.setItem('stakeSessionContext', JSON.stringify(ctx));
+    await ftSetStakeContext(ctx);
     document.getElementById('noContextCard').classList.add('hidden');
     loadSession();
 }
 
-function loadSession() {
+async function loadSession() {
     // Show session bar
     document.getElementById('sessionBar').classList.remove('hidden');
     document.getElementById('barProject').textContent = ctx.projectName || '';
@@ -415,7 +407,7 @@ function loadSession() {
 
     let sess = null;
     if (ctx.projectId && ctx.sessionId) {
-        const sessions = getSessions(ctx.projectId);
+        const sessions = await getSessionsIDB(ctx.projectId);
         sess = sessions.find(s => s.id === ctx.sessionId) || null;
     }
 
@@ -662,7 +654,7 @@ function updatePreview() {
 }
 
 // ---- Save stake ----
-function saveStake(andNext) {
+async function saveStake(andNext) {
     const errEl = document.getElementById('entryError');
     errEl.classList.add('hidden');
 
@@ -682,7 +674,7 @@ function saveStake(andNext) {
         return;
     }
 
-    const sessions = getSessions(ctx.projectId);
+    const sessions = await getSessionsIDB(ctx.projectId);
     const sess = sessions.find(s => s.id === ctx.sessionId);
     if (!sess) { showToast('Session not found.'); return; }
     if (!sess.stakes) sess.stakes = [];
@@ -704,7 +696,7 @@ function saveStake(andNext) {
     };
 
     sess.stakes.push(stake);
-    saveSessions(ctx.projectId, sessions);
+    await saveSessionIDB(sess);
     savedStakes = sess.stakes;
     renderSavedStakes();
     showToast(`Stake #${stakeNumber} saved.`);
@@ -771,26 +763,24 @@ function renderSavedStakes() {
 }
 
 // ---- Delete stake ----
-function deleteStake(stakeId) {
+async function deleteStake(stakeId) {
     if (!confirm('Delete this stake?')) return;
-    const sessions = getSessions(ctx.projectId);
+    const sessions = await getSessionsIDB(ctx.projectId);
     const sess = sessions.find(s => s.id === ctx.sessionId);
     if (!sess) return;
     sess.stakes = (sess.stakes || []).filter(s => s.id !== stakeId);
     // Renumber
     sess.stakes.forEach((s,i) => { s.stakeNumber = i+1; });
-    saveSessions(ctx.projectId, sessions);
+    await saveSessionIDB(sess);
     savedStakes = sess.stakes;
     renderSavedStakes();
     showToast('Stake deleted.');
 }
 
 // ---- Print ----
-function buildPrintHTML(stakes) {
-    const sess = (() => {
-        const sessions = getSessions(ctx.projectId);
-        return sessions.find(s => s.id === ctx.sessionId) || {};
-    })();
+async function buildPrintHTML(stakes) {
+    const sessions = await getSessionsIDB(ctx.projectId);
+    const sess = sessions.find(s => s.id === ctx.sessionId) || {};
     const headerInfo = `Project: ${escHtml(ctx.projectName || '')}  |  Session: ${escHtml(ctx.sessionDescription || '')}  |  Date: ${escHtml(sess.date || '')}  |  Operator: ${escHtml(sess.operator || '')}`;
 
     const stakeCards = stakes.map(st => {
@@ -809,16 +799,16 @@ function buildPrintHTML(stakes) {
     return `<div class="print-header">${headerInfo}</div>${stakeCards}`;
 }
 
-function printStake(stakeId) {
+async function printStake(stakeId) {
     const stake = savedStakes.find(s => s.id === stakeId);
     if (!stake) return;
-    document.getElementById('printContent').innerHTML = buildPrintHTML([stake]);
+    document.getElementById('printContent').innerHTML = await buildPrintHTML([stake]);
     window.print();
 }
 
-function printAllStakes() {
+async function printAllStakes() {
     if (savedStakes.length === 0) { showToast('No stakes to print.'); return; }
-    document.getElementById('printContent').innerHTML = buildPrintHTML(savedStakes);
+    document.getElementById('printContent').innerHTML = await buildPrintHTML(savedStakes);
     window.print();
 }
 
@@ -835,7 +825,7 @@ function showToast(msg) {
 }
 
 // ---- Start ----
-init();
+init(); // async, returns Promise
 </script>
 </body>
 </html>

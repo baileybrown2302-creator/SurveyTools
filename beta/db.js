@@ -2,7 +2,7 @@
 'use strict';
 
 const FT_DB_NAME = 'FieldToolsDB';
-const FT_DB_VERSION = 1;
+const FT_DB_VERSION = 2;
 let _dbPromise = null;
 
 function ftOpenDB() {
@@ -63,6 +63,12 @@ function ftOpenDB() {
       // Current stake session context (navigation state)
       if (!db.objectStoreNames.contains('stakeContext')) {
         db.createObjectStore('stakeContext');
+      }
+      // Thinlift Compaction Tests (T335)
+      if (!db.objectStoreNames.contains('compactionTests')) {
+        const s = db.createObjectStore('compactionTests', { keyPath: 'id' });
+        s.createIndex('projectId', 'projectId');
+        s.createIndex('created', 'created');
       }
     };
     req.onsuccess = e => resolve(e.target.result);
@@ -196,6 +202,13 @@ async function ftSaveGradeHistory(arr) {
   await ftClear('gradeHistory');
   for (const item of arr) await ftPut('gradeHistory', item);
 }
+
+// --- Compaction Tests (T335) ---
+async function ftGetAllCompactionTests() { return ftGetAll('compactionTests'); }
+async function ftGetCompactionTest(id) { return ftGet('compactionTests', id); }
+async function ftSaveCompactionTest(rec) { return ftPut('compactionTests', rec); }
+async function ftDeleteCompactionTest(id) { return ftDelete('compactionTests', id); }
+async function ftGetCompactionTestsByProject(projectId) { return ftGetByIndex('compactionTests', 'projectId', projectId); }
 
 // --- Area totals ---
 async function ftGetAreaTotals() { return ftGetAll('areaTotals'); }

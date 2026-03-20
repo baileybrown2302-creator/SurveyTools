@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Differential Leveling — Survey Tool</title>
     <style>
         .mt-2 { margin-top:0.5rem; } .mt-3 { margin-top:0.75rem; } .hidden { display:none!important; }
@@ -458,13 +459,13 @@ const stadiaCheckBtn=document.getElementById('stadiaCheckBtn'),stadiaCheckModal=
 let projectDetails={units:'ft'},levelRows=[],tpCounter=0,currentHI=null,lastCalculatedElevation=null,lastPointNameForBS=null,activeSetupData=null,lastDiNiLL=false;
 
 // --- Settings ---
-themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';localStorage.setItem('levelingTheme',isHC?'':'high-contrast');});
-fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);localStorage.setItem('levelingFontSize',e.target.value);});
-decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);localStorage.setItem('levelingDecimals',e.target.value);renderTable();});
+themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';ftSetSetting('levelingTheme',isHC?'':'high-contrast');});
+fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);ftSetSetting('levelingFontSize',e.target.value);});
+decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);ftSetSetting('levelingDecimals',e.target.value);renderTable();});
 
 // View mode
-viewModeSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingViewMode',e.target.value);applyViewMode();});
-actionPinSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingActionPin',e.target.value);applyActionPin();});
+viewModeSelect.addEventListener('change',(e)=>{ftSetSetting('levelingViewMode',e.target.value);applyViewMode();});
+actionPinSelect.addEventListener('change',(e)=>{ftSetSetting('levelingActionPin',e.target.value);applyActionPin();});
 
 function applyViewMode(){
     const mode=viewModeSelect.value;
@@ -484,13 +485,14 @@ function applyActionPin(){
     }
 }
 
-(function loadSettings(){
-    const t=localStorage.getItem('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
-    const f=localStorage.getItem('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
-    const d=localStorage.getItem('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
-    const vm=localStorage.getItem('levelingViewMode');if(vm){viewModeSelect.value=vm;}
-    const ap=localStorage.getItem('levelingActionPin');if(ap){actionPinSelect.value=ap;}
+(async function loadSettings(){
+    const t=await ftGetSetting('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
+    const f=await ftGetSetting('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
+    const d=await ftGetSetting('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
+    const vm=await ftGetSetting('levelingViewMode');if(vm){viewModeSelect.value=vm;}
+    const ap=await ftGetSetting('levelingActionPin');if(ap){actionPinSelect.value=ap;}
     applyViewMode();applyActionPin();
+    await loadStateFromLocalStorage();
 })();
 
 // Dropdown toggles
@@ -562,17 +564,34 @@ function updateUnitLabels(){const u=projectDetails.units||'ft';document.querySel
 unitsSelect.addEventListener('change',(e)=>{projectDetails.units=e.target.value;updateUnitLabels();saveStateToLocalStorage();renderTable();});
 rodTypeSelect.addEventListener('change',(e)=>{if(e.target.value==='Other'){rodTypeOtherInput.classList.remove('hidden');rodTypeOtherInput.focus();}else rodTypeOtherInput.classList.add('hidden');updateProjectDetails();});
 
-// LocalStorage
-function saveStateToLocalStorage(){let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;try{localStorage.setItem('levelingAppData_singleLoop',JSON.stringify({projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent}));}catch(e){}}
-function loadStateFromLocalStorage(){
-    const ss=localStorage.getItem('levelingAppData_singleLoop');if(ss){try{const a=JSON.parse(ss);projectDetails=a.projectDetails||{units:'ft'};levelRows=a.levelRows||[];tpCounter=a.tpCounter||0;
+// IDB State persistence — active loop ID and project ID resolved from ACTIVE_LOOP_KEY setting
+let _activeLoopId = null;
+let _activeProjectId = null;
+
+async function saveStateToLocalStorage(){
+    let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;
+    const state={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent};
+    try{
+        const loopId = _activeLoopId || 'legacy';
+        await ftSaveLevelLoop({...state, id: loopId, projectId: _activeProjectId || null});
+        await ftSaveLevelLoop({...state, id: 'legacy', projectId: _activeProjectId || null});
+    }catch(e){}
+}
+async function loadStateFromLocalStorage(){
+    // Resolve active loop from settings
+    const activeCtx = await ftGetSetting('levelingActiveLoop', null);
+    if (activeCtx && activeCtx.loopId) {
+        _activeLoopId = activeCtx.loopId;
+        _activeProjectId = activeCtx.projectId || null;
+    }
+    const ss = await ftGetLevelLoop(_activeLoopId || 'legacy');
+    if(ss){try{const a=ss;projectDetails=a.projectDetails||{units:'ft'};levelRows=a.levelRows||[];tpCounter=a.tpCounter||0;
     lastCalculatedElevation=a.lastCalculatedElevation===undefined?null:a.lastCalculatedElevation;lastPointNameForBS=a.lastPointNameForBS===undefined?null:a.lastPointNameForBS;
     document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';
     const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}
     unitsSelect.value=projectDetails.units||'ft';if(a.misclosureText){misclosureValue.textContent=a.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');
     levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});
-    // Recalculate diNiRodReading for DiNi LL IPs where it wasn't saved (older data or pre-fix)
-    levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){localStorage.removeItem('levelingAppData_singleLoop');}}
+    levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){}}
     if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
 }
 // Core calcs
@@ -1189,8 +1208,7 @@ exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccur
 
 importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null)r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();alert("Imported!");});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
 
-// Init
-loadStateFromLocalStorage();
+// Init is handled by the async loadSettings() IIFE above
 // Register Service Worker for PWA/offline support
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>

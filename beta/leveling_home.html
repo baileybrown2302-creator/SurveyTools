@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Leveling — Survey Tool</title>
     <style>
         :root {
@@ -57,14 +58,6 @@
         .section-title{font-size:1.05em;font-weight:800;color:var(--text-primary);}
 
         /* Import bar */
-        .import-bar{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-        .import-bar-icon{font-size:1.4em;flex-shrink:0;}
-        .import-bar-info{flex:1;min-width:160px;}
-        .import-bar-title{font-size:0.88em;font-weight:700;color:var(--text-primary);}
-        .import-bar-sub{font-size:0.72em;color:var(--text-muted);margin-top:2px;}
-        .import-bar.folder-linked{border-color:var(--accent-purple);}
-        .folder-pill{display:inline-flex;align-items:center;gap:4px;font-size:0.8em;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3e8ff;color:#7e22ce;border:1px solid #d8b4fe;}
-        [data-theme="high-contrast"] .folder-pill{background:#2e1065;color:#c4b5fd;border-color:#7c3aed;}
 
         /* Project cards */
         .project-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:10px;overflow:hidden;box-shadow:var(--shadow);transition:border-color 0.15s;}
@@ -168,26 +161,16 @@
             <button class="btn btn-primary btn-small" style="flex-shrink:0;" onclick="event.stopPropagation();openActiveLoop()">Open</button>
         </div>
 
-        <!-- Import bar (adapts to desktop FSA vs mobile file picker) -->
-        <div id="importBar" class="import-bar">
-            <div class="import-bar-icon" id="importBarIcon">📂</div>
-            <div class="import-bar-info">
-                <div class="import-bar-title" id="importBarTitle">Loading…</div>
-                <div class="import-bar-sub"  id="importBarSub"></div>
-            </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;flex-shrink:0;">
-                <button class="btn btn-purple btn-small" id="importBarBtn">…</button>
-                <button class="btn btn-secondary btn-small" id="folderRescanBtn" style="display:none;">↻ Rescan</button>
-                <button class="btn btn-secondary btn-small" id="folderClearBtn"  style="display:none;">✕ Unlink</button>
-            </div>
-        </div>
-        <!-- Hidden file input for mobile multi-import -->
+        <!-- Hidden file input for JSON loop import -->
         <input type="file" id="multiFileInput" accept=".json" multiple style="display:none;">
 
         <!-- Projects section -->
         <div class="section-header">
             <span class="section-title">Projects</span>
-            <button class="btn btn-primary btn-small" id="newProjectBtn">+ New Project</button>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary btn-small" onclick="document.getElementById('multiFileInput').click()">&#8595; Import</button>
+                <button class="btn btn-primary btn-small" id="newProjectBtn">+ New Project</button>
+            </div>
         </div>
 
         <label class="archive-toggle">
@@ -295,31 +278,20 @@
     let targetProjectIdForLoop = null;
     let pendingConfirmFn = null;
     let pendingImportBatch = [];
-    let folderHandle = null;
-
-    // ─── Feature detection ───────────────────────────────────────────────
-    const hasFSA = ('showDirectoryPicker' in window);
-    // Treat as mobile if: standalone PWA OR mobile UA (even in browser)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-                   || window.matchMedia('(display-mode: standalone)').matches
-                   || navigator.standalone === true;
-    const useFolder = hasFSA && !isMobile; // desktop Chrome/Edge only
 
     // ─── Init ────────────────────────────────────────────────────────────
     async function init() {
-        applyTheme();
-        loadProjects();
-        syncFromRegistry();
-        migrateLegacyData();
-        setupImportBar();
-        if (useFolder) await restoreFolderHandle();
-        renderAll();
+        await applyTheme();
+        await loadProjects();
+        await syncFromRegistry();
+        await migrateLegacyData();
+        await renderAll();
         bindEvents();
     }
 
     // ─── Theme ───────────────────────────────────────────────────────────
-    function applyTheme() {
-        const saved = localStorage.getItem('surveyTheme');
+    async function applyTheme() {
+        const saved = await ftGetSetting('surveyTheme');
         if (saved === 'high-contrast') {
             document.documentElement.setAttribute('data-theme', 'high-contrast');
             document.getElementById('themeBtn').textContent = '☀️ Light';
@@ -327,80 +299,83 @@
     }
 
     // ─── Projects persistence ─────────────────────────────────────────────
-    function loadProjects() {
-        try { projects = JSON.parse(localStorage.getItem(PROJECTS_KEY) || '[]'); }
-        catch(e) { projects = []; }
+    async function loadProjects() {
+        const allLevelProjs = await ftGetAllLevelProjects();
+        projects = allLevelProjs;
     }
-    function saveProjects() {
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
-        syncToSurveyRegistry();
+    async function saveProjects() {
+        for (const p of projects) {
+            await ftSaveLevelProject(p);
+        }
+        await syncToSurveyRegistry();
     }
 
     // ─── Shared project registry sync ────────────────────────────────────
-    function syncToSurveyRegistry() {
+    async function syncToSurveyRegistry() {
         try {
-            const reg = JSON.parse(localStorage.getItem(SURVEY_PROJECTS_KEY) || '[]');
+            const reg = await ftGetAllProjects();
             let changed = false;
-            projects.forEach(p => {
-                if (!reg.find(r => r.id === p.id)) {
-                    reg.unshift({ id: p.id, name: p.number, description: p.desc || '', created: p.created || Date.now() });
+            for (const p of projects) {
+                const existing = reg.find(r => r.id === p.id);
+                if (!existing) {
+                    await ftSaveProject({
+                        id: p.id,
+                        projectNumber: p.number,
+                        contractNumber: '',
+                        fundingSource: '',
+                        contractor: '',
+                        route: '',
+                        description: p.desc || '',
+                        archived: p.archived || false,
+                        created: new Date(p.created || Date.now()).toISOString()
+                    });
                     changed = true;
-                } else {
-                    // Keep name in sync if renamed
-                    const r = reg.find(x => x.id === p.id);
-                    if (r.name !== p.number) { r.name = p.number; changed = true; }
+                } else if (existing.projectNumber !== p.number) {
+                    existing.projectNumber = p.number;
+                    await ftSaveProject(existing);
+                    changed = true;
                 }
-            });
-            if (changed) localStorage.setItem(SURVEY_PROJECTS_KEY, JSON.stringify(reg));
+            }
         } catch(e) {}
     }
 
     // Pull any projects from surveyProjects that aren't in levelingProjects yet
-    function syncFromRegistry() {
+    async function syncFromRegistry() {
         try {
-            const reg = JSON.parse(localStorage.getItem(SURVEY_PROJECTS_KEY) || '[]');
+            const reg = await ftGetAllProjects();
             let changed = false;
-            reg.forEach(r => {
+            for (const r of reg) {
                 if (!projects.find(p => p.id === r.id)) {
-                    projects.push({
+                    const newProj = {
                         id: r.id,
-                        number: r.name,
+                        number: r.projectNumber || r.name || r.id,
                         desc: r.description || '',
                         loops: [],
-                        archived: false,
-                        created: r.created || Date.now()
-                    });
+                        archived: r.archived || false,
+                        created: r.created ? new Date(r.created).getTime() : Date.now()
+                    };
+                    projects.push(newProj);
+                    await ftSaveLevelProject(newProj);
                     changed = true;
                 }
-            });
-            if (changed) localStorage.setItem(PROJECTS_KEY, JSON.stringify(projects));
+            }
         } catch(e) {}
     }
 
     // ─── Export all project data ──────────────────────────────────────────
-    function exportProjectData(projectId) {
+    async function exportProjectData(projectId) {
         const p = projects.find(x => x.id === projectId);
         if (!p) return;
-        const loopData = (p.loops || []).map(l => ({
-            ...l, data: JSON.parse(localStorage.getItem(LOOP_DATA_PREFIX + l.id) || 'null')
-        }));
-        let materialsData = null;
-        try {
-            const mat = JSON.parse(localStorage.getItem('materialReferenceData_v1') || '{"contracts":[]}');
-            materialsData = (mat.contracts || []).find(c => c.id === projectId) || null;
-        } catch(e) {}
-        let stakeData = null;
-        try {
-            const sd = localStorage.getItem('slopeStakeSessions_' + projectId);
-            if (sd) stakeData = JSON.parse(sd);
-        } catch(e) {}
+        const loops = await ftGetLoopsForProject(projectId);
+        let materialsData = await ftGetMaterials(projectId);
+        const stakeSessions = await ftGetStakeSessions(projectId);
         const payload = JSON.stringify({
             exportedAt: new Date().toISOString(),
             surveyTool: 'NDOT Survey Tool',
             project: { id: p.id, name: p.number, description: p.desc, created: p.created },
-            leveling: { project: { ...p, loops: undefined }, loops: loopData },
-            materials: materialsData,
-            slopeStaking: stakeData ? { sessions: stakeData } : null
+            leveling: { project: { ...p, loops: undefined }, loops: loops },
+            materials: materialsData || null,
+            slopeStaking: stakeSessions.length > 0 ? { sessions: stakeSessions } : null
         }, null, 2);
         const fname = `project_${p.number.replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().split('T')[0]}.json`;
         if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
@@ -417,15 +392,15 @@
     }
 
     // ─── Legacy migration ─────────────────────────────────────────────────
-    function migrateLegacyData() {
-        const legacy = localStorage.getItem(LEGACY_KEY);
+    async function migrateLegacyData() {
+        const legacy = await ftGetLevelLoop('legacy');
         if (!legacy || projects.length > 0) return;
         try {
-            const d = JSON.parse(legacy);
+            const d = legacy;
             if (!d.levelRows || d.levelRows.length === 0) return;
             const pId = 'proj_' + Date.now();
             const lId = 'loop_' + (Date.now() + 1);
-            projects.push({
+            const newProj = {
                 id: pId,
                 number: d.projectDetails?.projectNumber || 'Imported Project',
                 desc: d.projectDetails?.description || 'Migrated from previous session',
@@ -439,168 +414,17 @@
                     rowCount: d.levelRows.filter(r => !r.isVoid).length,
                     source: 'migrated'
                 }]
-            });
-            localStorage.setItem(LOOP_DATA_PREFIX + lId, legacy);
-            localStorage.setItem(ACTIVE_LOOP_KEY, JSON.stringify({ projectId: pId, loopId: lId }));
-            saveProjects();
+            };
+            projects.push(newProj);
+            await ftSaveLevelProject(newProj);
+            await ftSaveLevelLoop({ ...d, id: lId, projectId: pId });
+            await ftSetSetting(ACTIVE_LOOP_KEY, { projectId: pId, loopId: lId });
+            await saveProjects();
         } catch(e) {}
     }
 
-    // ─── Import bar setup ─────────────────────────────────────────────────
-    function setupImportBar() {
-        const icon  = document.getElementById('importBarIcon');
-        const title = document.getElementById('importBarTitle');
-        const sub   = document.getElementById('importBarSub');
-        const btn   = document.getElementById('importBarBtn');
-        const rescan= document.getElementById('folderRescanBtn');
-        const clear = document.getElementById('folderClearBtn');
 
-        if (useFolder) {
-            // Desktop: folder watcher
-            icon.textContent  = '🗂️';
-            title.textContent = 'Watch a Folder';
-            sub.textContent   = 'Point to a folder of exported JSON loops — auto-sorted by contract number. Re-scans when you return from the leveling tool.';
-            btn.textContent   = 'Select Folder';
-            btn.onclick       = pickFolder;
-            rescan.style.display = 'inline-flex';
-            clear.style.display  = 'inline-flex';
-            rescan.onclick = () => scanFolder(true);
-            clear.onclick  = unlinkFolder;
-        } else {
-            // Mobile / non-FSA: multi-file picker
-            icon.textContent  = '📥';
-            title.textContent = 'Import JSON Loops';
-            sub.textContent   = 'Select one or more exported loop files — auto-sorted by contract number.';
-            btn.textContent   = 'Select Files';
-            btn.onclick       = () => document.getElementById('multiFileInput').click();
-            rescan.style.display = 'none';
-            clear.style.display  = 'none';
-        }
-    }
-
-    // ─── IndexedDB helpers for FSA DirectoryHandle persistence ───────────
-    function openIDB() {
-        return new Promise((res, rej) => {
-            const req = indexedDB.open('LevelingAppDB', 1);
-            req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
-            req.onsuccess = e => res(e.target.result);
-            req.onerror   = () => rej(new Error('IDB open failed'));
-        });
-    }
-    async function saveHandleIDB(handle) {
-        try { const db = await openIDB(); const tx = db.transaction('handles','readwrite'); tx.objectStore('handles').put(handle,'folder'); }
-        catch(e) {}
-    }
-    async function loadHandleIDB() {
-        try {
-            const db = await openIDB();
-            return await new Promise((res) => {
-                const req = db.transaction('handles','readonly').objectStore('handles').get('folder');
-                req.onsuccess = e => res(e.target.result || null);
-                req.onerror   = () => res(null);
-            });
-        } catch(e) { return null; }
-    }
-    async function clearHandleIDB() {
-        try { const db = await openIDB(); db.transaction('handles','readwrite').objectStore('handles').delete('folder'); }
-        catch(e) {}
-    }
-
-    // ─── Desktop folder: restore, pick, scan, unlink ─────────────────────
-    async function restoreFolderHandle() {
-        const h = await loadHandleIDB();
-        if (!h) return;
-        try {
-            const perm = await h.queryPermission({ mode: 'read' });
-            if (perm === 'granted') {
-                folderHandle = h;
-                updateFolderLinkedUI();
-                await scanFolder(false); // silent on load
-            } else {
-                await clearHandleIDB();
-            }
-        } catch(e) { await clearHandleIDB(); }
-    }
-
-    async function pickFolder() {
-        try {
-            const h = await window.showDirectoryPicker({ mode: 'read' });
-            folderHandle = h;
-            await saveHandleIDB(h);
-            updateFolderLinkedUI();
-            await scanFolder(true);
-        } catch(e) { /* cancelled */ }
-    }
-
-    async function unlinkFolder() {
-        folderHandle = null;
-        await clearHandleIDB();
-        setupImportBar(); // resets to default text
-        showToast('Folder unlinked');
-    }
-
-    function updateFolderLinkedUI() {
-        if (!folderHandle) return;
-        const bar   = document.getElementById('importBar');
-        const icon  = document.getElementById('importBarIcon');
-        const title = document.getElementById('importBarTitle');
-        const sub   = document.getElementById('importBarSub');
-        const btn   = document.getElementById('importBarBtn');
-        bar.classList.add('folder-linked');
-        icon.textContent = '🗂️';
-        title.innerHTML  = `Watching: <span class="folder-pill">📁 ${escHtml(folderHandle.name)}</span>`;
-        sub.textContent  = 'All .json files auto-sorted by contract number · Re-scans on return from leveling tool';
-        btn.textContent  = 'Change Folder';
-        btn.onclick      = pickFolder;
-    }
-
-    async function scanFolder(showPreview) {
-        if (!folderHandle) return;
-        const parsed = [];
-        try {
-            for await (const entry of folderHandle.values()) {
-                if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.json')) continue;
-                try {
-                    const file = await entry.getFile();
-                    const text = await file.text();
-                    const data = JSON.parse(text);
-                    if (data.projectDetails && Array.isArray(data.levelRows)) {
-                        parsed.push({ data, filename: entry.name });
-                    }
-                } catch(e) {}
-            }
-        } catch(e) {
-            showToast('Folder permission expired — please re-select folder');
-            folderHandle = null;
-            await clearHandleIDB();
-            setupImportBar();
-            return;
-        }
-
-        if (parsed.length === 0) {
-            if (showPreview) showToast('No valid leveling JSON files found in folder');
-            return;
-        }
-
-        const batch   = buildImportBatch(parsed);
-        const newOnes = batch.filter(b => !b.alreadyExists && !b.error);
-
-        if (newOnes.length === 0) {
-            if (showPreview) showToast(`All ${parsed.length} file(s) already imported`);
-            return;
-        }
-
-        if (showPreview) {
-            pendingImportBatch = batch;
-            showImportPreviewModal(`Found ${parsed.length} file(s) in folder`);
-        } else {
-            // Silent auto-import of only new files
-            pendingImportBatch = newOnes;
-            commitImport(true);
-        }
-    }
-
-    // ─── Mobile: multi-file handler ───────────────────────────────────────
+    // ─── File import handler ──────────────────────────────────────────────
     function handleMultiFileSelect(files) {
         if (!files || files.length === 0) return;
         const readers = Array.from(files).map(file => new Promise(res => {
@@ -719,7 +543,7 @@
     }
 
     // ─── Commit import ────────────────────────────────────────────────────
-    function commitImport(showToastMsg = true) {
+    async function commitImport(showToastMsg = true) {
         const toImport = pendingImportBatch.filter(b => !b.alreadyExists && !b.error);
         if (toImport.length === 0) return;
 
@@ -749,16 +573,17 @@
             // Sort loops within this project by date then filename
             items.sort((a, b) => (a.date || '').localeCompare(b.date || '') || a.filename.localeCompare(b.filename));
 
-            items.forEach(b => {
+            for (const b of items) {
                 const lId = 'loop_' + Date.now() + '_' + Math.random().toString(36).slice(2,8);
-                proj.loops.push({
+                const loopMeta = {
                     id: lId, name: b.loopName, date: b.date, operator: b.operator,
                     created: Date.now(), lastModified: Date.now(),
                     closed: b.closed, rowCount: b.rowCount,
                     source: 'imported', sourceFile: b.filename
-                });
-                localStorage.setItem(LOOP_DATA_PREFIX + lId, JSON.stringify(b.data));
-            });
+                };
+                proj.loops.push(loopMeta);
+                await ftSaveLevelLoop({ ...b.data, id: lId, projectId: proj.id });
+            }
         });
 
         // Keep projects sorted alphabetically by project number
@@ -776,23 +601,22 @@
     }
 
     // ─── Render ───────────────────────────────────────────────────────────
-    function renderAll() { renderActiveBanner(); renderProjects(); }
+    async function renderAll() { await renderActiveBanner(); await renderProjects(); }
 
-    function getActiveLoop() {
-        try { return JSON.parse(localStorage.getItem(ACTIVE_LOOP_KEY) || 'null'); }
-        catch(e) { return null; }
+    async function getActiveLoop() {
+        return await ftGetSetting(ACTIVE_LOOP_KEY, null);
     }
 
-    function renderActiveBanner() {
-        const active = getActiveLoop();
+    async function renderActiveBanner() {
+        const active = await getActiveLoop();
         const banner = document.getElementById('activeBanner');
         if (!active) { banner.style.display = 'none'; return; }
         const proj = projects.find(p => p.id === active.projectId);
         const loop = proj?.loops?.find(l => l.id === active.loopId);
         if (!proj || !loop) { banner.style.display = 'none'; return; }
-        const raw = localStorage.getItem(LOOP_DATA_PREFIX + active.loopId);
+        const loopData = await ftGetLevelLoop(active.loopId);
         let rowCount = 0;
-        try { rowCount = JSON.parse(raw)?.levelRows?.filter(r => !r.isVoid)?.length || 0; } catch(e) {}
+        try { rowCount = loopData?.levelRows?.filter(r => !r.isVoid)?.length || 0; } catch(e) {}
         if (rowCount === 0) { banner.style.display = 'none'; return; }
         banner.style.display = 'flex';
         document.getElementById('activeBannerName').textContent = `${proj.number} — ${loop.name}`;
@@ -800,7 +624,8 @@
             `${rowCount} station${rowCount!==1?'s':''} · ${loop.date||'No date'}${loop.closed?' · ✓ Closed':' · In progress'}`;
     }
 
-    function renderProjects() {
+    async function renderProjects() {
+        _cachedActiveLoop = await getActiveLoop();
         const list     = document.getElementById('projectsList');
         const empty    = document.getElementById('emptyState');
         const filtered = projects.filter(p => showArchived || !p.archived);
@@ -836,7 +661,7 @@
 
     function renderProjectCard(p) {
         const isExpanded    = expandedProjects.has(p.id);
-        const active        = getActiveLoop();
+        const active        = _cachedActiveLoop;
         const isActiveProj  = active?.projectId === p.id;
         const loopCount     = p.loops?.length || 0;
         const lastLoop      = p.loops?.length ? p.loops[p.loops.length - 1] : null;
@@ -881,6 +706,9 @@
             </div>
         </div>`;
     }
+
+    // _cachedActiveLoop is updated before renderProjects is called
+    let _cachedActiveLoop = null;
 
     function renderLoopItem(pid, l, active) {
         const isCurrent  = active?.projectId === pid && active?.loopId === l.id;
@@ -930,7 +758,7 @@
         document.getElementById('projectModal').classList.remove('hidden');
         setTimeout(() => document.getElementById('pmNumber').focus(), 100);
     }
-    function saveProjectModal() {
+    async function saveProjectModal() {
         const number = document.getElementById('pmNumber').value.trim();
         if (!number) { document.getElementById('pmNumber').focus(); return; }
         const desc = document.getElementById('pmDesc').value.trim();
@@ -939,26 +767,28 @@
             const p = projects.find(x => x.id === editingProjectId);
             if (p) { p.number = number; p.desc = desc; p.notes = notes; }
         } else {
-            projects.push({ id:'proj_'+Date.now(), number, desc, notes, created:Date.now(), archived:false, loops:[] });
+            const newProj = { id:'proj_'+Date.now(), number, desc, notes, created:Date.now(), archived:false, loops:[] };
+            projects.push(newProj);
         }
-        saveProjects();
+        await saveProjects();
         document.getElementById('projectModal').classList.add('hidden');
-        renderAll();
+        await renderAll();
     }
-    function archiveProject(pid) {
+    async function archiveProject(pid) {
         const p = projects.find(x => x.id === pid); if (!p) return;
-        p.archived = !p.archived; saveProjects(); renderAll();
+        p.archived = !p.archived; await saveProjects(); await renderAll();
     }
     function deleteProject(pid) {
         const p = projects.find(x => x.id === pid); if (!p) return;
         showConfirm(`Delete "${p.number}"?`,
             `Permanently deletes project and all ${p.loops?.length||0} loop(s). Cannot be undone.`,
-            () => {
-                (p.loops||[]).forEach(l => localStorage.removeItem(LOOP_DATA_PREFIX + l.id));
+            async () => {
+                for (const l of (p.loops||[])) await ftDeleteLevelLoop(l.id);
                 projects = projects.filter(x => x.id !== pid);
-                const active = getActiveLoop();
-                if (active?.projectId === pid) localStorage.removeItem(ACTIVE_LOOP_KEY);
-                saveProjects(); renderAll();
+                await ftDeleteLevelProject(pid);
+                const active = await getActiveLoop();
+                if (active?.projectId === pid) await ftSetSetting(ACTIVE_LOOP_KEY, null);
+                await saveProjects(); await renderAll();
             });
     }
 
@@ -972,7 +802,7 @@
         document.getElementById('loopModal').classList.remove('hidden');
         setTimeout(() => document.getElementById('lmName').focus(), 100);
     }
-    function startLoop() {
+    async function startLoop() {
         const name = document.getElementById('lmName').value.trim();
         if (!name) { document.getElementById('lmName').focus(); return; }
         const p = projects.find(x => x.id === targetProjectIdForLoop); if (!p) return;
@@ -983,48 +813,48 @@
             operator: document.getElementById('lmOperator').value.trim(),
             created: Date.now(), lastModified: Date.now(), closed: false, rowCount: 0, source: 'new'
         };
-        p.loops.push(loop); saveProjects();
+        p.loops.push(loop); await saveProjects();
         const state = { projectDetails:{ units:'ft', date:loop.date, projectNumber:p.number,
             description:p.desc||'', operator:loop.operator, recorder:'', instrument:'',
             rodType:'Philly Rod', decimalPrecision:3 },
             levelRows:[], tpCounter:0, lastCalculatedElevation:null, lastPointNameForBS:null, misclosureText:null };
-        localStorage.setItem(LOOP_DATA_PREFIX + lId, JSON.stringify(state));
-        localStorage.setItem(ACTIVE_LOOP_KEY, JSON.stringify({ projectId:p.id, loopId:lId }));
-        localStorage.setItem(LEGACY_KEY, JSON.stringify(state));
+        await ftSaveLevelLoop({ ...state, id: lId, projectId: p.id });
+        await ftSetSetting(ACTIVE_LOOP_KEY, { projectId: p.id, loopId: lId });
+        await ftSaveLevelLoop({ ...state, id: 'legacy', projectId: p.id });
         document.getElementById('loopModal').classList.add('hidden');
         window.location.href = 'leveling.html';
     }
-    function openLoop(pid, lid) {
+    async function openLoop(pid, lid) {
         const p = projects.find(x => x.id === pid);
         const l = p?.loops?.find(x => x.id === lid);
         if (!p || !l) return;
-        const raw = localStorage.getItem(LOOP_DATA_PREFIX + lid);
-        if (raw) {
-            localStorage.setItem(LEGACY_KEY, raw);
+        const loopData = await ftGetLevelLoop(lid);
+        if (loopData) {
+            await ftSaveLevelLoop({ ...loopData, id: 'legacy', projectId: pid });
         } else {
             const sk = { projectDetails:{ units:'ft', date:l.date, projectNumber:p.number,
                 description:p.desc||'', operator:l.operator||'', recorder:'', instrument:'',
                 rodType:'Philly Rod', decimalPrecision:3 },
                 levelRows:[], tpCounter:0, lastCalculatedElevation:null, lastPointNameForBS:null, misclosureText:null };
-            localStorage.setItem(LEGACY_KEY, JSON.stringify(sk));
-            localStorage.setItem(LOOP_DATA_PREFIX + lid, JSON.stringify(sk));
+            await ftSaveLevelLoop({ ...sk, id: 'legacy', projectId: pid });
+            await ftSaveLevelLoop({ ...sk, id: lid, projectId: pid });
         }
-        localStorage.setItem(ACTIVE_LOOP_KEY, JSON.stringify({ projectId:pid, loopId:lid }));
+        await ftSetSetting(ACTIVE_LOOP_KEY, { projectId: pid, loopId: lid });
         window.location.href = 'leveling.html';
     }
-    function openActiveLoop() {
-        const active = getActiveLoop(); if (!active) return;
-        openLoop(active.projectId, active.loopId);
+    async function openActiveLoop() {
+        const active = await getActiveLoop(); if (!active) return;
+        await openLoop(active.projectId, active.loopId);
     }
     function deleteLoop(pid, lid) {
         const p = projects.find(x => x.id === pid);
         const l = p?.loops?.find(x => x.id === lid); if (!p || !l) return;
-        showConfirm(`Delete "${l.name}"?`, 'All leveling data for this loop will be permanently deleted.', () => {
+        showConfirm(`Delete "${l.name}"?`, 'All leveling data for this loop will be permanently deleted.', async () => {
             p.loops = p.loops.filter(x => x.id !== lid);
-            localStorage.removeItem(LOOP_DATA_PREFIX + lid);
-            const active = getActiveLoop();
-            if (active?.loopId === lid) localStorage.removeItem(ACTIVE_LOOP_KEY);
-            saveProjects(); renderAll();
+            await ftDeleteLevelLoop(lid);
+            const active = await getActiveLoop();
+            if (active?.loopId === lid) await ftSetSetting(ACTIVE_LOOP_KEY, null);
+            await saveProjects(); await renderAll();
         });
     }
 
@@ -1034,22 +864,24 @@
         if (document.visibilityState === 'visible') onReturnFromLeveling();
     });
     async function onReturnFromLeveling() {
-        syncActiveLoopMeta();
-        if (useFolder && folderHandle) await scanFolder(false); // silent re-scan
+        await loadProjects();
+        await syncFromRegistry();
+        await syncActiveLoopMeta();
+        await renderAll();
     }
-    function syncActiveLoopMeta() {
-        const active = getActiveLoop(); if (!active) return;
+    async function syncActiveLoopMeta() {
+        const active = await getActiveLoop(); if (!active) return;
         const p = projects.find(x => x.id === active.projectId);
         const l = p?.loops?.find(x => x.id === active.loopId);
         if (!p || !l) return;
-        const raw = localStorage.getItem(LEGACY_KEY); if (!raw) return;
+        const legacyData = await ftGetLevelLoop('legacy'); if (!legacyData) return;
         try {
-            const d = JSON.parse(raw), rows = d.levelRows || [];
+            const rows = legacyData.levelRows || [];
             l.rowCount     = rows.filter(r => !r.isVoid).length;
             l.closed       = !!rows.find(r => r.type === 'CLOSING_FS' && !r.isVoid);
             l.lastModified = Date.now();
-            localStorage.setItem(LOOP_DATA_PREFIX + active.loopId, raw);
-            saveProjects(); renderAll();
+            await ftSaveLevelLoop({ ...legacyData, id: active.loopId, projectId: active.projectId });
+            await saveProjects(); await renderAll();
         } catch(e) {}
     }
 
@@ -1089,12 +921,12 @@
             const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
             document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
             document.getElementById('themeBtn').textContent = isHC ? '🌙 Dark' : '☀️ Light';
-            localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
+            ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
         });
         document.getElementById('newProjectBtn').addEventListener('click', openNewProjectModal);
-        document.getElementById('projectModalSave').addEventListener('click', saveProjectModal);
+        document.getElementById('projectModalSave').addEventListener('click', () => saveProjectModal());
         document.getElementById('projectModalCancel').addEventListener('click', () => document.getElementById('projectModal').classList.add('hidden'));
-        document.getElementById('loopModalStart').addEventListener('click', startLoop);
+        document.getElementById('loopModalStart').addEventListener('click', () => startLoop());
         document.getElementById('loopModalCancel').addEventListener('click', () => document.getElementById('loopModal').classList.add('hidden'));
         document.getElementById('importModalConfirm').addEventListener('click', () => commitImport(true));
         document.getElementById('importModalCancel').addEventListener('click', () => {

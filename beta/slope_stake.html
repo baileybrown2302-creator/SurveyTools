@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Slope Staking — Survey Tool</title>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
@@ -649,14 +650,16 @@
 // THEME
 // ============================================================
 const themeBtn = document.getElementById('themeBtn');
-const savedTheme = localStorage.getItem('surveyTheme');
-if (savedTheme === 'high-contrast') { document.documentElement.setAttribute('data-theme', 'high-contrast'); themeBtn.textContent = '☀️ Light'; }
 themeBtn.addEventListener('click', () => {
     const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
     document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
     themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
-    localStorage.setItem('surveyTheme', isHC ? '' : 'high-contrast');
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 });
+(async function() {
+    const saved = await ftGetSetting('surveyTheme');
+    if (saved === 'high-contrast') { document.documentElement.setAttribute('data-theme', 'high-contrast'); themeBtn.textContent = '☀️ Light'; }
+})();
 
 // ============================================================
 // DATA
@@ -680,6 +683,14 @@ let skSide = 'L';
 let skType = 'fill';
 let skFillCut = 'fill';
 let rangesExpanded = false;
+
+// IDB persistence functions (replacing localStorage)
+async function saveTemplatesIDB() { await ftClear('stakeTemplates'); for (const t of templates) await ftSaveTemplate(t); }
+async function loadTemplatesIDB() { templates = await ftGetAllTemplates(); }
+async function saveStakesIDB() { await ftClear('stakesList'); for (const s of stakes) await ftSaveStake(s); }
+async function loadStakesIDB() { stakes = await ftGetAllStakesList(); }
+async function saveRangesIDB() { await ftClear('stakeRanges'); for (const r of stakeRanges) await ftSaveRange(r); }
+async function loadRangesIDB() { stakeRanges = await ftGetAllRanges(); }
 
 // ============================================================
 // TAB SWITCHING
@@ -2080,25 +2091,27 @@ function copyStakeNote() {
 }
 
 // ============================================================
-// PERSISTENCE
+// PERSISTENCE (delegated to IDB functions above)
 // ============================================================
-function saveTemplates() { localStorage.setItem('slopeStakingTemplates', JSON.stringify(templates)); }
-function loadTemplates() { templates = JSON.parse(localStorage.getItem('slopeStakingTemplates') || '[]'); }
-function saveStakes() { localStorage.setItem('slopeStakingStakes', JSON.stringify(stakes)); }
-function loadStakes() { stakes = JSON.parse(localStorage.getItem('slopeStakingStakes') || '[]'); }
-function saveRanges() { localStorage.setItem('slopeStakingRanges', JSON.stringify(stakeRanges)); }
-function loadRanges() { stakeRanges = JSON.parse(localStorage.getItem('slopeStakingRanges') || '[]'); }
+function saveTemplates() { saveTemplatesIDB(); }
+function loadTemplates() { /* async load handled in initAsync */ }
+function saveStakes() { saveStakesIDB(); }
+function loadStakes() { /* async load handled in initAsync */ }
+function saveRanges() { saveRangesIDB(); }
+function loadRanges() { /* async load handled in initAsync */ }
 
 // ============================================================
 // INIT
 // ============================================================
-loadTemplates();
-loadStakes();
-loadRanges();
-populateCustomDropdown();
-populateSessionDropdown();
-// Apply default GPS mode
-sessSetMode('gps');
+async function initAsync() {
+    await loadTemplatesIDB();
+    await loadStakesIDB();
+    await loadRangesIDB();
+    populateCustomDropdown();
+    populateSessionDropdown();
+    sessSetMode('gps');
+}
+initAsync();
 </script>
 </body>
 </html>

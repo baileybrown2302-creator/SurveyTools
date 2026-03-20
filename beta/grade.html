@@ -8,8 +8,9 @@
     <meta name="apple-mobile-web-app-title" content="Survey Tool">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="./icon.png">
-    <link rel="apple-touch-icon" href="./icon.png">
+    <link rel="icon" type="image/png" href="../beta/icon.png">
+    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <script src="db.js"></script>
     <title>Grade Calculator — Survey Tool</title>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--grade-bg:#f0fdf4;--grade-border:#86efac;--grade-text:#166534;--cut-bg:#fff7ed;--cut-border:#fed7aa;--cut-text:#9a3412;}
@@ -205,9 +206,8 @@
 <script>
 // Theme
 const themeBtn=document.getElementById('themeBtn');
-const savedTheme=localStorage.getItem('surveyTheme');
-if(savedTheme==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}
-themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('surveyTheme',isHC?'':'high-contrast');});
+themeBtn.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeBtn.textContent=isHC?'🌙 Dark':'☀️ Light';ftSetSetting('surveyTheme',isHC?'':'high-contrast');});
+(async function(){const saved=await ftGetSetting('surveyTheme');if(saved==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeBtn.textContent='☀️ Light';}})();
 
 // Mode switching
 function setMode(m){
@@ -358,8 +358,8 @@ function calcDesign(){
 function clearDesign(){['d_elev','d_grade','d_dist','d_hi'].forEach(id=>document.getElementById(id).value='');document.getElementById('designResult').classList.add('hidden');document.getElementById('d_error').classList.add('hidden');}
 
 // ===== HISTORY =====
-let history=JSON.parse(localStorage.getItem('gradeHistory')||'[]');
-function addHistory(entry){entry.ts=Date.now();history.unshift(entry);if(history.length>15)history=history.slice(0,15);localStorage.setItem('gradeHistory',JSON.stringify(history));renderHistory();}
+let history=[];
+async function addHistory(entry){entry.ts=Date.now();entry.id=entry.ts.toString(36)+Math.random().toString(36).slice(2);history.unshift(entry);if(history.length>15)history=history.slice(0,15);await ftSaveGradeHistory(history);renderHistory();}
 function renderHistory(){
     const list=document.getElementById('historyList'),section=document.getElementById('historySection');
     if(history.length===0){section.style.display='none';return;}
@@ -376,8 +376,8 @@ function loadHistory(h){
     else if(h.type==='rod'){setMode('rod');document.getElementById('r_hi').value=h.data.hi;document.getElementById('r_design').value=h.data.design;document.getElementById('r_ground').value=h.data.ground??'';calcRod();}
     else if(h.type==='design'){setMode('design');document.getElementById('d_elev').value=h.data.elev;document.getElementById('d_grade').value=h.data.grade;document.getElementById('d_dist').value=h.data.dist;document.getElementById('d_hi').value=h.data.hi??'';calcDesign();}
 }
-function clearHistory(){history=[];localStorage.removeItem('gradeHistory');renderHistory();}
-renderHistory();
+async function clearHistory(){history=[];await ftSaveGradeHistory([]);renderHistory();}
+(async function(){history=await ftGetGradeHistory()||[];renderHistory();})();
 </script>
 </body>
 </html>
