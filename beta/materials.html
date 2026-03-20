@@ -394,7 +394,36 @@ let editingContractId=null;
 let pendingImportData=null; // holds parsed import JSON
 
 function loadData(){try{const s=localStorage.getItem(STORAGE_KEY);if(s)data=JSON.parse(s);}catch(e){}if(!data.contracts)data.contracts=[];}
-function saveData(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){alert('Storage error: '+e.message);}}
+function saveData(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(data));}catch(e){alert('Storage error: '+e.message);}syncToSurveyRegistry();}
+function syncToSurveyRegistry(){
+    try{
+        const SURVEY_KEY='surveyProjects';
+        let registry=[];
+        try{const s=localStorage.getItem(SURVEY_KEY);if(s)registry=JSON.parse(s);}catch(e){}
+        let changed=false;
+        (data.contracts||[]).forEach(c=>{
+            const existing=registry.find(r=>r.id===c.id);
+            if(!existing){registry.push({id:c.id,name:c.number||c.id,description:c.description||'',created:c.created||new Date().toISOString()});changed=true;}
+            else if(existing.name!==c.number){existing.name=c.number;changed=true;}
+        });
+        if(changed)localStorage.setItem(SURVEY_KEY,JSON.stringify(registry));
+    }catch(e){}
+}
+function exportContractData(contractId){
+    const c=getContract(contractId);if(!c)return;
+    const out={exportedAt:new Date().toISOString(),project:{id:c.id,name:c.number,description:c.description||''},materials:c,leveling:null,staking:null};
+    try{const s=localStorage.getItem('levelingData');if(s){const ld=JSON.parse(s);out.leveling=(ld.projects||[]).find(p=>p.id===contractId)||null;}}catch(e){}
+    try{const s=localStorage.getItem('slopeStakeSessions_'+contractId);if(s)out.staking=JSON.parse(s);}catch(e){}
+    const text=JSON.stringify(out,null,2);
+    const filename=`project_${c.number.replace(/[^a-z0-9]/gi,'_')}_export.json`;
+    if(navigator.share){navigator.share({title:'Export: '+c.number,text:text}).catch(()=>fallbackDownload(text,filename));}
+    else{fallbackDownload(text,filename);}
+}
+function fallbackDownload(text,filename){
+    const a=document.createElement('a');
+    a.href='data:application/json;charset=utf-8,'+encodeURIComponent(text);
+    a.download=filename;a.click();
+}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function escHtml(str){if(!str)return'';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function parseNum(id){const v=parseFloat(document.getElementById(id).value);return isNaN(v)?null:v;}
@@ -468,7 +497,7 @@ function renderContracts(){
         div.innerHTML=`<div class="contract-header" onclick="showContractView('${c.id}')">
             <div><div class="contract-number">${escHtml(c.number)}</div>${c.description?`<div class="contract-desc">${escHtml(c.description)}</div>`:''}</div>
             <span class="status-badge ${c.archived?'badge-archived':'badge-active'}">${c.archived?'Archived':'Active'}</span>
-        </div>${mats.length>0?`<div class="contract-meta">${chips}<span class="meta-chip">${mats.length} material${mats.length!==1?'s':''}</span></div>`:''}`;
+        </div>${mats.length>0?`<div class="contract-meta">${chips}<span class="meta-chip">${mats.length} material${mats.length!==1?'s':''}</span></div>`:''}<div class="contract-meta" style="padding-top:0;"><button class="btn btn-secondary btn-small" onclick="event.stopPropagation();exportContractData('${c.id}')">⬇ Export All</button></div>`;
         list.appendChild(div);
     });
 }
@@ -905,7 +934,7 @@ function closeConfirm(){document.getElementById('confirmModal').classList.add('h
 document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===document.getElementById('confirmModal'))closeConfirm();});
 
 // ── Init ───────────────────────────────────────────────
-loadData();renderContracts();
+loadData();syncToSurveyRegistry();renderContracts();
 </script>
 </body>
 </html>
