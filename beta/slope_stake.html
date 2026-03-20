@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -654,6 +655,7 @@ themeBtn.addEventListener('click', () => {
     const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
     document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
     themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+    localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
     ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 });
 (async function() {

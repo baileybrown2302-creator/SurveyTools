@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -333,6 +334,7 @@ function toggleTheme() {
     const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
     document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
     applyThemeBtns(!isHC);
+    localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
     ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 }
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
@@ -626,6 +628,13 @@ async function saveProject() {
         if (existing) proj.archived = existing.archived;
     }
     await ftSaveProject(proj);
+    // Ensure a materials entry exists so this project appears in material-based apps (HMA, thinlift, etc.)
+    const existingMat = await ftGetMaterials(id);
+    if (!existingMat) {
+        await ftSaveMaterials({ id, number: projNum, description: proj.description || '', archived: false, created: proj.created, materials: [] });
+    } else if (existingMat.number !== projNum) {
+        await ftSaveMaterials({ ...existingMat, number: projNum });
+    }
     const lp = await ftGetLevelProject(id);
     if (lp) { lp.number = projNum; lp.desc = proj.description; await ftSaveLevelProject(lp); }
     closeModal('projectModal');

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -142,6 +143,14 @@
                 </div>
                 <span class="section-arrow">›</span>
             </a>
+            <a href="materials.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">🗂️</span>
+                <div class="section-info">
+                    <div class="section-name">Material Reference</div>
+                    <div class="section-count">HMA, concrete, granular &amp; Proctor data by contract</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
         </div>
         <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
         <div class="sections">
@@ -157,7 +166,7 @@
                 <span class="section-icon">🔍</span>
                 <div class="section-info">
                     <div class="section-name">Inspection Tools</div>
-                    <div class="section-count">Materials · Area &amp; Volume · HMA</div>
+                    <div class="section-count">Area &amp; Volume · HMA Tool</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -267,6 +276,7 @@
             const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
             document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
             btn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+            localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
             ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
         });
 
@@ -291,7 +301,6 @@
             inspection: {
                 title: 'Inspection Tools',
                 tools: [
-                    { icon: '🗂️', name: 'Material Reference', desc: 'HMA, concrete, granular & Proctor data by contract', href: 'materials.html' },
                     { icon: '📐', name: 'Area & Volume', desc: 'Rectangle, triangle, trapezoid, trapezium, circle & spandrel', href: 'area.html' },
                     { icon: '🛣️', name: 'HMA Tool', desc: 'Tonnage, yield check & RICE density', href: 'hma.html' },
                 ]
