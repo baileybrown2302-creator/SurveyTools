@@ -164,6 +164,18 @@
         .hidden{display:none!important;}
         .no-materials{text-align:center;padding:32px 16px;color:var(--text-muted);font-size:0.9em;}
         input[type="checkbox"]{accent-color:var(--accent-blue);width:18px;height:18px;flex-shrink:0;cursor:pointer;}
+        /* Proctor log & correlation rows */
+        .proctor-log-card{background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+        .proctor-log-info{flex:1;min-width:0;}
+        .proctor-log-main{font-size:0.85em;font-weight:700;color:var(--text-primary);}
+        .proctor-log-meta{font-size:0.72em;color:var(--text-muted);margin-top:1px;}
+        .proctor-log-actions{display:flex;gap:6px;flex-shrink:0;}
+        .corr-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;align-items:end;margin-bottom:8px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:8px 10px;}
+        .corr-row .field-group{margin-bottom:0;}
+        .corr-row-notes{grid-column:1/-1;margin-bottom:0;}
+        .btn-icon{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:4px 6px;border-radius:6px;flex-shrink:0;}
+        .btn-icon:hover{background:var(--bg-tertiary);}
+        .gran-toggle-header{user-select:none;}
     </style>
 </head>
 <body>
@@ -280,7 +292,11 @@
             <div class="section-divider">Material Info</div>
             <div class="field-group"><label class="label">Material Name</label><input class="input" type="text" id="gran_name" placeholder="e.g., 21A Aggregate Base"></div>
             <div class="field-group"><label class="label">Source / Pit</label><input class="input" type="text" id="gran_source" placeholder="e.g., Luck Stone — Bealeton"></div>
-            <div class="section-divider">Proctor Data — AASHTO T180</div>
+            <div class="section-divider">Proctor Data (T108)</div>
+            <div class="two-col">
+                <div class="field-group"><label class="label">T108 Test No.</label><input class="input" type="text" id="gran_proctorTestNo" placeholder="e.g., T108-2024-01"></div>
+                <div class="field-group"><label class="label">Test Date</label><input class="input" type="date" id="gran_proctorDate"></div>
+            </div>
             <div class="two-col">
                 <div class="field-group"><label class="label">Max Dry Density (pcf)</label><input class="input" type="number" inputmode="decimal" id="gran_mdd" placeholder="e.g., 132.5" step="0.1"></div>
                 <div class="field-group"><label class="label">Optimum Moisture (%)</label><input class="input" type="number" inputmode="decimal" id="gran_omc" placeholder="e.g., 7.2" step="0.01"></div>
@@ -290,6 +306,22 @@
                 <div class="field-group"><label class="label">Corrected OMC (%) <span class="optional">(opt)</span></label><input class="input" type="number" inputmode="decimal" id="gran_omc_corr" placeholder="if applicable" step="0.01"></div>
             </div>
             <div class="field-group"><label class="label">Description <span class="optional">(optional)</span></label><textarea class="textarea-input" id="gran_desc" placeholder="Material description, gradation notes, color, etc."></textarea></div>
+            <!-- Proctor Test Log -->
+            <div class="section-divider gran-toggle-header" onclick="toggleGranSection('proctorLog')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>Proctor Test Log (T108)</span><span id="proctorLogToggle" style="font-size:1.1em;">▸</span>
+            </div>
+            <div id="gran_proctorLogSection" class="hidden">
+                <div id="gran_proctorLog"></div>
+                <button class="btn btn-secondary btn-small" style="margin-top:8px;width:100%;" onclick="addProctorToLog()">+ Save Current Values to Log</button>
+            </div>
+            <!-- Gauge Correlations -->
+            <div class="section-divider gran-toggle-header" onclick="toggleGranSection('corrList')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;">
+                <span>Gauge Correlations</span><span id="corrListToggle" style="font-size:1.1em;">▸</span>
+            </div>
+            <div id="gran_corrListSection" class="hidden">
+                <div id="gran_corrList"></div>
+                <button class="btn btn-secondary btn-small" style="margin-top:8px;width:100%;" onclick="addCorrelationRow()">+ Add Correlation</button>
+            </div>
         </div>
         <!-- Other -->
         <div id="fields_Other" class="hidden">
@@ -392,6 +424,8 @@ let currentCat='all';
 let editingMaterialId=null;
 let editingContractId=null;
 let pendingImportData=null; // holds parsed import JSON
+let _editProctors=[];     // in-modal proctor log state
+let _editCorrelations=[]; // in-modal gauge correlations state
 
 async function loadData(){
     const contracts=await ftGetAllMaterials();
@@ -615,16 +649,23 @@ function renderMaterialBody(m){
         <div><div class="data-label">f'c</div><div class="data-value">${m.conc_fc!=null?m.conc_fc+' psi':'—'}</div></div>
         ${m.conc_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.conc_notes)}</div></div>`:''}
     </div>`;
-    if(m.category==='Granular')return`<div class="data-grid">
+    if(m.category==='Granular'){
+        const pLog=m.gran_proctors||[];const cLog=m.gran_correlations||[];
+        return`<div class="data-grid">
         <div><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.gran_name||'—')}</div></div>
         <div><div class="data-label">Source / Pit</div><div class="data-value">${escHtml(m.gran_source||'—')}</div></div>
+        ${m.gran_proctorTestNo?`<div><div class="data-label">T108 Test No.</div><div class="data-value">${escHtml(m.gran_proctorTestNo)}</div></div>`:''}
+        ${m.gran_proctorDate?`<div><div class="data-label">Test Date</div><div class="data-value">${escHtml(m.gran_proctorDate)}</div></div>`:''}
         <div><div class="data-label">Max Dry Density</div><div class="data-value">${m.gran_mdd!=null?m.gran_mdd+' pcf':'—'}</div></div>
         <div><div class="data-label">Opt. Moisture</div><div class="data-value">${m.gran_omc!=null?m.gran_omc+'%':'—'}</div></div>
         ${m.gran_mdd_corr!=null?`<div><div class="data-label">Corrected MDD</div><div class="data-value">${m.gran_mdd_corr} pcf</div></div>`:''}
         ${m.gran_omc_corr!=null?`<div><div class="data-label">Corrected OMC</div><div class="data-value">${m.gran_omc_corr}%</div></div>`:''}
-        <div class="data-full"><div class="data-label">Test Method</div><div class="data-value">AASHTO T180 (Modified Proctor)</div></div>
+        <div class="data-full"><div class="data-label">Test Method</div><div class="data-value">AASHTO T108 (Modified Proctor)</div></div>
+        ${pLog.length?`<div class="data-full"><div class="data-label">Proctor Log</div><div class="data-value">${pLog.length} test${pLog.length!==1?'s':''} on record</div></div>`:''}
+        ${cLog.length?`<div class="data-full"><div class="data-label">Gauge Correlations</div><div class="data-value">${cLog.length} correlation${cLog.length!==1?'s':''} saved</div></div>`:''}
         ${m.gran_desc?`<div class="data-full"><div class="data-label">Description</div><div class="description-block">${escHtml(m.gran_desc)}</div></div>`:''}
     </div>`;
+    }
     return`<div class="data-grid">
         <div><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.other_name||'—')}</div></div>
         <div><div class="data-label">Unit Weight</div><div class="data-value">${m.other_uw!=null?m.other_uw+' pcf':'—'}</div></div>
@@ -655,14 +696,21 @@ function openEditMaterial(id){
     updateModalFields();
     if(m.category==='HMA'){document.getElementById('hma_id').value=m.hma_id||'';document.getElementById('hma_density').value=m.hma_density??'';document.getElementById('hma_ac').value=m.hma_ac??'';document.getElementById('hma_notes').value=m.hma_notes||'';}
     else if(m.category==='Concrete'){document.getElementById('conc_id').value=m.conc_id||'';document.getElementById('conc_uw').value=m.conc_uw??'';document.getElementById('conc_fc').value=m.conc_fc??'';document.getElementById('conc_notes').value=m.conc_notes||'';}
-    else if(m.category==='Granular'){document.getElementById('gran_name').value=m.gran_name||'';document.getElementById('gran_source').value=m.gran_source||'';document.getElementById('gran_mdd').value=m.gran_mdd??'';document.getElementById('gran_omc').value=m.gran_omc??'';document.getElementById('gran_mdd_corr').value=m.gran_mdd_corr??'';document.getElementById('gran_omc_corr').value=m.gran_omc_corr??'';document.getElementById('gran_desc').value=m.gran_desc||'';}
+    else if(m.category==='Granular'){document.getElementById('gran_name').value=m.gran_name||'';document.getElementById('gran_source').value=m.gran_source||'';document.getElementById('gran_proctorTestNo').value=m.gran_proctorTestNo||'';document.getElementById('gran_proctorDate').value=m.gran_proctorDate||'';document.getElementById('gran_mdd').value=m.gran_mdd??'';document.getElementById('gran_omc').value=m.gran_omc??'';document.getElementById('gran_mdd_corr').value=m.gran_mdd_corr??'';document.getElementById('gran_omc_corr').value=m.gran_omc_corr??'';document.getElementById('gran_desc').value=m.gran_desc||'';_editProctors=JSON.parse(JSON.stringify(m.gran_proctors||[]));_editCorrelations=JSON.parse(JSON.stringify(m.gran_correlations||[]));renderModalProctors();renderModalCorrelations();}
     else{document.getElementById('other_name').value=m.other_name||'';document.getElementById('other_uw').value=m.other_uw??'';document.getElementById('other_notes').value=m.other_notes||'';}
     openModal('materialModal');
 }
 function clearMaterialForm(){
     ['hma_id','hma_density','hma_ac','hma_notes','conc_id','conc_uw','conc_fc','conc_notes',
-     'gran_name','gran_source','gran_mdd','gran_omc','gran_mdd_corr','gran_omc_corr','gran_desc',
+     'gran_name','gran_source','gran_proctorTestNo','gran_proctorDate','gran_mdd','gran_omc','gran_mdd_corr','gran_omc_corr','gran_desc',
      'other_name','other_uw','other_notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    _editProctors=[];_editCorrelations=[];
+    // Collapse toggle sections
+    ['proctorLog','corrList'].forEach(k=>{
+        const s=document.getElementById('gran_'+k+'Section');if(s)s.classList.add('hidden');
+        const t=document.getElementById(k+'Toggle');if(t)t.textContent='▸';
+    });
+    renderModalProctors();renderModalCorrelations();
 }
 async function saveMaterial(){
     const cat=document.getElementById('mm_cat').value;
@@ -671,7 +719,7 @@ async function saveMaterial(){
     let m={id:editingMaterialId||uid(),category:cat};
     if(cat==='HMA'){const id=document.getElementById('hma_id').value.trim();if(!id){alert('Enter a mix design ID.');return;}m.hma_id=id;m.hma_density=parseNum('hma_density');m.hma_ac=parseNum('hma_ac');m.hma_notes=document.getElementById('hma_notes').value.trim();}
     else if(cat==='Concrete'){const id=document.getElementById('conc_id').value.trim();if(!id){alert('Enter a mix design ID.');return;}m.conc_id=id;m.conc_uw=parseNum('conc_uw');m.conc_fc=parseNum('conc_fc');m.conc_notes=document.getElementById('conc_notes').value.trim();}
-    else if(cat==='Granular'){const name=document.getElementById('gran_name').value.trim();if(!name){alert('Enter a material name.');return;}m.gran_name=name;m.gran_source=document.getElementById('gran_source').value.trim();m.gran_mdd=parseNum('gran_mdd');m.gran_omc=parseNum('gran_omc');m.gran_mdd_corr=parseNum('gran_mdd_corr');m.gran_omc_corr=parseNum('gran_omc_corr');m.gran_desc=document.getElementById('gran_desc').value.trim();}
+    else if(cat==='Granular'){const name=document.getElementById('gran_name').value.trim();if(!name){alert('Enter a material name.');return;}m.gran_name=name;m.gran_source=document.getElementById('gran_source').value.trim();m.gran_proctorTestNo=document.getElementById('gran_proctorTestNo').value.trim();m.gran_proctorDate=document.getElementById('gran_proctorDate').value;m.gran_mdd=parseNum('gran_mdd');m.gran_omc=parseNum('gran_omc');m.gran_mdd_corr=parseNum('gran_mdd_corr');m.gran_omc_corr=parseNum('gran_omc_corr');m.gran_desc=document.getElementById('gran_desc').value.trim();m.gran_proctors=_editProctors;m.gran_correlations=_editCorrelations;}
     else{const name=document.getElementById('other_name').value.trim();if(!name){alert('Enter a material name.');return;}m.other_name=name;m.other_uw=parseNum('other_uw');m.other_notes=document.getElementById('other_notes').value.trim();}
     if(editingMaterialId){const idx=c.materials.findIndex(x=>x.id===editingMaterialId);if(idx>=0)c.materials[idx]=m;}
     else c.materials.push(m);
@@ -681,6 +729,109 @@ function deleteMaterial(id){
     const c=getContract(currentContractId);
     const m=c.materials.find(x=>x.id===id);
     showConfirm(`Delete ${escHtml(getMaterialTitle(m))}?`,'This cannot be undone.','Delete',async ()=>{c.materials=c.materials.filter(x=>x.id!==id);await saveData();renderMaterials();});
+}
+
+// ── Proctor Log & Gauge Correlations ───────────────────
+function toggleGranSection(key){
+    const sec=document.getElementById('gran_'+key+'Section');
+    const tog=document.getElementById(key+'Toggle');
+    if(!sec)return;
+    const hidden=sec.classList.toggle('hidden');
+    if(tog)tog.textContent=hidden?'▸':'▾';
+}
+
+function renderModalProctors(){
+    const el=document.getElementById('gran_proctorLog');
+    if(!el)return;
+    if(!_editProctors.length){el.innerHTML='<div style="font-size:0.8em;color:var(--text-muted);padding:6px 0;">No proctor tests logged yet.</div>';return;}
+    el.innerHTML=_editProctors.map((p,i)=>`
+        <div class="proctor-log-card">
+            <div class="proctor-log-info">
+                <div class="proctor-log-main">${escHtml(p.testNo||'No test no.')} &nbsp;·&nbsp; ${escHtml(p.date||'No date')}</div>
+                <div class="proctor-log-meta">MDD: ${p.mdd!=null?p.mdd+' pcf':'—'} &nbsp;|&nbsp; OMC: ${p.omc!=null?p.omc+'%':'—'}${p.mdd_corr!=null?' &nbsp;|&nbsp; Corr MDD: '+p.mdd_corr+' pcf':''}${p.notes?'<br>'+escHtml(p.notes):''}</div>
+            </div>
+            <div class="proctor-log-actions">
+                <button class="btn btn-secondary btn-small" onclick="useProctorEntry('${escHtml(p.id)}')">↑ Use</button>
+                <button class="btn-icon" title="Remove" onclick="removeProctorEntry('${escHtml(p.id)}')">✕</button>
+            </div>
+        </div>`).join('');
+}
+
+function addProctorToLog(){
+    const mdd=parseFloat(document.getElementById('gran_mdd').value);
+    const omc=parseFloat(document.getElementById('gran_omc').value);
+    if(isNaN(mdd)&&isNaN(omc)){alert('Enter at least MDD or OMC before saving to log.');return;}
+    const entry={
+        id:uid(),
+        testNo:document.getElementById('gran_proctorTestNo').value.trim(),
+        date:document.getElementById('gran_proctorDate').value,
+        mdd:isNaN(mdd)?null:mdd,
+        omc:isNaN(omc)?null:omc,
+        mdd_corr:parseFloat(document.getElementById('gran_mdd_corr').value)||null,
+        omc_corr:parseFloat(document.getElementById('gran_omc_corr').value)||null,
+        notes:''
+    };
+    _editProctors.unshift(entry); // most recent first
+    // Ensure section is open
+    const sec=document.getElementById('gran_proctorLogSection');if(sec)sec.classList.remove('hidden');
+    const tog=document.getElementById('proctorLogToggle');if(tog)tog.textContent='▾';
+    renderModalProctors();
+}
+
+function removeProctorEntry(id){
+    _editProctors=_editProctors.filter(p=>p.id!==id);
+    renderModalProctors();
+}
+
+function useProctorEntry(id){
+    const p=_editProctors.find(x=>x.id===id);
+    if(!p)return;
+    if(p.testNo)document.getElementById('gran_proctorTestNo').value=p.testNo;
+    if(p.date)document.getElementById('gran_proctorDate').value=p.date;
+    if(p.mdd!=null)document.getElementById('gran_mdd').value=p.mdd;
+    if(p.omc!=null)document.getElementById('gran_omc').value=p.omc;
+    if(p.mdd_corr!=null)document.getElementById('gran_mdd_corr').value=p.mdd_corr;
+    if(p.omc_corr!=null)document.getElementById('gran_omc_corr').value=p.omc_corr;
+}
+
+function renderModalCorrelations(){
+    const el=document.getElementById('gran_corrList');
+    if(!el)return;
+    if(!_editCorrelations.length){el.innerHTML='<div style="font-size:0.8em;color:var(--text-muted);padding:6px 0;">No correlations saved. Add one below.</div>';return;}
+    el.innerHTML=_editCorrelations.map((c,i)=>`
+        <div class="corr-row">
+            <div class="field-group"><label class="label" style="font-size:0.7em;">Gauge No.</label><input class="input" type="text" value="${escHtml(c.gaugeNo||'')}" placeholder="e.g. 12345A" data-cid="${escHtml(c.id)}" data-field="gaugeNo" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
+            <div class="field-group"><label class="label" style="font-size:0.7em;">Date</label><input class="input" type="date" value="${escHtml(c.date||'')}" data-cid="${escHtml(c.id)}" data-field="date" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
+            <div class="field-group"><label class="label" style="font-size:0.7em;">Moisture Offset (MCF)</label><input class="input" type="number" step="0.01" value="${c.moistureOffset??''}" placeholder="e.g. 0.00" data-cid="${escHtml(c.id)}" data-field="moistureOffset" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
+            <div class="field-group"><label class="label" style="font-size:0.7em;">WD Offset</label><input class="input" type="number" step="0.01" value="${c.wetDensityOffset??''}" placeholder="e.g. 0.00" data-cid="${escHtml(c.id)}" data-field="wetDensityOffset" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
+            <button class="btn-icon" title="Remove" onclick="removeCorrelationRow('${escHtml(c.id)}')">✕</button>
+            <div class="field-group corr-row-notes"><label class="label" style="font-size:0.7em;">Notes (optional)</label><input class="input" type="text" value="${escHtml(c.notes||'')}" placeholder="e.g. Before re-correlation" data-cid="${escHtml(c.id)}" data-field="notes" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
+        </div>`).join('');
+}
+
+function syncCorrelationRow(input){
+    const cid=input.dataset.cid;
+    const field=input.dataset.field;
+    const corr=_editCorrelations.find(c=>c.id===cid);
+    if(!corr)return;
+    if(field==='moistureOffset'||field==='wetDensityOffset'){
+        const v=parseFloat(input.value);corr[field]=isNaN(v)?null:v;
+    } else {
+        corr[field]=input.value;
+    }
+}
+
+function addCorrelationRow(){
+    _editCorrelations.push({id:uid(),gaugeNo:'',date:'',moistureOffset:null,wetDensityOffset:null,notes:''});
+    // Ensure section is open
+    const sec=document.getElementById('gran_corrListSection');if(sec)sec.classList.remove('hidden');
+    const tog=document.getElementById('corrListToggle');if(tog)tog.textContent='▾';
+    renderModalCorrelations();
+}
+
+function removeCorrelationRow(id){
+    _editCorrelations=_editCorrelations.filter(c=>c.id!==id);
+    renderModalCorrelations();
 }
 
 // ── Export Chooser ─────────────────────────────────────

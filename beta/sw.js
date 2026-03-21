@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v6';
+const CACHE_NAME = 'survey-tool-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,9 @@ const ASSETS = [
   './area.html',
   './hma.html',
   './manifest.json',
-  './icon.png'
+  './icon.png',
+  './controlpoints.html',
+  './csvconverter.html'
 ];
 
 // Install: cache all assets
@@ -27,11 +29,11 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: HTML files = network-first (always fresh); everything else = cache-first
+// Fetch: HTML + db.js = network-first (always fresh); everything else = cache-first
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
-  const isHtml = req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
+  const isHtml = req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/') || url.pathname.endsWith('db.js');
   if (isHtml) {
     // Network-first for HTML so updates are always picked up
     event.respondWith(

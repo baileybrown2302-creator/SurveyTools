@@ -2,7 +2,7 @@
 'use strict';
 
 const FT_DB_NAME = 'FieldToolsDB';
-const FT_DB_VERSION = 2;
+const FT_DB_VERSION = 5;
 let _dbPromise = null;
 
 function ftOpenDB() {
@@ -70,8 +70,30 @@ function ftOpenDB() {
         s.createIndex('projectId', 'projectId');
         s.createIndex('created', 'created');
       }
+      // Soil Compaction Tests (T103G) — NDOT 040-047
+      if (!db.objectStoreNames.contains('soilTests')) {
+        const s = db.createObjectStore('soilTests', { keyPath: 'id' });
+        s.createIndex('projectId', 'projectId');
+        s.createIndex('created', 'created');
+      }
+      // Control Point Projects
+      if (!db.objectStoreNames.contains('controlProjects')) {
+        const s = db.createObjectStore('controlProjects', { keyPath: 'id' });
+        s.createIndex('created', 'created');
+      }
+      // Control Points
+      if (!db.objectStoreNames.contains('controlPoints')) {
+        const s = db.createObjectStore('controlPoints', { keyPath: 'id' });
+        s.createIndex('projectId', 'projectId');
+        s.createIndex('status', 'status');
+      }
     };
-    req.onsuccess = e => resolve(e.target.result);
+    req.onsuccess = e => {
+      const db = e.target.result;
+      // Allow future version upgrades to proceed without being blocked
+      db.onversionchange = () => { db.close(); _dbPromise = null; };
+      resolve(db);
+    };
     req.onerror = e => { _dbPromise = null; reject(e.target.error); };
     req.onblocked = () => { _dbPromise = null; reject(new Error('DB blocked — close other tabs and reload.')); };
   });
@@ -211,12 +233,32 @@ async function ftSaveCompactionTest(rec) { return ftPut('compactionTests', rec);
 async function ftDeleteCompactionTest(id) { return ftDelete('compactionTests', id); }
 async function ftGetCompactionTestsByProject(projectId) { return ftGetByIndex('compactionTests', 'projectId', projectId); }
 
+// --- Soil Compaction Tests (T103G) ---
+async function ftGetAllSoilTests() { return ftGetAll('soilTests'); }
+async function ftGetSoilTest(id) { return ftGet('soilTests', id); }
+async function ftSaveSoilTest(rec) { return ftPut('soilTests', rec); }
+async function ftDeleteSoilTest(id) { return ftDelete('soilTests', id); }
+async function ftGetSoilTestsByProject(projectId) { return ftGetByIndex('soilTests', 'projectId', projectId); }
+
 // --- Area totals ---
 async function ftGetAreaTotals() { return ftGetAll('areaTotals'); }
 async function ftSaveAreaTotals(arr) {
   await ftClear('areaTotals');
   for (const item of arr) await ftPut('areaTotals', item);
 }
+
+// --- Control Point Projects ---
+async function ftGetAllControlProjects() { return ftGetAll('controlProjects'); }
+async function ftGetControlProject(id) { return ftGet('controlProjects', id); }
+async function ftSaveControlProject(proj) { return ftPut('controlProjects', proj); }
+async function ftDeleteControlProject(id) { return ftDelete('controlProjects', id); }
+
+// --- Control Points ---
+async function ftGetControlPointsByProject(projectId) { return ftGetByIndex('controlPoints', 'projectId', projectId); }
+async function ftGetControlPoint(id) { return ftGet('controlPoints', id); }
+async function ftSaveControlPoint(pt) { return ftPut('controlPoints', pt); }
+async function ftDeleteControlPoint(id) { return ftDelete('controlPoints', id); }
+async function ftDeleteControlPointsForProject(projectId) { return ftDeleteByIndex('controlPoints', 'projectId', projectId); }
 
 // --- Stake session context (navigation) ---
 async function ftGetStakeContext() { return ftGet('stakeContext', 'active'); }

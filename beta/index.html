@@ -158,7 +158,7 @@
                 <span class="section-icon">📡</span>
                 <div class="section-info">
                     <div class="section-name">Survey Tools</div>
-                    <div class="section-count">Leveling · Slope Staking</div>
+                    <div class="section-count">Leveling · Slope Staking · Control Points · CSV Converter</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -174,7 +174,7 @@
                 <span class="section-icon">🧪</span>
                 <div class="section-info">
                     <div class="section-name">Testing Tools</div>
-                    <div class="section-count">Thinlift Compaction (T335)</div>
+                    <div class="section-count">Thinlift Compaction (T335) · Soil Compaction (T103G)</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -182,11 +182,24 @@
 
         <!-- Footer + changelog -->
         <div class="home-footer">
-            <div class="footer-meta">Last updated Mar 19, 2026</div>
+            <div class="footer-meta">Last updated Mar 20, 2026</div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 20, 2026</div>
+                    <div class="cl-title">Soil Compaction Test (T103G)</div>
+                    <ul class="cl-items">
+                        <li>Nuclear gauge compaction report replacing NDOT form 040-047</li>
+                        <li>Automatic 6% rule check for density &amp; moisture counts — reveals extra reading inputs when exceeded</li>
+                        <li>Proctor reference linked from Materials Manager (Granular) or manual entry</li>
+                        <li>Dry density calculations per reading pair, average dry density &amp; % compaction</li>
+                        <li>ACCEPTED / REJECTED verdict with configurable minimum % compaction</li>
+                        <li>Auto-save with project linking and test code parsing</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 2026</div>
@@ -296,6 +309,8 @@
                 tools: [
                     { icon: '🔭', name: 'Differential Leveling', desc: 'Level loops, stadia, misclosure & accuracy', href: 'leveling_home.html' },
                     { icon: '📍', name: 'Slope Staking', desc: 'Catch point, cut/fill, iterative field workflow', href: 'slope_stake_home.html' },
+                    { icon: '🗺️', name: 'Control Points', desc: 'Location control sheet — monument status tracking', href: 'controlpoints.html' },
+                    { icon: '🔄', name: 'CSV Converter', desc: 'LOIS LPN CSV → GRID & GNSS output files', href: 'csvconverter.html' },
                 ]
             },
             inspection: {
@@ -309,6 +324,7 @@
                 title: 'Testing Tools',
                 tools: [
                     { icon: '🔬', name: 'Thinlift Compaction', desc: 'Nuclear density — T335 random-location test', href: 'thinlift.html' },
+                    { icon: '🪨', name: 'Soil Compaction', desc: 'T103G — Nuclear gauge compaction report — NDOT 040-007', href: 'soilcompaction.html' },
                 ]
             }
         };

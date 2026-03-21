@@ -221,6 +221,10 @@
             <input type="text" class="input" id="projNumber" placeholder="e.g. P-2024-001" autocomplete="off">
         </div>
         <div class="field-group">
+            <label class="label" for="projName">Project Name</label>
+            <input type="text" class="input" id="projName" placeholder="e.g. Reno Airport Widening" autocomplete="off">
+        </div>
+        <div class="field-group">
             <label class="label" for="projContract">Contract Number</label>
             <input type="text" class="input" id="projContract" placeholder="e.g. 2024-C-015" autocomplete="off">
         </div>
@@ -359,7 +363,7 @@ async function renderProjectList() {
     let projects = allProjects.filter(p => {
         if (!showArchived && p.archived) return false;
         if (searchVal) {
-            const haystack = [p.projectNumber, p.contractNumber, p.contractor, p.route, p.description].join(' ').toLowerCase();
+            const haystack = [p.projectNumber, p.name, p.contractNumber, p.contractor, p.route, p.description].join(' ').toLowerCase();
             return haystack.includes(searchVal);
         }
         return true;
@@ -399,7 +403,7 @@ async function renderProjectList() {
 
         return `<div class="project-card" style="${p.archived ? 'opacity:0.65;' : ''}">
             <div class="project-card-body" onclick="openDetailView('${escHtml(p.id)}')">
-                <div class="project-number">${escHtml(p.projectNumber || '(No Project Number)')}</div>
+                <div class="project-number">${escHtml(p.projectNumber || '(No Project Number)')}${p.name ? ' — ' + escHtml(p.name) : ''}</div>
                 ${p.contractNumber ? `<div class="project-contract">Contract: ${escHtml(p.contractNumber)}</div>` : ''}
                 <div class="project-row2">
                     ${p.route ? `<span class="route-label">${escHtml(p.route)}</span>` : ''}
@@ -429,7 +433,7 @@ async function openDetailView(projectId) {
     if (!proj) return;
 
     document.getElementById('detailTitle').textContent = proj.projectNumber || 'Project';
-    document.getElementById('detailProjectNumber').textContent = proj.projectNumber || '(No Project Number)';
+    document.getElementById('detailProjectNumber').textContent = (proj.projectNumber || '(No Project Number)') + (proj.name ? ' — ' + proj.name : '');
     document.getElementById('detailContractNumber').textContent = proj.contractNumber ? 'Contract: ' + proj.contractNumber : '';
     document.getElementById('detailFunding').textContent = proj.fundingSource || '—';
     document.getElementById('detailContractor').textContent = proj.contractor || '—';
@@ -591,6 +595,7 @@ async function openProjectModal(projectId) {
         const p = allProjects.find(p => p.id === projectId);
         document.getElementById('projectModalTitle').textContent = 'Edit Project';
         document.getElementById('projNumber').value = p ? (p.projectNumber || '') : '';
+        document.getElementById('projName').value = p ? (p.name || '') : '';
         document.getElementById('projContract').value = p ? (p.contractNumber || '') : '';
         document.getElementById('projFunding').value = p ? (p.fundingSource || '') : '';
         document.getElementById('projContractor').value = p ? (p.contractor || '') : '';
@@ -599,7 +604,7 @@ async function openProjectModal(projectId) {
         existingCreated = p ? p.created : null;
     } else {
         document.getElementById('projectModalTitle').textContent = 'New Project';
-        ['projNumber','projContract','projContractor','projRoute','projDesc'].forEach(id => document.getElementById(id).value = '');
+        ['projNumber','projName','projContract','projContractor','projRoute','projDesc'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('projFunding').value = '';
         existingCreated = null;
     }
@@ -614,6 +619,7 @@ async function saveProject() {
     const proj = {
         id,
         projectNumber: projNum,
+        name: document.getElementById('projName').value.trim(),
         contractNumber: document.getElementById('projContract').value.trim(),
         fundingSource: document.getElementById('projFunding').value,
         contractor: document.getElementById('projContractor').value.trim(),

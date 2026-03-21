@@ -1729,7 +1729,7 @@ async function loadRecordList() {
         const cur = sel.value;
         sel.innerHTML = '<option value="">— All Tests (no project filter) —</option>' +
             _allProjects.filter(p => !p.archived).map(p =>
-                `<option value="${escHtml(p.id)}">${escHtml(p.projectNumber || p.id)}${p.contractNumber ? ' — ' + p.contractNumber : ''}</option>`
+                `<option value="${escHtml(p.id)}">${escHtml((p.contractNumber || p.projectNumber || p.id) + (p.name ? ': ' + p.name : ''))}</option>`
             ).join('');
         if (_selectedProjectId) sel.value = _selectedProjectId;
     }

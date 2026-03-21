@@ -567,6 +567,7 @@ rodTypeSelect.addEventListener('change',(e)=>{if(e.target.value==='Other'){rodTy
 // IDB State persistence — active loop ID and project ID resolved from ACTIVE_LOOP_KEY setting
 let _activeLoopId = null;
 let _activeProjectId = null;
+let _cpNames = []; // [{name, elevation}] for current project's control points
 
 async function saveStateToLocalStorage(){
     let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;
@@ -576,6 +577,22 @@ async function saveStateToLocalStorage(){
         await ftSaveLevelLoop({...state, id: loopId, projectId: _activeProjectId || null});
         await ftSaveLevelLoop({...state, id: 'legacy', projectId: _activeProjectId || null});
     }catch(e){}
+}
+async function refreshCPNames() {
+    if (!_activeProjectId) { _cpNames = []; return; }
+    try {
+        const pts = await ftGetControlPointsByProject(_activeProjectId);
+        _cpNames = pts.filter(p => p.name && p.name.trim()).map(p => ({ name: p.name.trim(), elevation: p.elevation ?? null }));
+    } catch (e) { _cpNames = []; }
+}
+function injectCPDatalist(container, inputId) {
+    if (!_cpNames.length) return;
+    const listId = 'cpDatalistLevel';
+    let dl = document.getElementById(listId);
+    if (!dl) { dl = document.createElement('datalist'); dl.id = listId; document.body.appendChild(dl); }
+    dl.innerHTML = _cpNames.map(p => `<option value="${p.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"></option>`).join('');
+    const inp = container.querySelector(`#${inputId}`);
+    if (inp) inp.setAttribute('list', listId);
 }
 async function loadStateFromLocalStorage(){
     // Resolve active loop from settings
@@ -593,6 +610,7 @@ async function loadStateFromLocalStorage(){
     levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});
     levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){}}
     if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
+    refreshCPNames();
 }
 // Core calcs
 function calculatePointStadia(row){if(row.isVoid)return null;if(row.type==='TP_FS'||row.type==='CLOSING_FS'){const b=row.bsDistForM5,f=row.fsDist;if(b!=null&&f!=null){const bn=parseFloat(b),fn=parseFloat(f);if(!isNaN(bn)&&!isNaN(fn))return bn-fn;}}return null;}
@@ -1080,7 +1098,7 @@ function handleAddIP(){if(!activeSetupData)return;
     const ipRemarks=isDiNi?`${baseRemarks} [Rod: ${formatNumber(diNiRodReading)}]`:baseRemarks;
     const irid=`ip-${Date.now()}`;levelRows.push({id:irid,pointName:data.ipName,ifs:fir,hi:activeSetupData.hi,elevation:ie,ifsDist:fid,bsDist:null,fsDist:null,remarks:ipRemarks,pointCode:data.ipCode||'',type:'IP',pointStadia:null,isVoid:false,isDiNiLineLeveling:isDiNi,diNiRodReading:diNiRodReading});
     activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();
-    setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');
+    setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');injectCPDatalist(mfc,'ipName');
     // Update label when DiNi checkbox changes
     const cb=mfc.querySelector('#isDiNiLL');const lbl=mfc.querySelector('label[for="ifsReading"]');
     if(cb&&lbl){cb.addEventListener('change',()=>{if(cb.checked)lbl.textContent=`Delta from ${activeSetupData.prevPointName} (Elev: ${formatNumber(activeSetupData.prevPointElevation)} ${projectDetails.units}):`;else lbl.textContent=`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`;});}
@@ -1099,7 +1117,8 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
     levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
     if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
     activeSetupData=null;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
-    // Auto-fill closing BM from starting BM
+    injectCPDatalist(mfc,'tpName');
+    // Auto-fill closing BM from starting BM; also inject CP datalist and elevation auto-fill
     const cb=mfc.querySelector('#isClosing');
     if(cb){cb.addEventListener('change',()=>{
         if(cb.checked){
@@ -1109,6 +1128,10 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
                 if(cpn&&!cpn.value)cpn.value=startBM.pointName;
                 if(cpe&&!cpe.value)cpe.value=startBM.elevation;
             }
+            // Inject CP suggestions into closing point name field and wire elevation auto-fill
+            injectCPDatalist(mfc,'closingPointName');
+            const cpn=mfc.querySelector('#closingPointName'),cpe=mfc.querySelector('#closingPointKnownElev');
+            if(cpn&&cpe){cpn.addEventListener('input',()=>{const match=_cpNames.find(p=>p.name===cpn.value);if(match&&match.elevation!==null&&!cpe.value)cpe.value=match.elevation;});}
         }
     });}
     });}
