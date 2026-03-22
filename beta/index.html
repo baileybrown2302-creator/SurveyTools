@@ -182,11 +182,26 @@
 
         <!-- Footer + changelog -->
         <div class="home-footer">
-            <div class="footer-meta">Last updated Mar 20, 2026</div>
+            <div class="footer-meta">Last updated Mar 22, 2026</div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 22, 2026</div>
+                    <div class="cl-title">Control Points — Multi-Source Observations &amp; Imports</div>
+                    <ul class="cl-items">
+                        <li>Observation history: each point now tracks N/E/Elev from multiple sources (leveling loops, LOIS CSV, CSV import, manual entry)</li>
+                        <li>Per-coordinate preference selection — independently choose which source's northing, easting, or elevation to display on the card</li>
+                        <li>LOIS CSV import: auto-detected by LPN/Scale Factor columns; filter by LPN or scale factor range; field toggles for N/E/Elev; project picker; merges into existing points by name</li>
+                        <li>Generic N/E/Elev CSV import: per-field toggles (elevation off by default for GNSS data); same merge-on-name-match logic</li>
+                        <li>Manual observation entry: "Add Observation" button in each point's editor with Source/Label, N/E/Elev, and Note</li>
+                        <li>Leveling tool: CP name suggestions on BM, IP, and TP modals; live elevation diff display when entering a known BM</li>
+                        <li>Leveling tool: IPs and custom-named TPs auto-create or update their CP record with a leveling observation after each shot</li>
+                        <li>Materials Reference: removed "Never Exported" reminder (persistent storage now active)</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 20, 2026</div>

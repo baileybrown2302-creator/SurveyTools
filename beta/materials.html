@@ -522,13 +522,6 @@ async function renderContracts(){
             <div style="color:var(--text-muted);margin-top:1px;">${dateStr} at ${timeStr}${daysSince>0?` (${daysSince} day${daysSince!==1?'s':''} ago)`:' (today)'}</div>
         </div>
         <button class="btn btn-success btn-small" onclick="openExportChooser()" style="flex-shrink:0;">Export Now</button>`;
-    } else {
-        banner.style.cssText=`margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:0.8em;border:1.5px solid var(--accent-orange);background:var(--cut-bg);display:flex;align-items:center;justify-content:space-between;gap:8px;`;
-        banner.innerHTML=`<div>
-            <div style="font-weight:700;color:var(--cut-text);">⚠️ Never exported</div>
-            <div style="color:var(--text-muted);margin-top:1px;">Export a JSON backup to protect your data</div>
-        </div>
-        <button class="btn btn-success btn-small" onclick="openExportChooser()" style="flex-shrink:0;">Export Now</button>`;
     }
     list.parentNode.insertBefore(banner,list);
 
