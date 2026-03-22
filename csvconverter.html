@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Field Tools">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <title>CSV Converter — Field Tools</title>
+  <style>
+    :root {
+      --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+      --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+      --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+      --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+      --accent-green:#22c55e;--accent-green-hover:#16a34a;
+      --accent-red:#ef4444;--accent-red-hover:#dc2626;
+      --accent-orange:#f97316;--accent-amber:#f59e0b;
+      --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+      --input-bg:#ffffff;--input-border:#d1d5db;
+      --modal-overlay:rgba(0,0,0,0.65);
+      --pass-bg:#f0fdf4;--pass-border:#86efac;--pass-text:#166534;
+      --fail-bg:#fef2f2;--fail-border:#fca5a5;--fail-text:#991b1b;
+      --warn-bg:#fffbeb;--warn-border:#fcd34d;--warn-text:#92400e;
+    }
+    [data-theme="high-contrast"] {
+      --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+      --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+      --border-primary:#333333;--border-secondary:#444444;
+      --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+      --accent-green:#4ade80;--accent-green-hover:#86efac;
+      --accent-red:#f87171;--accent-red-hover:#fca5a5;
+      --accent-orange:#fb923c;--accent-amber:#fcd34d;
+      --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+      --input-bg:#1a1a1a;--input-border:#555555;
+      --modal-overlay:rgba(0,0,0,0.85);
+      --pass-bg:#052e16;--pass-border:#166534;--pass-text:#4ade80;
+      --fail-bg:#450a0a;--fail-border:#991b1b;--fail-text:#f87171;
+      --warn-bg:#431407;--warn-border:#92400e;--warn-text:#fcd34d;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 80px;-webkit-tap-highlight-color:transparent;}
+
+    .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+    .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;cursor:pointer;}
+    .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+    .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:42px;-webkit-user-select:none;user-select:none;}
+    .btn:active{transform:scale(0.97);}
+    .btn-primary{background:var(--accent-blue);}.btn-primary:hover{background:var(--accent-blue-hover);}
+    .btn-success{background:var(--accent-green);}.btn-success:hover{background:var(--accent-green-hover);}
+    .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}.btn-secondary:hover{background:var(--border-primary);}
+    .btn-small{padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;}
+    .btn-full{width:100%;}
+
+    .content{padding:16px;}
+    .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+    .card-title{font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin-bottom:12px;}
+    .label{display:block;font-size:0.8em;font-weight:700;color:var(--text-secondary);margin-bottom:4px;}
+    .input,.select-input{display:block;width:100%;padding:10px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:0.95em;outline:none;transition:border-color 0.2s;font-family:inherit;}
+    .input:focus,.select-input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+    .input-sm{padding:8px 10px;font-size:0.88em;}
+    .field-group{margin-bottom:12px;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+    .section-divider{font-size:0.78em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:16px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--border-primary);}
+
+    /* Drop zone */
+    .drop-zone{border:2px dashed var(--border-secondary);border-radius:14px;padding:36px 20px;text-align:center;cursor:pointer;transition:all 0.2s;color:var(--text-muted);background:var(--bg-secondary);}
+    .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent-blue);background:rgba(59,130,246,0.04);}
+    .drop-zone-icon{font-size:2.5em;margin-bottom:10px;}
+    .drop-zone-title{font-size:1em;font-weight:700;color:var(--text-secondary);margin-bottom:4px;}
+    .drop-zone-sub{font-size:0.8em;}
+
+    /* Info bar */
+    .info-bar{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:12px 14px;font-size:0.85em;color:var(--text-secondary);display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+    .info-bar strong{color:var(--text-primary);}
+
+    /* LPN chips */
+    .lpn-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+    .lpn-chip{display:inline-flex;align-items:center;gap:6px;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:8px;padding:6px 12px;font-size:0.82em;font-weight:700;color:var(--text-primary);}
+    .lpn-chip .chip-count{font-size:0.8em;color:var(--text-muted);font-weight:400;}
+
+    /* Preview / results table */
+    .table-scroll{overflow-x:auto;border-radius:10px;border:1.5px solid var(--border-primary);margin-bottom:12px;}
+    .data-table{border-collapse:collapse;width:100%;font-size:0.78em;white-space:nowrap;}
+    .data-table th{background:var(--bg-tertiary);padding:7px 10px;font-weight:700;text-align:left;border-bottom:1.5px solid var(--border-primary);color:var(--text-secondary);}
+    .data-table td{padding:6px 10px;border-bottom:1px solid var(--border-primary);color:var(--text-primary);font-variant-numeric:tabular-nums;}
+    .data-table tr:last-child td{border-bottom:none;}
+    .data-table .lpn-col{font-weight:700;color:var(--accent-blue);}
+
+    /* Column mapping */
+    .col-map-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+    .col-map-item{display:flex;align-items:center;gap:8px;font-size:0.82em;}
+    .col-map-label{font-weight:700;color:var(--text-secondary);min-width:90px;}
+    .col-map-select{flex:1;padding:6px 8px;border:1.5px solid var(--input-border);border-radius:7px;background:var(--input-bg);color:var(--text-primary);font-size:0.9em;font-family:inherit;outline:none;}
+
+    /* Output summary cards */
+    .output-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+    .output-card{border:1.5px solid var(--border-primary);border-radius:10px;padding:12px;background:var(--bg-tertiary);text-align:center;}
+    .output-card-title{font-size:0.78em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:6px;}
+    .output-card-value{font-size:1.4em;font-weight:900;color:var(--text-primary);}
+    .output-card-sub{font-size:0.75em;color:var(--text-muted);margin-top:2px;}
+
+    /* Download buttons */
+    .dl-row{display:flex;gap:10px;margin-bottom:10px;}
+
+    /* LPN result table */
+    .lpn-result-table{width:100%;border-collapse:collapse;font-size:0.82em;}
+    .lpn-result-table th{text-align:left;padding:6px 10px;border-bottom:1.5px solid var(--border-primary);color:var(--text-secondary);font-weight:700;}
+    .lpn-result-table td{padding:6px 10px;border-bottom:1px solid var(--border-primary);}
+    .lpn-result-table tr:last-child td{border-bottom:none;}
+
+    /* Collapsible */
+    .collapsible-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;padding:4px 0;margin-bottom:0;}
+    .collapsible-arrow{color:var(--text-muted);transition:transform 0.2s;}
+    .collapsible-arrow.open{transform:rotate(90deg);}
+    .collapsible-body{display:none;margin-top:10px;}
+    .collapsible-body.open{display:block;}
+
+    .hidden{display:none!important;}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f2937;color:white;padding:10px 20px;border-radius:10px;font-size:0.85em;font-weight:600;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;white-space:nowrap;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    .step-label{font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent-blue);margin-bottom:6px;}
+  </style>
+</head>
+<body>
+
+<div class="top-nav">
+  <a href="index.html" class="nav-back">← Home</a>
+  <span class="nav-title">LOIS CSV Converter</span>
+  <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+</div>
+
+<div class="content">
+
+  <!-- Step 1: Upload -->
+  <div id="step1">
+    <div class="card">
+      <div class="card-title">LOIS LPN CSV → GRID &amp; GNSS Files</div>
+      <div class="drop-zone" id="dropZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleDrop(event)">
+        <div class="drop-zone-icon">📂</div>
+        <div class="drop-zone-title">Drop CSV file here</div>
+        <div class="drop-zone-sub">or tap to browse — accepts .csv, .txt</div>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.txt" style="display:none" onchange="handleSelect(event)">
+    </div>
+
+    <div class="card" style="font-size:0.82em;color:var(--text-secondary);line-height:1.6;">
+      <div class="card-title">How it works</div>
+      <div>1. Export your LPN CSV from LOIS software</div>
+      <div>2. Drop the file here — the tool splits it by LPN (Col C)</div>
+      <div>3. Download <strong>_GRID.csv</strong> (grid N/E/Elev) and <strong>_GNSS.csv</strong> (Lat/Lon/Ht) for each LPN</div>
+      <div>4. Files are bundled in a single ZIP for easy transfer</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Loaded / Column Mapping -->
+  <div id="step2" class="hidden">
+    <div class="info-bar">
+      <span>📄</span>
+      <div>
+        <strong id="s2_filename"></strong><br>
+        <span id="s2_rowcount"></span>
+      </div>
+      <button class="btn btn-secondary btn-small" onclick="resetTool()" style="margin-left:auto;">Change File</button>
+    </div>
+
+    <!-- Column Mapping (collapsible) -->
+    <div class="card">
+      <div class="collapsible-header" onclick="toggleCollapsible('colMap')">
+        <div class="card-title" style="margin-bottom:0;">Column Mapping</div>
+        <span class="collapsible-arrow" id="colMapArrow">▶</span>
+      </div>
+      <div class="collapsible-body" id="colMapBody">
+        <div style="font-size:0.78em;color:var(--text-muted);margin-bottom:10px;">
+          Auto-detected from header row. Adjust if needed (0-indexed column numbers).
+        </div>
+        <div class="col-map-grid" id="colMapGrid"></div>
+        <button class="btn btn-secondary btn-small" onclick="reprocessWithMapping()">Apply Mapping</button>
+      </div>
+    </div>
+
+    <!-- LPN Summary -->
+    <div class="card">
+      <div class="card-title">Found LPNs</div>
+      <div class="lpn-chips" id="lpnChips"></div>
+
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr id="previewHeader"></tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="generateOutputs()" style="margin-top:8px;">Generate Output Files</button>
+    </div>
+  </div>
+
+  <!-- Step 3: Downloads -->
+  <div id="step3" class="hidden">
+    <div class="info-bar">
+      <span>✅</span>
+      <div><strong id="s3_summary"></strong></div>
+      <button class="btn btn-secondary btn-small" onclick="resetTool()" style="margin-left:auto;">New File</button>
+    </div>
+
+    <!-- Per-LPN results -->
+    <div class="card">
+      <div class="card-title">Output Files</div>
+      <div class="table-scroll">
+        <table class="lpn-result-table">
+          <thead>
+            <tr><th>LPN</th><th>Rows</th><th>Scale Factor</th><th>Download</th></tr>
+          </thead>
+          <tbody id="lpnResultBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Download all -->
+    <div class="card">
+      <div class="card-title">Download All</div>
+      <div class="dl-row">
+        <button class="btn btn-success btn-full" onclick="downloadAllZip()">⬇ Download ZIP (All files)</button>
+      </div>
+      <div class="dl-row">
+        <button class="btn btn-secondary" style="flex:1" onclick="downloadAllGrid()">GRID files only</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="downloadAllGnss()">GNSS files only</button>
+      </div>
+      <div id="zipUnavailableNote" class="hidden" style="font-size:0.78em;color:var(--text-muted);margin-top:8px;">
+        ZIP library unavailable — use individual download buttons above.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.documentElement.setAttribute('data-theme', hc ? '' : 'high-contrast');
+  localStorage.setItem('ft_theme', hc ? '' : 'high-contrast');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function toggleCollapsible(id) {
+  const body = document.getElementById(id+'Body');
+  const arrow = document.getElementById(id+'Arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// ── Column config (VBA-derived, 0-indexed) ────────────────────────────────────
+// VBA: COL_A=1, COL_C=3, COL_D=4, COL_E=5, COL_F=6, COL_L=12, COL_T=20, COL_U=21, COL_V=22
+// Converted to 0-indexed:
+const DEFAULT_COLS = {
+  pointName:     0,   // Col A: Point identifier
+  lpn:           2,   // Col C: LPN (split key)
+  gridN:         3,   // Col D: Grid Northing
+  gridE:         4,   // Col E: Grid Easting
+  gridElev:      5,   // Col F: Grid Elevation
+  scaleFactor:   11,  // Col L: Scale Factor
+  geoLat:        19,  // Col T: Geodetic Latitude
+  geoLon:        20,  // Col U: Geodetic Longitude
+  geoHt:         21,  // Col V: Ellipsoid Height
+};
+const COL_LABELS = {
+  pointName: 'Point Name (Col A)',
+  lpn: 'LPN (Col C)',
+  gridN: 'Grid Northing (Col D)',
+  gridE: 'Grid Easting (Col E)',
+  gridElev: 'Grid Elevation (Col F)',
+  scaleFactor: 'Scale Factor (Col L)',
+  geoLat: 'Latitude (Col T)',
+  geoLon: 'Longitude (Col U)',
+  geoHt: 'Ellip Height (Col V)',
+};
+const HEADER_ALIASES = {
+  pointName: ['point name','name','pt name','pt','identifier','id'],
+  lpn: ['lpn','local point number','local point','lp number'],
+  gridN: ['grid north','grid n','northing','north','n','y'],
+  gridE: ['grid east','grid e','easting','east','e','x'],
+  gridElev: ['grid elev','grid elevation','elevation','elev','el','z'],
+  scaleFactor: ['scale factor','scale','sf','k'],
+  geoLat: ['latitude','lat','geodetic north','geo north','geodetic n','geo n'],
+  geoLon: ['longitude','lon','long','geodetic east','geo east','geodetic e','geo e'],
+  geoHt: ['ellipsoid height','ellip height','ellip ht','geo elev','geo elevation','h','ht'],
+};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let rawRows = [];       // all parsed CSV rows (arrays of strings)
+let headerRow = null;   // string[] header or null
+let colMap = { ...DEFAULT_COLS };
+let lpnData = {};       // { lpn: { rows:[], scaleFactor:'' } }
+let outputFiles = {};   // { lpn: { grid:'', gnss:'', parent:'' } }
+
+// ── File handling ─────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadFile(file);
+}
+function handleSelect(e) {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+}
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => parseFile(e.target.result, file.name);
+  reader.readAsText(file);
+}
+function parseFile(text, filename) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  rawRows = lines.map(csvSplitLine);
+  if (!rawRows.length) { showToast('File is empty'); return; }
+
+  // Auto-detect header row
+  const first = rawRows[0];
+  const isHeader = first.some(cell => /[a-zA-Z]/.test(cell) && isNaN(parseFloat(cell.trim())));
+  if (isHeader) {
+    headerRow = first.map(s => s.trim().toLowerCase());
+    autoDetectColumns();
+  } else {
+    headerRow = null;
+    colMap = { ...DEFAULT_COLS };
+  }
+
+  document.getElementById('s2_filename').textContent = filename;
+  document.getElementById('s2_rowcount').textContent = `${rawRows.length - (headerRow ? 1 : 0)} data rows`;
+
+  buildColMapUI();
+  processRows();
+  showStep(2);
+}
+
+function autoDetectColumns() {
+  Object.keys(colMap).forEach(field => {
+    const aliases = HEADER_ALIASES[field] || [];
+    for (let i = 0; i < headerRow.length; i++) {
+      const cell = headerRow[i];
+      if (aliases.some(a => cell.includes(a))) {
+        colMap[field] = i;
+        break;
+      }
+    }
+  });
+}
+
+function csvSplitLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur.trim());
+  return result;
+}
+
+// ── Column mapping UI ─────────────────────────────────────────────────────────
+function buildColMapUI() {
+  const dataRows = headerRow ? rawRows.slice(1) : rawRows;
+  const maxCols = Math.max(...dataRows.slice(0,5).map(r => r.length));
+  const colOptions = Array.from({length: maxCols}, (_,i) => {
+    const hint = headerRow ? ` — ${headerRow[i] || ''}` : '';
+    return `<option value="${i}">${i}${hint}</option>`;
+  }).join('');
+
+  document.getElementById('colMapGrid').innerHTML = Object.entries(COL_LABELS).map(([field, label]) => `
+    <div class="col-map-item">
+      <span class="col-map-label">${escHtml(label.split('(')[0].trim())}</span>
+      <select class="col-map-select" id="cmap_${field}">
+        <option value="-1">— not used —</option>
+        ${colOptions}
+      </select>
+    </div>`).join('');
+
+  // Set current values
+  Object.entries(colMap).forEach(([field, idx]) => {
+    const sel = document.getElementById(`cmap_${field}`);
+    if (sel) sel.value = idx;
+  });
+}
+
+function reprocessWithMapping() {
+  Object.keys(colMap).forEach(field => {
+    const sel = document.getElementById(`cmap_${field}`);
+    if (sel) colMap[field] = parseInt(sel.value, 10);
+  });
+  processRows();
+  showToast('Column mapping applied');
+}
+
+// ── Process rows → LPN groups ─────────────────────────────────────────────────
+function processRows() {
+  const dataRows = (headerRow ? rawRows.slice(1) : rawRows).filter(r => r.some(c=>c));
+  lpnData = {};
+
+  dataRows.forEach(row => {
+    const lpn = get(row, colMap.lpn) || 'UNKNOWN';
+    if (!lpnData[lpn]) lpnData[lpn] = { rows: [], scaleFactor: '' };
+    lpnData[lpn].rows.push(row);
+    if (!lpnData[lpn].scaleFactor) {
+      const sf = get(row, colMap.scaleFactor);
+      if (sf) lpnData[lpn].scaleFactor = sf;
+    }
+  });
+
+  renderLpnChips();
+  renderPreviewTable(dataRows);
+}
+
+function get(row, idx) {
+  if (idx < 0 || idx >= row.length) return '';
+  return row[idx] || '';
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderLpnChips() {
+  const lpns = Object.keys(lpnData).sort();
+  document.getElementById('lpnChips').innerHTML = lpns.map(lpn => `
+    <div class="lpn-chip">${escHtml(lpn)}<span class="chip-count">${lpnData[lpn].rows.length} rows</span></div>
+  `).join('');
+}
+
+function renderPreviewTable(dataRows) {
+  const previewRows = dataRows.slice(0, 8);
+  const fieldKeys = Object.keys(colMap).filter(f => colMap[f] >= 0);
+  const fieldLabels = {
+    pointName:'Name', lpn:'LPN', gridN:'Grid N', gridE:'Grid E', gridElev:'Grid Elev',
+    scaleFactor:'Scale', geoLat:'Lat', geoLon:'Lon', geoHt:'Ellip Ht'
+  };
+
+  document.getElementById('previewHeader').innerHTML =
+    fieldKeys.map(f => `<th${f==='lpn'?' class="lpn-col"':''}>${fieldLabels[f]||f}</th>`).join('');
+
+  document.getElementById('previewBody').innerHTML = previewRows.map(row => `
+    <tr>${fieldKeys.map(f => {
+      const val = get(row, colMap[f]);
+      return `<td${f==='lpn'?' class="lpn-col"':''}>${escHtml(val)}</td>`;
+    }).join('')}</tr>`).join('');
+}
+
+// ── Generate output files ─────────────────────────────────────────────────────
+function fmt15(val) {
+  if (val === '' || val == null) return '';
+  const n = parseFloat(val);
+  if (isNaN(n)) return val; // pass through non-numeric as-is
+  // Format with up to 15 significant decimal places, trim trailing zeros
+  let s = n.toFixed(15);
+  // Remove trailing zeros after decimal point (but keep at least one decimal place)
+  s = s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '.0');
+  return s;
+}
+
+function buildGridCsv(rows) {
+  const lines = rows.map(row => {
+    const name = get(row, colMap.pointName);
+    const n    = fmt15(get(row, colMap.gridN));
+    const e    = fmt15(get(row, colMap.gridE));
+    const elev = fmt15(get(row, colMap.gridElev));
+    return [name, n, e, elev].join(',');
+  });
+  return lines.join('\r\n');
+}
+
+function buildGnssCsv(rows) {
+  const lines = rows.map(row => {
+    const name = get(row, colMap.pointName) + '_GNSS';
+    const lat  = fmt15(get(row, colMap.geoLat));
+    const lon  = fmt15(get(row, colMap.geoLon));
+    const ht   = fmt15(get(row, colMap.geoHt));
+    return [name, lat, lon, ht].join(',');
+  });
+  return lines.join('\r\n');
+}
+
+function buildParentCsv(rows) {
+  const lines = rows.map(row => row.join(','));
+  if (headerRow) lines.unshift(headerRow.join(','));
+  return lines.join('\r\n');
+}
+
+function generateOutputs() {
+  const lpns = Object.keys(lpnData);
+  if (!lpns.length) { showToast('No LPN data found'); return; }
+
+  outputFiles = {};
+  lpns.forEach(lpn => {
+    const { rows, scaleFactor } = lpnData[lpn];
+    outputFiles[lpn] = {
+      grid: buildGridCsv(rows),
+      gnss: buildGnssCsv(rows),
+      parent: buildParentCsv(rows),
+      scaleFactor,
+      rowCount: rows.length,
+    };
+  });
+
+  renderOutputStep(lpns);
+  showStep(3);
+}
+
+function renderOutputStep(lpns) {
+  document.getElementById('s3_summary').textContent =
+    `${lpns.length} LPN${lpns.length!==1?'s':''} → ${lpns.length*2} output files`;
+
+  document.getElementById('lpnResultBody').innerHTML = lpns.map(lpn => {
+    const { rowCount, scaleFactor } = outputFiles[lpn];
+    return `<tr>
+      <td style="font-weight:700;color:var(--accent-blue)">${escHtml(lpn)}</td>
+      <td>${rowCount}</td>
+      <td>${escHtml(scaleFactor||'—')}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-secondary btn-small" onclick="downloadSingle('${escHtml(lpn)}','grid')">GRID</button>
+        <button class="btn btn-secondary btn-small" style="margin-left:4px;" onclick="downloadSingle('${escHtml(lpn)}','gnss')">GNSS</button>
+        <button class="btn btn-secondary btn-small" style="margin-left:4px;" onclick="downloadSingle('${escHtml(lpn)}','parent')">Full</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Download helpers ──────────────────────────────────────────────────────────
+function downloadBlob(filename, text) {
+  const blob = new Blob([text], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadSingle(lpn, type) {
+  const f = outputFiles[lpn];
+  if (!f) return;
+  if (type === 'grid')   downloadBlob(`${lpn}_GRID.csv`, f.grid);
+  if (type === 'gnss')   downloadBlob(`${lpn}_GNSS.csv`, f.gnss);
+  if (type === 'parent') downloadBlob(`${lpn}.csv`, f.parent);
+}
+
+function downloadAllGrid() {
+  Object.keys(outputFiles).forEach(lpn => downloadBlob(`${lpn}_GRID.csv`, outputFiles[lpn].grid));
+}
+function downloadAllGnss() {
+  Object.keys(outputFiles).forEach(lpn => downloadBlob(`${lpn}_GNSS.csv`, outputFiles[lpn].gnss));
+}
+
+async function downloadAllZip() {
+  try {
+    const JSZip = await loadJsZip();
+    const zip = new JSZip();
+    Object.keys(outputFiles).forEach(lpn => {
+      const f = outputFiles[lpn];
+      zip.file(`${lpn}_GRID.csv`, f.grid);
+      zip.file(`${lpn}_GNSS.csv`, f.gnss);
+      zip.file(`${lpn}.csv`, f.parent);
+    });
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const date = new Date().toISOString().split('T')[0];
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `LOIS_Output_${date}.zip`; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (err) {
+    document.getElementById('zipUnavailableNote').classList.remove('hidden');
+    showToast('ZIP unavailable — use individual downloads');
+  }
+}
+
+function loadJsZip() {
+  if (window.JSZip) return Promise.resolve(window.JSZip);
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    s.onload = () => resolve(window.JSZip);
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+// ── View management ───────────────────────────────────────────────────────────
+function showStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`step${i}`).classList.toggle('hidden', i !== n);
+  });
+}
+function resetTool() {
+  rawRows = []; headerRow = null; colMap = {...DEFAULT_COLS};
+  lpnData = {}; outputFiles = {};
+  document.getElementById('fileInput').value = '';
+  showStep(1);
+}
+</script>
+</body>
+</html>

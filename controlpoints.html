@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Field Tools">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <script src="db.js"></script>
+  <title>Control Points — Field Tools</title>
+  <style>
+    :root {
+      --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+      --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+      --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+      --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+      --accent-green:#22c55e;--accent-green-hover:#16a34a;
+      --accent-red:#ef4444;--accent-red-hover:#dc2626;
+      --accent-orange:#f97316;--accent-amber:#f59e0b;
+      --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+      --input-bg:#ffffff;--input-border:#d1d5db;
+      --modal-overlay:rgba(0,0,0,0.65);
+      --pass-bg:#f0fdf4;--pass-border:#86efac;--pass-text:#166534;
+      --fail-bg:#fef2f2;--fail-border:#fca5a5;--fail-text:#991b1b;
+      --warn-bg:#fffbeb;--warn-border:#fcd34d;--warn-text:#92400e;
+      --orange-bg:#fff7ed;--orange-border:#fdba74;--orange-text:#9a3412;
+    }
+    [data-theme="high-contrast"] {
+      --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+      --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+      --border-primary:#333333;--border-secondary:#444444;
+      --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+      --accent-green:#4ade80;--accent-green-hover:#86efac;
+      --accent-red:#f87171;--accent-red-hover:#fca5a5;
+      --accent-orange:#fb923c;--accent-amber:#fcd34d;
+      --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+      --input-bg:#1a1a1a;--input-border:#555555;
+      --modal-overlay:rgba(0,0,0,0.85);
+      --pass-bg:#052e16;--pass-border:#166534;--pass-text:#4ade80;
+      --fail-bg:#450a0a;--fail-border:#991b1b;--fail-text:#f87171;
+      --warn-bg:#431407;--warn-border:#92400e;--warn-text:#fcd34d;
+      --orange-bg:#431407;--orange-border:#c2410c;--orange-text:#fb923c;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 80px;-webkit-tap-highlight-color:transparent;}
+
+    /* Nav */
+    .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+    .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;cursor:pointer;background:none;border:none;padding:0;}
+    .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+    .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+
+    /* Buttons */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:42px;-webkit-user-select:none;user-select:none;}
+    .btn:active{transform:scale(0.97);}
+    .btn-primary{background:var(--accent-blue);}.btn-primary:hover{background:var(--accent-blue-hover);}
+    .btn-success{background:var(--accent-green);}.btn-success:hover{background:var(--accent-green-hover);}
+    .btn-danger{background:var(--accent-red);}.btn-danger:hover{background:var(--accent-red-hover);}
+    .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}.btn-secondary:hover{background:var(--border-primary);}
+    .btn-small{padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;}
+    .btn-full{width:100%;}
+
+    /* Layout */
+    .content{padding:16px;}
+    .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+    .field-group{margin-bottom:12px;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+    .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;}
+    .label{display:block;font-size:0.8em;font-weight:700;color:var(--text-secondary);margin-bottom:4px;}
+    .input,.select-input{display:block;width:100%;padding:10px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:0.95em;outline:none;transition:border-color 0.2s;font-family:inherit;}
+    .input:focus,.select-input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+    .input-sm{padding:8px 10px;font-size:0.88em;}
+    textarea.input{resize:vertical;min-height:70px;}
+    .section-divider{font-size:0.78em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:16px 0 10px;padding-bottom:6px;border-bottom:1.5px solid var(--border-primary);}
+
+    /* Section header */
+    .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .section-title{font-size:1.05em;font-weight:800;color:var(--text-primary);}
+
+    /* Record cards (project list) */
+    .record-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow);transition:border-color 0.15s;}
+    .record-card:hover{border-color:var(--accent-blue);}
+    .record-title{font-size:0.95em;font-weight:800;color:var(--text-primary);}
+    .record-meta{font-size:0.75em;color:var(--text-muted);margin-top:3px;}
+    .record-badge{display:inline-block;font-size:0.65em;font-weight:800;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:middle;}
+    .badge-pass{background:var(--pass-bg);color:var(--pass-text);border:1px solid var(--pass-border);}
+    .badge-fail{background:var(--fail-bg);color:var(--fail-text);border:1px solid var(--fail-border);}
+    .badge-warn{background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);}
+    .badge-orange{background:var(--orange-bg);color:var(--orange-text);border:1px solid var(--orange-border);}
+    .badge-incomplete{background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-secondary);}
+
+    /* Filter tabs */
+    .filter-bar{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:0 16px;display:flex;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;position:sticky;top:57px;z-index:40;}
+    .filter-bar::-webkit-scrollbar{display:none;}
+    .filter-tab{flex-shrink:0;padding:10px 14px;font-size:0.78em;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:all 0.15s;}
+    .filter-tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue);}
+    .filter-count{display:inline-block;background:var(--bg-tertiary);border-radius:10px;padding:1px 6px;font-size:0.85em;margin-left:4px;color:var(--text-muted);}
+    .filter-tab.active .filter-count{background:rgba(59,130,246,0.12);color:var(--accent-blue);}
+
+    /* Point cards */
+    .point-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow);}
+    .point-card-top{padding:12px 14px 8px;cursor:pointer;transition:background 0.1s;}
+    .point-card-top:hover{background:var(--bg-tertiary);}
+    .point-name-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
+    .point-name{font-size:1.05em;font-weight:900;color:var(--text-primary);letter-spacing:0.3px;}
+    .point-station{font-size:0.8em;color:var(--text-secondary);margin-bottom:2px;}
+    .point-note{font-size:0.8em;color:var(--text-tertiary);margin-bottom:4px;}
+    .point-coords{font-size:0.72em;color:var(--text-muted);font-variant-numeric:tabular-nums;border-top:1px solid var(--border-primary);padding-top:6px;margin-top:4px;}
+    .point-card-footer{padding:8px 14px;border-top:1.5px solid var(--border-primary);background:var(--bg-tertiary);display:flex;align-items:center;gap:8px;}
+    .status-select{flex:1;padding:7px 10px;border:1.5px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--text-primary);font-size:0.82em;font-weight:700;font-family:inherit;cursor:pointer;outline:none;}
+    .status-select:focus{border-color:var(--accent-blue);}
+
+    /* Empty state */
+    .empty-state{text-align:center;padding:48px 24px;color:var(--text-muted);}
+    .empty-icon{font-size:2.5em;margin-bottom:12px;}
+    .empty-title{font-size:0.95em;font-weight:700;margin-bottom:6px;color:var(--text-tertiary);}
+    .empty-desc{font-size:0.82em;}
+
+    /* Modal */
+    .modal-overlay{display:none;position:fixed;inset:0;background:var(--modal-overlay);z-index:100;align-items:flex-end;}
+    .modal-overlay.open{display:flex;}
+    .modal-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-height:92vh;overflow-y:auto;padding:20px 20px 40px;}
+    .modal-handle{width:36px;height:4px;background:var(--border-secondary);border-radius:2px;margin:0 auto 16px;}
+    .modal-title{font-size:1.05em;font-weight:800;margin-bottom:16px;color:var(--text-primary);}
+    .modal-actions{display:flex;gap:10px;margin-top:16px;}
+
+    /* PDF drop zone */
+    .drop-zone{border:2px dashed var(--border-secondary);border-radius:12px;padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.2s;color:var(--text-muted);}
+    .drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent-blue);background:rgba(59,130,246,0.04);}
+    .drop-zone-icon{font-size:2em;margin-bottom:8px;}
+    .drop-zone-text{font-size:0.88em;font-weight:600;}
+    .drop-zone-sub{font-size:0.78em;margin-top:4px;}
+
+    /* Preview table */
+    .preview-scroll{overflow-x:auto;margin-top:12px;border-radius:8px;border:1.5px solid var(--border-primary);}
+    .preview-table{border-collapse:collapse;width:100%;font-size:0.78em;white-space:nowrap;}
+    .preview-table th{background:var(--bg-tertiary);padding:7px 10px;font-weight:700;text-align:left;border-bottom:1.5px solid var(--border-primary);color:var(--text-secondary);}
+    .preview-table td{padding:6px 10px;border-bottom:1px solid var(--border-primary);color:var(--text-primary);}
+    .preview-table tr:last-child td{border-bottom:none;}
+
+    /* Page input section */
+    .pdf-info-bar{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:12px 14px;margin-top:12px;font-size:0.85em;color:var(--text-secondary);}
+    .pdf-info-bar strong{color:var(--text-primary);}
+
+    /* Toast */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f2937;color:white;padding:10px 20px;border-radius:10px;font-size:0.85em;font-weight:600;opacity:0;transition:all 0.3s;z-index:200;pointer-events:none;white-space:nowrap;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    /* Confirm dialog */
+    .confirm-overlay{display:none;position:fixed;inset:0;background:var(--modal-overlay);z-index:150;align-items:center;justify-content:center;padding:24px;}
+    .confirm-overlay.open{display:flex;}
+    .confirm-box{background:var(--bg-secondary);border-radius:16px;padding:24px;max-width:340px;width:100%;box-shadow:var(--shadow-lg);}
+    .confirm-title{font-size:1em;font-weight:800;margin-bottom:8px;color:var(--text-primary);}
+    .confirm-msg{font-size:0.88em;color:var(--text-secondary);margin-bottom:20px;line-height:1.5;}
+    .confirm-actions{display:flex;gap:10px;}
+
+    /* Hidden */
+    .hidden{display:none!important;}
+
+    /* Status colors for select */
+    .status-undisturbed{color:var(--accent-green);}
+    .status-disturbed{color:var(--accent-amber);}
+    .status-missing{color:var(--accent-red);}
+    .status-could_not_locate{color:var(--accent-orange);}
+
+    /* Editor nav row */
+    .editor-nav{display:flex;align-items:center;gap:8px;margin-bottom:16px;}
+
+    /* Import conflict banner */
+    .conflict-banner{background:var(--warn-bg);border:1.5px solid var(--warn-border);border-radius:10px;padding:10px 14px;font-size:0.82em;color:var(--warn-text);margin-top:10px;}
+
+    /* Observation history panel (inside editor) */
+    .obs-panel{margin-top:14px;border-top:1.5px solid var(--border-primary);padding-top:10px;}
+    .obs-panel-title{font-size:0.78em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:4px;}
+    .obs-hint{font-size:0.78em;color:var(--text-muted);margin-bottom:8px;}
+    .obs-table{width:100%;font-size:0.78em;border-collapse:collapse;}
+    .obs-table th{text-align:left;color:var(--text-tertiary);font-weight:700;padding:3px 5px;border-bottom:1px solid var(--border-primary);}
+    .obs-table td{padding:4px 5px;border-top:1px solid var(--border-primary);font-variant-numeric:tabular-nums;}
+    .obs-radio-row td{border-top:none;padding-top:1px;text-align:center;}
+    .obs-table input[type=radio]{accent-color:var(--accent-blue);width:16px;height:16px;}
+
+    /* Import step toggles */
+    .import-toggles{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0;}
+    .import-toggles label{display:flex;align-items:center;gap:6px;font-size:0.88em;font-weight:600;color:var(--text-secondary);cursor:pointer;}
+    .import-toggles input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent-blue);}
+    .lpn-checkbox-list{display:flex;flex-wrap:wrap;gap:8px;max-height:120px;overflow-y:auto;padding:4px 0;}
+    .lpn-checkbox-list label{display:flex;align-items:center;gap:5px;font-size:0.82em;background:var(--bg-tertiary);border:1px solid var(--border-secondary);border-radius:6px;padding:4px 8px;cursor:pointer;}
+  </style>
+</head>
+<body>
+
+<!-- ═══ PROJECT LIST VIEW ═══ -->
+<div id="projectListView">
+  <div class="top-nav">
+    <a href="index.html" class="nav-back">← Home</a>
+    <span class="nav-title">Control Points</span>
+    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+  </div>
+  <div class="content">
+    <div class="section-header">
+      <span class="section-title">Projects</span>
+      <button class="btn btn-primary btn-small" onclick="openNewProjectModal()">+ New Project</button>
+    </div>
+    <div id="projectList"></div>
+  </div>
+</div>
+
+<!-- ═══ POINT LIST VIEW ═══ -->
+<div id="pointListView" class="hidden">
+  <div class="top-nav">
+    <button class="nav-back" onclick="backToProjects()">← Projects</button>
+    <span class="nav-title" id="pointListTitle">Control Points</span>
+    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+  </div>
+  <div class="filter-bar" id="filterBar"></div>
+  <div class="content">
+    <div class="section-header" style="margin-top:4px;">
+      <span class="section-title" id="pointListSubtitle">Points</span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-small" onclick="openImportModal()">⤴ Import</button>
+        <button class="btn btn-primary btn-small" onclick="openNewPointEditor()">+ Add</button>
+      </div>
+    </div>
+    <div id="pointList"></div>
+  </div>
+</div>
+
+<!-- ═══ EDITOR VIEW ═══ -->
+<div id="editorView" class="hidden">
+  <div class="top-nav">
+    <button class="nav-back" onclick="backToPoints()">← Points</button>
+    <span class="nav-title" id="editorTitle">Edit Point</span>
+    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+  </div>
+  <div class="content">
+    <div class="card">
+      <div class="section-divider">Identification</div>
+      <div class="field-group">
+        <label class="label">Point Name *</label>
+        <input class="input" id="e_name" type="text" placeholder="e.g. 1031001M">
+      </div>
+      <div class="field-group">
+        <label class="label">Note / Monument Type</label>
+        <input class="input" id="e_note" type="text" placeholder="e.g. NDOT FENO MON, WA COUNTY BM">
+      </div>
+
+      <div class="section-divider">Station Reference</div>
+      <div class="field-row">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Old Station</label>
+          <input class="input input-sm" id="e_oldStation" type="text" placeholder="e.g. X 75+38.32 POT">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Equation</label>
+          <input class="input input-sm" id="e_equation" type="text" placeholder="">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:10px;">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Old Distance (ft)</label>
+          <input class="input input-sm" id="e_distanceOld" type="number" step="0.01" placeholder="e.g. -736.92" inputmode="decimal">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">New Station</label>
+          <input class="input input-sm" id="e_newStation" type="text" placeholder="">
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:10px;">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">New Distance (ft)</label>
+          <input class="input input-sm" id="e_distanceNew" type="number" step="0.01" placeholder="" inputmode="decimal">
+        </div>
+        <div class="field-group" style="margin-bottom:0"></div>
+      </div>
+
+      <div class="section-divider">Coordinates</div>
+      <div class="field-row-3" style="margin-bottom:0">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Northing</label>
+          <input class="input input-sm" id="e_northing" type="number" step="0.001" placeholder="" inputmode="decimal">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Easting</label>
+          <input class="input input-sm" id="e_easting" type="number" step="0.001" placeholder="" inputmode="decimal">
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Elevation</label>
+          <input class="input input-sm" id="e_elevation" type="number" step="0.001" placeholder="" inputmode="decimal">
+        </div>
+      </div>
+
+      <!-- Observation history panel — rendered dynamically by renderObsPanel() -->
+      <div id="obsPanel" class="obs-panel hidden">
+        <div class="obs-panel-title">Observation History</div>
+        <div class="obs-hint">Select which observation's value to show on the point card.</div>
+        <div style="overflow-x:auto;">
+          <table class="obs-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Source</th><th>Northing</th><th>Easting</th><th>Elevation</th>
+              </tr>
+              <tr>
+                <th></th><th style="color:var(--text-muted);font-weight:600;font-size:0.9em;">Use as →</th>
+                <th style="text-align:center">N</th><th style="text-align:center">E</th><th style="text-align:center">Elev</th>
+              </tr>
+            </thead>
+            <tbody id="obsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add Observation — shown when editing an existing point -->
+      <div id="addObsBtn" class="hidden" style="margin-top:10px;">
+        <button class="btn btn-secondary btn-small btn-full" onclick="toggleAddObsForm(true)">+ Add Observation</button>
+      </div>
+      <div id="addObsForm" class="hidden" style="margin-top:10px;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:14px;">
+        <div class="obs-panel-title" style="margin-bottom:10px;">New Observation</div>
+        <div class="field-group">
+          <label class="label">Source / Label *</label>
+          <input class="input input-sm" id="obs_label" type="text" placeholder="e.g. RTK GPS, Total station, Hand level">
+        </div>
+        <div class="field-row-3">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Northing</label>
+            <input class="input input-sm" id="obs_northing" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Easting</label>
+            <input class="input input-sm" id="obs_easting" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Elevation</label>
+            <input class="input input-sm" id="obs_elevation" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:10px;">
+          <label class="label">Note</label>
+          <input class="input input-sm" id="obs_note" type="text" placeholder="optional">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-success" onclick="saveManualObservation()">Save Observation</button>
+          <button class="btn btn-secondary" onclick="toggleAddObsForm(false)">Cancel</button>
+        </div>
+      </div>
+
+      <div class="section-divider">Field Status</div>
+      <div class="field-row">
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Status</label>
+          <select class="select-input input-sm" id="e_status">
+            <option value="uncategorized">Uncategorized</option>
+            <option value="undisturbed">Undisturbed</option>
+            <option value="disturbed">Disturbed</option>
+            <option value="missing">Missing</option>
+            <option value="could_not_locate">Could Not Locate</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin-bottom:0">
+          <label class="label">Status Date</label>
+          <input class="input input-sm" id="e_statusDate" type="date">
+        </div>
+      </div>
+      <div class="field-group" style="margin-top:10px;">
+        <label class="label">Field Note</label>
+        <textarea class="input input-sm" id="e_statusNote" placeholder="Notes from field visit..." rows="2"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-success btn-full" onclick="saveEditorPoint()">Save Point</button>
+      <button class="btn btn-danger btn-small" onclick="confirmDeletePoint()" id="deletePointBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NEW PROJECT MODAL ═══ -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="projectModalTitle">New Project</div>
+    <div class="field-group">
+      <label class="label">Project Number *</label>
+      <input class="input" id="pm_number" type="text" placeholder="e.g. P-2024-001">
+    </div>
+    <div class="field-group">
+      <label class="label">Project Name</label>
+      <input class="input" id="pm_name" type="text" placeholder="e.g. Reno Airport Widening">
+    </div>
+    <div class="field-group">
+      <label class="label">Contract Number</label>
+      <input class="input" id="pm_contract" type="text" placeholder="e.g. T1234">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-success btn-full" onclick="saveProject()">Save</button>
+      <button class="btn btn-secondary" onclick="closeProjectModal()">Cancel</button>
+    </div>
+    <button class="btn btn-danger btn-full" id="deleteProjectBtn" style="margin-top:10px;" onclick="confirmDeleteProject()">Delete Project</button>
+  </div>
+</div>
+
+<!-- ═══ IMPORT MODAL ═══ -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Import Control Points</div>
+
+    <!-- Step 1: file selection -->
+    <div id="importStep1">
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleFileDrop(event)">
+        <div class="drop-zone-icon">📄</div>
+        <div class="drop-zone-text">Tap to select file</div>
+        <div class="drop-zone-sub">PDF plan set or CSV — accepts .pdf, .csv, .txt</div>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf,.csv,.txt" style="display:none" onchange="handleFileSelect(event)">
+    </div>
+
+    <!-- Step 2: PDF page picker (shown after PDF loads) -->
+    <div id="importStep2" class="hidden">
+      <div class="pdf-info-bar">
+        <strong id="pdfFileName"></strong> — <span id="pdfPageCount"></span> pages loaded
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="label">Page number(s) with Location Control Sheet</label>
+        <input class="input" id="pdfPageInput" type="text" placeholder="e.g. 24 or 24, 35 or 40-42"
+               oninput="clearPreview()">
+        <div style="font-size:0.75em;color:var(--text-muted);margin-top:4px;">Separate multiple pages with commas; use ranges like 40-42</div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="parsePdfPages()">Parse Pages</button>
+    </div>
+
+    <!-- Step 2b: Generic CSV -->
+    <div id="importStep2csv" class="hidden">
+      <div class="pdf-info-bar">
+        <strong id="csvFileName"></strong> — CSV loaded
+        <div style="font-size:0.82em;margin-top:4px;color:var(--text-muted);">Expected columns: Name, Northing, Easting, Elevation, Code</div>
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="label">Import to Project</label>
+        <select id="csvProjectPick" class="select-input" style="font-size:0.88em;"></select>
+      </div>
+      <div class="field-group">
+        <label class="label">Fields to Import</label>
+        <div class="import-toggles">
+          <label><input type="checkbox" id="csvImportN"    checked> Northing</label>
+          <label><input type="checkbox" id="csvImportE"    checked> Easting</label>
+          <label><input type="checkbox" id="csvImportElev">          Elevation
+            <span style="font-size:0.78em;color:var(--text-muted)">(uncheck for GNSS)</span>
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="parseCsv()">Parse CSV</button>
+    </div>
+
+    <!-- Step 2c: LOIS CSV filter (shown when LOIS format detected) -->
+    <div id="importStep2lois" class="hidden">
+      <div class="pdf-info-bar" style="margin-bottom:12px;">
+        <strong id="loisFileName"></strong> — LOIS CSV detected
+      </div>
+      <div class="field-group">
+        <label class="label">Import to Project</label>
+        <select id="loisProjectPick" class="select-input" style="font-size:0.88em;"></select>
+      </div>
+      <div class="field-group">
+        <label class="label">Fields to Import</label>
+        <div class="import-toggles">
+          <label><input type="checkbox" id="loisImportN"    checked> Northing</label>
+          <label><input type="checkbox" id="loisImportE"    checked> Easting</label>
+          <label><input type="checkbox" id="loisImportElev" checked> Elevation</label>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="label">Filter by LPN <span style="font-weight:400;color:var(--text-muted)">(all selected by default)</span></label>
+        <div class="lpn-checkbox-list" id="lpnCheckboxList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary btn-small" onclick="selectAllLpns(true)">Select All</button>
+          <button class="btn btn-secondary btn-small" onclick="selectAllLpns(false)">Clear All</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="label">Scale Factor Range <span style="font-weight:400;color:var(--text-muted)">(optional — leave blank for any)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="sfMin" class="input input-sm" style="width:110px" placeholder="Min" step="0.000001" inputmode="decimal">
+          <span style="color:var(--text-muted)">–</span>
+          <input type="number" id="sfMax" class="input input-sm" style="width:110px" placeholder="Max" step="0.000001" inputmode="decimal">
+        </div>
+      </div>
+      <div id="loisFilterCount" style="font-size:0.82em;color:var(--text-muted);margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="applyLoisFilter()">Preview Points</button>
+        <button class="btn btn-secondary" onclick="resetImportModal()">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Step 3: preview + import -->
+    <div id="importStep3" class="hidden">
+      <div id="importConflictBanner" class="hidden conflict-banner"></div>
+      <div class="pdf-info-bar" style="margin-top:12px;">
+        Found <strong id="previewCount">0</strong> points
+      </div>
+      <div class="preview-scroll">
+        <table class="preview-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Station</th><th>Dist</th><th>Note</th><th>N</th><th>E</th><th>Elev</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="btn btn-success btn-full" onclick="importPoints()">Import <span id="importCountLabel">0</span> Points</button>
+        <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <button class="btn btn-secondary btn-full" onclick="closeImportModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONFIRM DIALOG ═══ -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Confirm</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-danger btn-full" id="confirmOkBtn">Delete</button>
+      <button class="btn btn-secondary btn-full" onclick="closeConfirm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PDF.js (lazy-loaded on demand) -->
+<script>
+'use strict';
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function isoDate() { return new Date().toISOString().split('T')[0]; }
+function escHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── Observation schema helpers ─────────────────────────────────────────────────
+function resolveObsField(cp, field) {
+  const obs = cp.observations || [];
+  const key = 'prefer' + field.charAt(0).toUpperCase() + field.slice(1);
+  if (cp[key]) {
+    const m = obs.find(o => o.id === cp[key]);
+    if (m && m[field] != null) return m[field];
+  }
+  const first = obs.find(o => o[field] != null);
+  if (first) return first[field];
+  return cp[field] ?? null; // legacy fallback (no observations array)
+}
+function applyPreferences(cp) {
+  if (!(cp.observations && cp.observations.length)) return;
+  cp.northing  = resolveObsField(cp, 'northing');
+  cp.easting   = resolveObsField(cp, 'easting');
+  cp.elevation = resolveObsField(cp, 'elevation');
+}
+function toggleTheme() {
+  const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.documentElement.setAttribute('data-theme', hc ? '' : 'high-contrast');
+  localStorage.setItem('ft_theme', hc ? '' : 'high-contrast');
+}
+function showView(id) {
+  ['projectListView','pointListView','editorView'].forEach(v => {
+    document.getElementById(v).classList.toggle('hidden', v !== id);
+  });
+}
+function parsePageRanges(str) {
+  const pages = new Set();
+  str.split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    const range = part.split('-').map(s => parseInt(s.trim(), 10));
+    if (range.length === 2 && !isNaN(range[0]) && !isNaN(range[1])) {
+      for (let p = range[0]; p <= range[1]; p++) pages.add(p);
+    } else if (!isNaN(range[0])) {
+      pages.add(range[0]);
+    }
+  });
+  return [...pages].sort((a,b) => a-b);
+}
+
+function projectLabel(p) { return ftProjectTitle(p); }
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allProjects = [];
+let currentProjectId = null;
+let currentPoints = [];
+let activeFilter = 'all';
+let editingPointId = null;
+let _pdfDoc = null;
+let _parsedPoints = [];
+let _csvRaw = null;
+let _csvFilename = '';
+let _confirmCb = null;
+let _loisRows = [];
+let _loisTargetProjectId = null;
+let _csvImportMode = 'generic'; // 'generic' | 'lois'
+
+// LOIS column aliases (mirrors csvconverter.html logic)
+const LOIS_COLS = {
+  pointName:   ['point name','name','pt name','pt','identifier','id'],
+  lpn:         ['lpn','local point number','local point'],
+  gridN:       ['grid north','grid n','northing','north','n','y'],
+  gridE:       ['grid east','grid e','easting','east','e','x'],
+  gridElev:    ['grid elev','grid elevation','elevation','elev','el','z'],
+  scaleFactor: ['scale factor','scale','sf','k'],
+};
+
+// Status config
+const STATUS_CONFIG = {
+  uncategorized: { label: 'Uncategorized', cls: 'badge-incomplete' },
+  undisturbed:   { label: 'Undisturbed',   cls: 'badge-pass' },
+  disturbed:     { label: 'Disturbed',     cls: 'badge-warn' },
+  missing:       { label: 'Missing',       cls: 'badge-fail' },
+  could_not_locate: { label: 'Could Not Locate', cls: 'badge-orange' },
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    allProjects = await ftGetAllProjects();
+  } catch (err) {
+    console.error('DB load error:', err);
+    showToast('DB error: ' + (err && err.message ? err.message : String(err)));
+  }
+  renderProjectList();
+  showView('projectListView');
+}
+
+// ── Project List ──────────────────────────────────────────────────────────────
+function renderProjectList() {
+  const el = document.getElementById('projectList');
+  if (!allProjects.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No projects yet</div><div class="empty-desc">Create a project to start tracking control points</div></div>`;
+    return;
+  }
+  // For counts we just render; counts loaded when opening project
+  el.innerHTML = allProjects
+    .sort((a,b) => (b.created||'').localeCompare(a.created||''))
+    .map(p => `
+    <div class="record-card" onclick="openProject('${escHtml(p.id)}')">
+      <div class="record-title">${escHtml(projectLabel(p))}</div>
+      <div class="record-meta" id="projMeta_${escHtml(p.id)}">Loading…</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+        <span></span>
+        <button class="btn btn-secondary btn-small" onclick="event.stopPropagation();openEditProjectModal('${escHtml(p.id)}')">Edit</button>
+      </div>
+    </div>`).join('');
+  // Load counts async
+  allProjects.forEach(p => loadProjectMeta(p.id));
+}
+async function loadProjectMeta(projectId) {
+  const points = await ftGetControlPointsByProject(projectId);
+  const total = points.length;
+  const counts = {};
+  points.forEach(pt => { counts[pt.status] = (counts[pt.status]||0)+1; });
+  const el = document.getElementById(`projMeta_${projectId}`);
+  if (!el) return;
+  const parts = [];
+  if (total === 0) { el.textContent = 'No points'; return; }
+  parts.push(`${total} point${total!==1?'s':''}`);
+  if (counts.undisturbed) parts.push(`${counts.undisturbed} Undisturbed`);
+  if (counts.disturbed) parts.push(`${counts.disturbed} Disturbed`);
+  if (counts.missing) parts.push(`${counts.missing} Missing`);
+  if (counts.could_not_locate) parts.push(`${counts.could_not_locate} CNL`);
+  if (counts.uncategorized) parts.push(`${counts.uncategorized} Uncategorized`);
+  el.textContent = parts.join(' · ');
+}
+
+// ── Project Modal ─────────────────────────────────────────────────────────────
+let editingProjectId = null;
+function openNewProjectModal() {
+  editingProjectId = null;
+  document.getElementById('pm_number').value = '';
+  document.getElementById('pm_name').value = '';
+  document.getElementById('pm_contract').value = '';
+  document.getElementById('projectModalTitle').textContent = 'New Project';
+  document.getElementById('deleteProjectBtn').classList.add('hidden');
+  document.getElementById('projectModal').classList.add('open');
+}
+function openEditProjectModal(id) {
+  const p = allProjects.find(x => x.id === id);
+  if (!p) return;
+  editingProjectId = id;
+  document.getElementById('pm_number').value = p.projectNumber||'';
+  document.getElementById('pm_name').value = p.name||'';
+  document.getElementById('pm_contract').value = p.contractNumber||'';
+  document.getElementById('projectModalTitle').textContent = 'Edit Project';
+  document.getElementById('deleteProjectBtn').classList.remove('hidden');
+  document.getElementById('projectModal').classList.add('open');
+}
+function closeProjectModal() {
+  document.getElementById('projectModal').classList.remove('open');
+}
+async function saveProject() {
+  const projNumber = document.getElementById('pm_number').value.trim();
+  if (!projNumber) { showToast('Project number required'); return; }
+  const proj = editingProjectId
+    ? { ...allProjects.find(p => p.id === editingProjectId) }
+    : { id: uid(), created: isoDate(), archived: false };
+  proj.projectNumber = projNumber;
+  proj.name = document.getElementById('pm_name').value.trim();
+  proj.contractNumber = document.getElementById('pm_contract').value.trim();
+  await ftSaveProject(proj);
+  allProjects = await ftGetAllProjects();
+  renderProjectList();
+  closeProjectModal();
+  showToast(editingProjectId ? 'Project updated' : 'Project created');
+}
+function confirmDeleteProject() {
+  const p = allProjects.find(x => x.id === editingProjectId);
+  showConfirm('Delete Project', `Delete "${p?.name||'this project'}" and all its points? This cannot be undone.`, async () => {
+    await ftDeleteControlPointsForProject(editingProjectId);
+    await ftDeleteProject(editingProjectId);
+    allProjects = await ftGetAllProjects();
+    closeProjectModal();
+    renderProjectList();
+    showToast('Project deleted');
+  });
+}
+
+// ── Open Project → Point List ─────────────────────────────────────────────────
+async function openProject(projectId) {
+  currentProjectId = projectId;
+  const proj = allProjects.find(p => p.id === projectId) || {};
+  document.getElementById('pointListTitle').textContent = projectLabel(proj) || 'Control Points';
+  currentPoints = await ftGetControlPointsByProject(projectId);
+  activeFilter = 'all';
+  renderFilterBar();
+  renderPointList();
+  showView('pointListView');
+}
+function backToProjects() {
+  showView('projectListView');
+  renderProjectList(); // refresh counts
+}
+
+// ── Filter Bar ────────────────────────────────────────────────────────────────
+function renderFilterBar() {
+  const counts = { all: currentPoints.length };
+  currentPoints.forEach(pt => { counts[pt.status] = (counts[pt.status]||0)+1; });
+  const tabs = [
+    { key:'all',            label:'All' },
+    { key:'uncategorized',  label:'Uncategorized' },
+    { key:'undisturbed',    label:'Undisturbed' },
+    { key:'disturbed',      label:'Disturbed' },
+    { key:'missing',        label:'Missing' },
+    { key:'could_not_locate', label:'Could Not Locate' },
+  ];
+  document.getElementById('filterBar').innerHTML = tabs.map(t => `
+    <div class="filter-tab ${activeFilter===t.key?'active':''}" onclick="setFilter('${t.key}')">
+      ${escHtml(t.label)}<span class="filter-count">${counts[t.key]||0}</span>
+    </div>`).join('');
+}
+function setFilter(key) {
+  activeFilter = key;
+  renderFilterBar();
+  renderPointList();
+}
+
+// ── Point List ────────────────────────────────────────────────────────────────
+function filteredPoints() {
+  if (activeFilter === 'all') return [...currentPoints];
+  return currentPoints.filter(pt => pt.status === activeFilter);
+}
+function renderPointList() {
+  const pts = filteredPoints().sort((a,b) => (a.name||'').localeCompare(b.name||''));
+  const el = document.getElementById('pointList');
+  const proj = allProjects.find(p => p.id === currentProjectId) || {};
+  document.getElementById('pointListSubtitle').textContent =
+    `${pts.length} point${pts.length!==1?'s':''}`;
+
+  if (!pts.length) {
+    el.innerHTML = activeFilter === 'all'
+      ? `<div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">No points yet</div><div class="empty-desc">Import a Location Control Sheet PDF or add points manually</div></div>`
+      : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No ${STATUS_CONFIG[activeFilter]?.label||activeFilter} points</div></div>`;
+    return;
+  }
+  el.innerHTML = pts.map(pt => pointCardHtml(pt)).join('');
+}
+function pointCardHtml(pt) {
+  const sc = STATUS_CONFIG[pt.status] || STATUS_CONFIG.uncategorized;
+  const stationParts = [];
+  if (pt.newStation) stationParts.push(`Sta: ${escHtml(pt.newStation)}`);
+  else if (pt.oldStation) stationParts.push(`Sta: ${escHtml(pt.oldStation)}`);
+  const dist = pt.distanceNew ?? pt.distanceOld;
+  if (dist != null) stationParts.push(`Dist: ${dist}'`);
+  const coordParts = [];
+  if (pt.northing != null) coordParts.push(`N: ${pt.northing}`);
+  if (pt.easting != null) coordParts.push(`E: ${pt.easting}`);
+  if (pt.elevation != null) coordParts.push(`Elev: ${pt.elevation}`);
+  return `
+  <div class="point-card">
+    <div class="point-card-top" onclick="openEditor('${escHtml(pt.id)}')">
+      <div class="point-name-row">
+        <span class="point-name">${escHtml(pt.name||'—')}</span>
+        <span class="record-badge ${sc.cls}">${escHtml(sc.label)}</span>
+      </div>
+      ${stationParts.length ? `<div class="point-station">${stationParts.join(' &nbsp;·&nbsp; ')}</div>` : ''}
+      ${pt.note ? `<div class="point-note">${escHtml(pt.note)}</div>` : ''}
+      ${coordParts.length ? `<div class="point-coords">${coordParts.join(' &nbsp; ')}</div>` : ''}
+    </div>
+    <div class="point-card-footer">
+      <select class="status-select" onchange="quickUpdateStatus('${escHtml(pt.id)}', this.value)"
+              onclick="event.stopPropagation()">
+        ${Object.entries(STATUS_CONFIG).map(([k,v]) =>
+          `<option value="${k}"${pt.status===k?' selected':''}>${v.label}</option>`
+        ).join('')}
+      </select>
+    </div>
+  </div>`;
+}
+async function quickUpdateStatus(pointId, status) {
+  const pt = currentPoints.find(p => p.id === pointId);
+  if (!pt) return;
+  pt.status = status;
+  if (status !== 'uncategorized') pt.statusDate = isoDate();
+  await ftSaveControlPoint(pt);
+  renderFilterBar();
+  renderPointList();
+}
+
+// ── Editor ────────────────────────────────────────────────────────────────────
+function openNewPointEditor() {
+  editingPointId = null;
+  document.getElementById('editorTitle').textContent = 'New Point';
+  document.getElementById('deletePointBtn').classList.add('hidden');
+  clearEditorFields();
+  renderObsPanel(null);
+  document.getElementById('addObsBtn').classList.add('hidden');
+  toggleAddObsForm(false);
+  showView('editorView');
+}
+function openEditor(pointId) {
+  const pt = currentPoints.find(p => p.id === pointId);
+  if (!pt) return;
+  editingPointId = pointId;
+  document.getElementById('editorTitle').textContent = pt.name || 'Edit Point';
+  document.getElementById('deletePointBtn').classList.remove('hidden');
+  fillEditorFields(pt);
+  renderObsPanel(pt);
+  document.getElementById('addObsBtn').classList.remove('hidden');
+  toggleAddObsForm(false);
+  showView('editorView');
+}
+function backToPoints() {
+  showView('pointListView');
+  renderFilterBar();
+  renderPointList();
+}
+function clearEditorFields() {
+  ['e_name','e_note','e_oldStation','e_equation','e_newStation','e_statusNote'].forEach(id => { document.getElementById(id).value = ''; });
+  ['e_distanceOld','e_distanceNew','e_northing','e_easting','e_elevation'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('e_status').value = 'uncategorized';
+  document.getElementById('e_statusDate').value = '';
+}
+function fillEditorFields(pt) {
+  document.getElementById('e_name').value = pt.name||'';
+  document.getElementById('e_note').value = pt.note||'';
+  document.getElementById('e_oldStation').value = pt.oldStation||'';
+  document.getElementById('e_equation').value = pt.equation||'';
+  document.getElementById('e_newStation').value = pt.newStation||'';
+  document.getElementById('e_distanceOld').value = pt.distanceOld??'';
+  document.getElementById('e_distanceNew').value = pt.distanceNew??'';
+  document.getElementById('e_northing').value = pt.northing??'';
+  document.getElementById('e_easting').value = pt.easting??'';
+  document.getElementById('e_elevation').value = pt.elevation??'';
+  document.getElementById('e_status').value = pt.status||'uncategorized';
+  document.getElementById('e_statusDate').value = pt.statusDate||'';
+  document.getElementById('e_statusNote').value = pt.statusNote||'';
+}
+function renderObsPanel(cp) {
+  const panel = document.getElementById('obsPanel');
+  // Filter out BM/CLOSING level shots — those are reference shots, not new measurements
+  const obs = cp ? (cp.observations || []).filter(o => o.levelType !== 'BM' && o.levelType !== 'CLOSING') : [];
+  if (!obs.length) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const tbody = document.getElementById('obsTableBody');
+  tbody.innerHTML = obs.map(o => {
+    const fmt = v => (v != null ? Number(v).toFixed(4) : '—');
+    const chkN    = o.northing  != null ? '' : 'disabled';
+    const chkE    = o.easting   != null ? '' : 'disabled';
+    const chkElev = o.elevation != null ? '' : 'disabled';
+    const selN    = (cp.preferNorthing  || '') === o.id ? 'checked' : '';
+    const selE    = (cp.preferEasting   || '') === o.id ? 'checked' : '';
+    const selElev = (cp.preferElevation || '') === o.id ? 'checked' : '';
+    return `<tr>
+      <td>${escHtml(o.date||'')}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(o.label||o.source||'')}">${escHtml(o.label||o.source||'—')}</td>
+      <td style="text-align:right">${fmt(o.northing)}</td>
+      <td style="text-align:right">${fmt(o.easting)}</td>
+      <td style="text-align:right">${fmt(o.elevation)}</td>
+    </tr>
+    <tr class="obs-radio-row">
+      <td colspan="2"></td>
+      <td><input type="radio" name="prefN"    value="${escHtml(o.id)}" ${selN}    ${chkN}    onchange="onPrefChange(event)"></td>
+      <td><input type="radio" name="prefE"    value="${escHtml(o.id)}" ${selE}    ${chkE}    onchange="onPrefChange(event)"></td>
+      <td><input type="radio" name="prefElev" value="${escHtml(o.id)}" ${selElev} ${chkElev} onchange="onPrefChange(event)"></td>
+    </tr>`;
+  }).join('');
+}
+async function onPrefChange(event) {
+  const r = event.target;
+  const pt = currentPoints.find(p => p.id === editingPointId);
+  if (!pt) return;
+  if (r.name === 'prefN')    pt.preferNorthing  = r.value;
+  if (r.name === 'prefE')    pt.preferEasting   = r.value;
+  if (r.name === 'prefElev') pt.preferElevation = r.value;
+  applyPreferences(pt);
+  await ftSaveControlPoint(pt);
+  // Update coordinate inputs to reflect new preferred values
+  document.getElementById('e_northing').value  = pt.northing  ?? '';
+  document.getElementById('e_easting').value   = pt.easting   ?? '';
+  document.getElementById('e_elevation').value = pt.elevation ?? '';
+}
+function toggleAddObsForm(show) {
+  document.getElementById('addObsForm').classList.toggle('hidden', !show);
+  document.getElementById('addObsBtn').classList.toggle('hidden', !!show);
+  if (show) {
+    ['obs_label','obs_northing','obs_easting','obs_elevation','obs_note'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('obs_label').focus();
+  }
+}
+async function saveManualObservation() {
+  const label = document.getElementById('obs_label').value.trim();
+  if (!label) { showToast('Source / Label required'); return; }
+  const fn = id => { const v = document.getElementById(id).value.trim(); return v === '' ? null : parseFloat(v); };
+  const north = fn('obs_northing');
+  const east  = fn('obs_easting');
+  const elev  = fn('obs_elevation');
+  if (north == null && east == null && elev == null) { showToast('Enter at least one coordinate value'); return; }
+
+  const pt = currentPoints.find(p => p.id === editingPointId);
+  if (!pt) return;
+
+  const obsId = uid();
+  const obs = {
+    id: obsId, source: 'manual', date: isoDate(), label,
+    northing: north, easting: east, elevation: elev,
+    note: document.getElementById('obs_note').value.trim() || null,
+  };
+  pt.observations = [...(pt.observations || []), obs];
+  // Offer the new observation as the new default for any non-null fields
+  if (north != null) pt.preferNorthing  = obsId;
+  if (east  != null) pt.preferEasting   = obsId;
+  if (elev  != null) pt.preferElevation = obsId;
+  applyPreferences(pt);
+  await ftSaveControlPoint(pt);
+  currentPoints = await ftGetControlPointsByProject(currentProjectId);
+  // Update the editor coordinate fields to reflect the new preferred values
+  const saved = currentPoints.find(p => p.id === editingPointId);
+  if (saved) {
+    document.getElementById('e_northing').value  = saved.northing  ?? '';
+    document.getElementById('e_easting').value   = saved.easting   ?? '';
+    document.getElementById('e_elevation').value = saved.elevation ?? '';
+    renderObsPanel(saved);
+  }
+  toggleAddObsForm(false);
+  showToast('Observation saved');
+}
+function readEditorFields() {
+  const fv = id => document.getElementById(id).value.trim();
+  const fn = id => { const v = document.getElementById(id).value.trim(); return v===''?null:parseFloat(v); };
+  return {
+    name: fv('e_name'),
+    note: fv('e_note'),
+    oldStation: fv('e_oldStation'),
+    equation: fv('e_equation'),
+    newStation: fv('e_newStation'),
+    distanceOld: fn('e_distanceOld'),
+    distanceNew: fn('e_distanceNew'),
+    northing: fn('e_northing'),
+    easting: fn('e_easting'),
+    elevation: fn('e_elevation'),
+    status: document.getElementById('e_status').value,
+    statusDate: document.getElementById('e_statusDate').value,
+    statusNote: fv('e_statusNote'),
+  };
+}
+async function saveEditorPoint() {
+  const fields = readEditorFields();
+  if (!fields.name) { showToast('Point name required'); return; }
+  const isNew = !editingPointId;
+  const pt = isNew
+    ? { id: uid(), projectId: currentProjectId, created: isoDate() }
+    : { ...currentPoints.find(p => p.id === editingPointId) };
+  Object.assign(pt, fields);
+  // For new points that have coordinate values, create an initial manual observation
+  if (isNew && (fields.northing != null || fields.easting != null || fields.elevation != null)) {
+    const obsId = uid();
+    const obs = {
+      id: obsId, source: 'manual', date: isoDate(), label: 'Manual entry',
+      northing: fields.northing ?? null, easting: fields.easting ?? null,
+      elevation: fields.elevation ?? null, note: fields.note || null,
+    };
+    pt.observations = [obs];
+    pt.preferNorthing  = fields.northing  != null ? obsId : null;
+    pt.preferEasting   = fields.easting   != null ? obsId : null;
+    pt.preferElevation = fields.elevation != null ? obsId : null;
+  }
+  await ftSaveControlPoint(pt);
+  currentPoints = await ftGetControlPointsByProject(currentProjectId);
+  showToast(isNew ? 'Point added' : 'Point saved');
+  backToPoints();
+}
+function confirmDeletePoint() {
+  const pt = currentPoints.find(p => p.id === editingPointId);
+  showConfirm('Delete Point', `Delete point "${pt?.name||'this point'}"?`, async () => {
+    await ftDeleteControlPoint(editingPointId);
+    currentPoints = await ftGetControlPointsByProject(currentProjectId);
+    backToPoints();
+    showToast('Point deleted');
+  });
+}
+
+// ── Import Modal ──────────────────────────────────────────────────────────────
+function openImportModal() {
+  _pdfDoc = null; _parsedPoints = []; _csvRaw = null; _loisRows = []; _loisTargetProjectId = null;
+  document.getElementById('fileInput').value = '';
+  resetImportModal();
+  document.getElementById('importModal').classList.add('open');
+}
+function resetImportModal() {
+  ['importStep1','importStep2','importStep2csv','importStep2lois','importStep3'].forEach(id => {
+    document.getElementById(id).classList.toggle('hidden', id !== 'importStep1');
+  });
+  document.getElementById('importConflictBanner').classList.add('hidden');
+}
+function closeImportModal() {
+  document.getElementById('importModal').classList.remove('open');
+}
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) processFile(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) processFile(file);
+}
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'pdf') loadPdf(file);
+  else loadCsv(file);
+}
+
+// ─── PDF loading ───────────────────────────────────────────────────────────────
+async function ensurePdfJs() {
+  if (window.pdfjsLib) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+async function loadPdf(file) {
+  try {
+    await ensurePdfJs();
+    const arrayBuffer = await file.arrayBuffer();
+    _pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    document.getElementById('pdfFileName').textContent = file.name;
+    document.getElementById('pdfPageCount').textContent = _pdfDoc.numPages;
+    document.getElementById('pdfPageInput').value = '';
+    document.getElementById('importStep1').classList.add('hidden');
+    document.getElementById('importStep2').classList.remove('hidden');
+  } catch (err) {
+    showToast('Error loading PDF: ' + err.message);
+  }
+}
+
+async function parsePdfPages() {
+  if (!_pdfDoc) return;
+  const input = document.getElementById('pdfPageInput').value;
+  const pages = parsePageRanges(input).filter(p => p >= 1 && p <= _pdfDoc.numPages);
+  if (!pages.length) { showToast('Enter valid page number(s)'); return; }
+  try {
+    _parsedPoints = [];
+    for (const pageNum of pages) {
+      const page = await _pdfDoc.getPage(pageNum);
+      const pts = await parseLocationControlPage(page);
+      _parsedPoints.push(...pts);
+    }
+    showPreview(_parsedPoints);
+  } catch (err) {
+    showToast('Parse error: ' + err.message);
+    console.error(err);
+  }
+}
+
+async function parseLocationControlPage(page) {
+  const content = await page.getTextContent();
+  const allItems = content.items.map(item => ({
+    str: item.str.trim(),
+    x: item.transform[4],
+    y: item.transform[5],
+  })).filter(i => i.str.length > 0);
+
+  allItems.sort((a,b) => b.y - a.y || a.x - b.x);
+
+  // Group items into rows by Y proximity (14px tolerance handles slight vertical jitter)
+  const groupedRows = [];
+  for (const item of allItems) {
+    let row = groupedRows.find(r => Math.abs(r.y - item.y) < 14);
+    if (!row) { row = { y: item.y, items: [] }; groupedRows.push(row); }
+    row.items.push(item);
+  }
+  groupedRows.forEach(r => r.items.sort((a,b) => a.x - b.x));
+
+  // ── Try transposed layout ──────────────────────────────────────────────────
+  // In transposed layout each horizontal band = one field attribute.
+  // Field label appears at LEFT or RIGHT end of the band; values fill the rest.
+  const FIELD_LABELS = {
+    'NAME': 'name', 'POINT NAME': 'name',
+    'NORTHING': 'northing',
+    'EASTING': 'easting',
+    'ELEVATION': 'elevation', 'ELEV': 'elevation',
+    'OLD STATION': 'oldStation', 'OLD STA': 'oldStation',
+    'NEW STATION': 'newStation', 'NEW STA': 'newStation',
+    'EQUATION': 'equation',
+    "DISTANCE(')": 'distanceOld', "DISTANCE(S)": 'distanceOld',
+    'DISTANCE': 'distanceOld', "DIST(')": 'distanceOld',
+    'NOTE': 'note', 'NOTES': 'note',
+  };
+
+  const fieldRows = {};   // field -> value items[]
+  const fieldRowY  = {};  // field -> source row Y (for positional reclassification)
+
+  for (const row of groupedRows) {
+    const its = row.items;
+    if (its.length < 2) continue;
+
+    // Skip rows that contain multiple field labels — those are normal header rows, not transposed field rows
+    const rowTxt = its.map(i => i.str.toUpperCase()).join(' ');
+    const labelHits = Object.keys(FIELD_LABELS).filter(lbl => rowTxt.includes(lbl)).length;
+    if (labelHits > 2) continue;
+
+    let field = null, labelIdx = null;
+
+    // Scan left side: check first 8 items for a field label (skips footnote text before the real label)
+    const scanLimit = Math.min(8, its.length - 1);
+    outer:
+    for (let si = 0; si < scanLimit; si++) {
+      const t1 = its[si].str.toUpperCase().trim();
+      // Two-word label first (more specific)
+      if (si + 1 < its.length) {
+        const t2 = t1 + ' ' + its[si + 1].str.toUpperCase().trim();
+        if (FIELD_LABELS[t2] !== undefined) { field = FIELD_LABELS[t2]; labelIdx = si + 2; break outer; }
+      }
+      if (FIELD_LABELS[t1] !== undefined) { field = FIELD_LABELS[t1]; labelIdx = si + 1; break outer; }
+    }
+
+    // Right-side label fallback (e.g. ELEVATION or DISTANCE(') at end of row)
+    if (field === null) {
+      const s1 = its[its.length - 1].str.toUpperCase().trim();
+      const s2 = its.length >= 2 ? its[its.length - 2].str.toUpperCase().trim() + ' ' + s1 : s1;
+      if (FIELD_LABELS[s2] !== undefined)      { field = FIELD_LABELS[s2]; labelIdx = null; }
+      else if (FIELD_LABELS[s1] !== undefined) { field = FIELD_LABELS[s1]; labelIdx = null; }
+    }
+
+    if (field !== null) {
+      const valueItems = labelIdx !== null ? its.slice(labelIdx) : its.slice(0, -1);
+      const vals = valueItems.filter(i => i.str.trim());
+      if (vals.length > 0) {
+        if (!fieldRows[field]) { fieldRows[field] = []; fieldRowY[field] = row.y; }
+        fieldRows[field].push(...vals);
+      }
+    }
+  }
+
+  // Discard field rows with far fewer values than the main data fields
+  // (these are typically stray header rows, e.g. "PROJECT NO." ... "NOTE")
+  const valueCounts = Object.values(fieldRows).map(a => a.length);
+  if (valueCounts.length > 0) {
+    const maxCount = Math.max(...valueCounts);
+    for (const f of Object.keys(fieldRows)) {
+      if (fieldRows[f].length < maxCount * 0.4) { delete fieldRows[f]; delete fieldRowY[f]; }
+    }
+  }
+
+  // Orphan row detection: find a high-count row with no field label that wasn't captured above.
+  // These are typically note-value rows where the label appears on a separate title row that
+  // was skipped (e.g. "NOTE" is in a row with PROJECT NO. which scores 2 label-hits → skipped).
+  if (!fieldRows.note) {
+    const maxRowCount = groupedRows.reduce((m, r) => Math.max(m, r.items.filter(i => i.str.trim()).length), 0);
+    const assignedYs = new Set(Object.values(fieldRowY));
+    for (const row of groupedRows) {
+      const its = [...row.items].sort((a, b) => a.x - b.x);
+      const nonEmpty = its.filter(i => i.str.trim());
+      if (nonEmpty.length < maxRowCount * 0.8) continue;
+      if (assignedYs.has(row.y)) continue;
+      const rowTxt = its.map(i => i.str.toUpperCase()).join(' ');
+      if (Object.keys(FIELD_LABELS).some(lbl => rowTxt.includes(lbl))) continue;
+      fieldRows.note = nonEmpty;
+      fieldRowY.note = row.y;
+      break;
+    }
+  }
+
+  // Reclassify DISTANCE(') as distanceNew when it sits between the NEW STATION
+  // column and the NOTE column in the physical (rotated) table layout.
+  // In this PDF's coordinate system, higher Y = further right in the physical table.
+  if (fieldRows.distanceOld && fieldRowY.distanceOld !== undefined &&
+      fieldRowY.newStation !== undefined && fieldRowY.distanceOld > fieldRowY.newStation) {
+    fieldRows.distanceNew = fieldRows.distanceOld;
+    fieldRowY.distanceNew = fieldRowY.distanceOld;
+    delete fieldRows.distanceOld;
+    delete fieldRowY.distanceOld;
+  }
+
+  // If we found a NAME row with values → parse as transposed
+  if (fieldRows.name && fieldRows.name.length > 0) {
+    const nameItems = [...fieldRows.name].sort((a,b) => a.x - b.x);
+
+    function nearestVal(field, x) {
+      const arr = fieldRows[field];
+      if (!arr || !arr.length) return null;
+      let best = null, bestD = Infinity;
+      for (const item of arr) {
+        const d = Math.abs(item.x - x);
+        if (d < bestD) { bestD = d; best = item.str; }
+      }
+      return best;
+    }
+
+    return nameItems.map(ni => {
+      const name = ni.str.trim();
+      if (!name) return null;
+      const x = ni.x;
+      return {
+        id: uid(), projectId: currentProjectId,
+        name,
+        northing: parseCoord(nearestVal('northing', x)),
+        easting: parseCoord(nearestVal('easting', x)),
+        elevation: parseCoord(nearestVal('elevation', x)),
+        oldStation: (nearestVal('oldStation', x) || '').trim(),
+        equation: (nearestVal('equation', x) || '').trim(),
+        distanceOld: parseCoord(nearestVal('distanceOld', x)),
+        newStation: (nearestVal('newStation', x) || '').trim(),
+        distanceNew: parseCoord(nearestVal('distanceNew', x)),
+        note: (nearestVal('note', x) || '').trim(),
+        status: 'uncategorized', statusNote: '', statusDate: '',
+        created: isoDate(),
+      };
+    }).filter(pt => pt && pt.name);
+  }
+
+  // ── Fall back to normal (horizontal) layout ────────────────────────────────
+  // Score each row by number of column-header keywords it contains; pick best.
+  const HEADER_KWS = ['NAME','NORTHING','EASTING','ELEVATION','STATION','EQUATION','DISTANCE','NOTE'];
+  let headerY = null, colBounds = null, bestScore = 0;
+
+  for (const row of groupedRows) {
+    const text = row.items.map(i => i.str.toUpperCase()).join(' ');
+    const score = HEADER_KWS.filter(kw => text.includes(kw)).length;
+    if (score >= 3 && score > bestScore) {
+      bestScore = score; headerY = row.y; colBounds = buildColBounds(row.items);
+    }
+  }
+
+  // Check for a sub-header row just below (spanning headers like "CONSTRUCTION CONTROL")
+  if (headerY !== null) {
+    const subRow = allItems.filter(it => it.y < headerY - 4 && it.y > headerY - 36);
+    if (subRow.length > 0) {
+      const subText = subRow.map(i => i.str.toUpperCase()).join(' ');
+      if (subText.includes('STATION') || subText.includes('DISTANCE') || subText.includes('NEW')) {
+        const subBounds = buildColBounds(subRow);
+        subBounds.forEach(sc => {
+          if (!colBounds.some(c => Math.abs(c.x - sc.x) < 30)) colBounds.push(sc);
+        });
+        headerY = Math.min(...subRow.map(i => i.y));
+      }
+    }
+  }
+
+  if (!colBounds || headerY === null) return [];
+
+  const dataItems = allItems.filter(it => it.y < headerY - 5);
+  const rowGroups = [];
+  const used = new Set();
+  dataItems.forEach((item, idx) => {
+    if (used.has(idx)) return;
+    const group = dataItems.filter((it, i) => !used.has(i) && Math.abs(it.y - item.y) < 7);
+    group.forEach((_, i) => used.add(dataItems.indexOf(group[i])));
+    if (group.length > 0) rowGroups.push(group);
+  });
+
+  const points = [];
+  for (const group of rowGroups) {
+    const cells = assignToCols(group, colBounds);
+    const name = cells.NAME || cells['POINT NAME'] || cells['PT NAME'] || '';
+    if (!name || name.length < 1) continue;
+    if (name.toUpperCase() === 'NAME' || name.toUpperCase().includes('CONTROL')) continue;
+    const pt = {
+      id: uid(), projectId: currentProjectId,
+      name: name.trim(),
+      northing: parseCoord(cells.NORTHING || cells.N),
+      easting: parseCoord(cells.EASTING || cells.E),
+      elevation: parseCoord(cells.ELEVATION || cells.ELEV || cells.EL),
+      oldStation: (cells['OLD STATION'] || cells.STATION || cells['OLD STA'] || '').trim(),
+      equation: (cells.EQUATION || cells.EQ || '').trim(),
+      distanceOld: parseCoord(cells['DISTANCE(S)'] || cells["DISTANCE(')"] || cells['DISTANCE'] || cells["DIST(')"] || cells['DIST']),
+      newStation: (cells['NEW STATION'] || cells['NEW STA'] || '').trim(),
+      distanceNew: null,
+      note: (cells.NOTE || cells.NOTES || cells.DESCRIPTION || '').trim(),
+      status: 'uncategorized', statusNote: '', statusDate: '',
+      created: isoDate(),
+    };
+    const distKeys = Object.keys(cells).filter(k => k.toUpperCase().includes('DISTANCE') || k.toUpperCase().includes("DIST("));
+    if (distKeys.length >= 2) { pt.distanceOld = parseCoord(cells[distKeys[0]]); pt.distanceNew = parseCoord(cells[distKeys[1]]); }
+    if (pt.name) points.push(pt);
+  }
+  return points;
+}
+
+function buildColBounds(headerItems) {
+  // Sort header items left-to-right
+  const sorted = [...headerItems].sort((a,b) => a.x - b.x);
+  const cols = [];
+  let i = 0;
+  while (i < sorted.length) {
+    // Merge items that are very close horizontally (same header cell)
+    let label = sorted[i].str.trim();
+    let cx = sorted[i].x;
+    let j = i+1;
+    while (j < sorted.length && sorted[j].x - cx < 40) {
+      label += ' ' + sorted[j].str.trim();
+      cx = (cx + sorted[j].x) / 2;
+      j++;
+    }
+    cols.push({ label: label.trim().toUpperCase(), x: cx });
+    i = j;
+  }
+  return cols;
+}
+
+function assignToCols(items, colBounds) {
+  const cells = {};
+  items.forEach(item => {
+    // Find nearest column
+    let best = colBounds[0];
+    let bestDist = Math.abs(item.x - best.x);
+    colBounds.forEach(col => {
+      const d = Math.abs(item.x - col.x);
+      if (d < bestDist) { bestDist = d; best = col; }
+    });
+    if (cells[best.label]) cells[best.label] += ' ' + item.str;
+    else cells[best.label] = item.str;
+  });
+  return cells;
+}
+
+function parseCoord(val) {
+  if (val == null || val === '') return null;
+  const n = parseFloat(String(val).replace(/[^\d.\-]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+function clearPreview() {
+  document.getElementById('importStep3').classList.add('hidden');
+}
+
+// ─── CSV loading ───────────────────────────────────────────────────────────────
+function isLoisCsv(headerCells) {
+  const LOIS_DETECT = ['lpn','local point number','local point','scale factor','scale factor'];
+  const lc = headerCells.map(h => h.toLowerCase().trim()).join('|');
+  return LOIS_DETECT.some(a => lc.includes(a));
+}
+function mapLoisHeader(headerCells) {
+  const map = {};
+  headerCells.forEach((cell, i) => {
+    const norm = cell.toLowerCase().trim();
+    for (const [field, aliases] of Object.entries(LOIS_COLS)) {
+      if (!(field in map) && aliases.some(a => norm.includes(a))) { map[field] = i; }
+    }
+  });
+  return map;
+}
+function loadCsv(file) {
+  _csvFilename = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    _csvRaw = e.target.result;
+    const lines = _csvRaw.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) { showToast('CSV is empty'); return; }
+    const firstRow = csvSplitLine(lines[0]);
+    const lois = isNaN(parseFloat(firstRow[0])) && isLoisCsv(firstRow);
+    document.getElementById('importStep1').classList.add('hidden');
+    if (lois) {
+      _csvImportMode = 'lois';
+      parseLoisCsvInit(lines, firstRow, file.name);
+    } else {
+      _csvImportMode = 'generic';
+      document.getElementById('csvFileName').textContent = file.name;
+      populateCsvProjectPicker();
+      document.getElementById('importStep2csv').classList.remove('hidden');
+    }
+  };
+  reader.readAsText(file);
+}
+async function parseLoisCsvInit(lines, headerCells, filename) {
+  const hMap = mapLoisHeader(headerCells);
+  const getCell = (cells, field) => {
+    const idx = hMap[field];
+    return (idx != null && cells[idx] != null) ? cells[idx].trim() : '';
+  };
+  _loisRows = [];
+  for (let r = 1; r < lines.length; r++) {
+    const cells = csvSplitLine(lines[r]);
+    const name = getCell(cells, 'pointName');
+    if (!name) continue;
+    const gridN = parseFloat(getCell(cells,'gridN')) || null;
+    const gridE = parseFloat(getCell(cells,'gridE')) || null;
+    _loisRows.push({
+      name,
+      lpn:         getCell(cells,'lpn') || '(none)',
+      gridN,
+      gridE,
+      gridElev:    parseFloat(getCell(cells,'gridElev')) || null,
+      scaleFactor: parseFloat(getCell(cells,'scaleFactor')) || null,
+    });
+  }
+  // Populate project picker
+  const projs = await ftGetAllProjects();
+  const pick = document.getElementById('loisProjectPick');
+  pick.innerHTML = `<option value="">— No project (preview only) —</option>` +
+    projs.sort((a,b)=>(b.created||'').localeCompare(a.created||'')).map(p =>
+      `<option value="${escHtml(p.id)}"${p.id===currentProjectId?' selected':''}>${escHtml(projectLabel(p))}</option>`
+    ).join('');
+  // Populate LPN checkboxes
+  const lpns = [...new Set(_loisRows.map(r => r.lpn))].sort();
+  const lpnList = document.getElementById('lpnCheckboxList');
+  lpnList.innerHTML = lpns.map(lpn =>
+    `<label><input type="checkbox" value="${escHtml(lpn)}" checked> ${escHtml(lpn)}</label>`
+  ).join('');
+  document.getElementById('loisFileName').textContent = filename;
+  document.getElementById('loisFilterCount').textContent = `${_loisRows.length} total points across ${lpns.length} LPN(s)`;
+  document.getElementById('importStep2lois').classList.remove('hidden');
+}
+async function populateCsvProjectPicker() {
+  const projs = await ftGetAllProjects();
+  const pick = document.getElementById('csvProjectPick');
+  pick.innerHTML = projs.sort((a,b)=>(b.created||'').localeCompare(a.created||'')).map(p =>
+    `<option value="${escHtml(p.id)}"${p.id===currentProjectId?' selected':''}>${escHtml(projectLabel(p))}</option>`
+  ).join('');
+}
+function selectAllLpns(checked) {
+  document.querySelectorAll('#lpnCheckboxList input[type=checkbox]').forEach(cb => cb.checked = checked);
+}
+function applyLoisFilter() {
+  const checkedLpns = new Set(
+    [...document.querySelectorAll('#lpnCheckboxList input[type=checkbox]:checked')].map(cb => cb.value)
+  );
+  const sfMin = parseFloat(document.getElementById('sfMin').value) || null;
+  const sfMax = parseFloat(document.getElementById('sfMax').value) || null;
+  const importN    = document.getElementById('loisImportN').checked;
+  const importE    = document.getElementById('loisImportE').checked;
+  const importElev = document.getElementById('loisImportElev').checked;
+  _loisTargetProjectId = document.getElementById('loisProjectPick').value || currentProjectId;
+
+  const filtered = _loisRows.filter(r => {
+    if (!checkedLpns.has(r.lpn)) return false;
+    if (r.scaleFactor != null) {
+      if (sfMin != null && r.scaleFactor < sfMin) return false;
+      if (sfMax != null && r.scaleFactor > sfMax) return false;
+    }
+    return true;
+  });
+
+  const today = isoDate();
+  _parsedPoints = filtered.map(r => {
+    const obsId = uid();
+    const north = importN    ? r.gridN    : null;
+    const east  = importE    ? r.gridE    : null;
+    const elev  = importElev ? r.gridElev : null;
+    const obs = {
+      id: obsId, source: 'lois', date: today,
+      label: `LOIS LPN ${r.lpn}`,
+      northing: north, easting: east, elevation: elev,
+      lpn: r.lpn, scaleFactor: r.scaleFactor,
+    };
+    return {
+      id: uid(), projectId: _loisTargetProjectId,
+      name: r.name,
+      northing: north, easting: east, elevation: elev,
+      oldStation:'', equation:'', distanceOld:null, newStation:'', distanceNew:null,
+      note: `LOIS LPN ${r.lpn}`, status:'uncategorized', statusNote:'', statusDate:'',
+      created: today,
+      observations: [obs],
+      preferNorthing:  north != null ? obsId : null,
+      preferEasting:   east  != null ? obsId : null,
+      preferElevation: elev  != null ? obsId : null,
+      _loisObs: obs, // marker for merge logic
+    };
+  });
+
+  document.getElementById('importStep2lois').classList.add('hidden');
+  showPreview(_parsedPoints);
+}
+
+async function parseCsv() {
+  if (!_csvRaw) return;
+  const lines = _csvRaw.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) { showToast('CSV is empty'); return; }
+
+  const importN    = document.getElementById('csvImportN').checked;
+  const importE    = document.getElementById('csvImportE').checked;
+  const importElev = document.getElementById('csvImportElev').checked;
+  const targetId   = document.getElementById('csvProjectPick').value || currentProjectId;
+  _loisTargetProjectId = targetId;
+
+  // Detect header
+  const firstRow = csvSplitLine(lines[0]);
+  const headerMap = {};
+  const FIELD_ALIASES = {
+    NAME: ['name','point name','pt name','pt'],
+    NORTHING: ['northing','n','north','y'],
+    EASTING: ['easting','e','east','x'],
+    ELEVATION: ['elevation','elev','el','z','height'],
+    'OLD STATION': ['old station','old sta','station','sta'],
+    EQUATION: ['equation','eq'],
+    'DISTANCE': ['distance(\')', 'distance', "dist(')", 'dist', 'offset'],
+    'NEW STATION': ['new station','new sta'],
+    NOTE: ['note','notes','description','desc','monument type','code'],
+  };
+  const isHeader = isNaN(parseFloat(firstRow[0]));
+  const dataStart = isHeader ? 1 : 0;
+
+  if (isHeader) {
+    firstRow.forEach((cell, i) => {
+      const norm = cell.trim().toLowerCase();
+      for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+        if (!(field in headerMap) && aliases.some(a => norm.includes(a))) { headerMap[field] = i; }
+      }
+    });
+  } else {
+    // Fixed column order: Name, Northing, Easting, Elevation, Code
+    ['NAME','NORTHING','EASTING','ELEVATION','NOTE'].forEach((f,i) => { headerMap[f] = i; });
+  }
+
+  const today = isoDate();
+  const points = [];
+  for (let r = dataStart; r < lines.length; r++) {
+    const cells = csvSplitLine(lines[r]);
+    const get = field => {
+      const idx = headerMap[field];
+      return (idx != null && cells[idx] != null) ? cells[idx].trim() : '';
+    };
+    const name = get('NAME');
+    if (!name) continue;
+    const north = importN    ? parseCoord(get('NORTHING'))  : null;
+    const east  = importE    ? parseCoord(get('EASTING'))   : null;
+    const elev  = importElev ? parseCoord(get('ELEVATION')) : null;
+    const obsId = uid();
+    const obs = {
+      id: obsId, source: 'csv', date: today,
+      label: `CSV — ${_csvFilename}`,
+      northing: north, easting: east, elevation: elev,
+      note: get('NOTE') || null,
+    };
+    points.push({
+      id: uid(),
+      projectId: targetId,
+      name,
+      northing: north, easting: east, elevation: elev,
+      oldStation: get('OLD STATION'),
+      equation: get('EQUATION'),
+      distanceOld: parseCoord(get('DISTANCE')),
+      newStation: get('NEW STATION'),
+      distanceNew: null,
+      note: get('NOTE'),
+      status: 'uncategorized', statusNote: '', statusDate: '',
+      created: today,
+      observations: [obs],
+      preferNorthing:  north != null ? obsId : null,
+      preferEasting:   east  != null ? obsId : null,
+      preferElevation: elev  != null ? obsId : null,
+    });
+  }
+  _parsedPoints = points;
+  showPreview(points);
+}
+
+function csvSplitLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQ = !inQ; }
+    else if (ch === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
+// ─── Preview & Import ──────────────────────────────────────────────────────────
+function showPreview(points) {
+  _parsedPoints = points;
+  document.getElementById('previewCount').textContent = points.length;
+  document.getElementById('importCountLabel').textContent = points.length;
+
+  // Check for duplicates
+  const targetId = _loisTargetProjectId || currentProjectId;
+  const targetPoints = targetId === currentProjectId ? currentPoints : [];
+  const existingNames = new Set(targetPoints.map(p => p.name.toLowerCase()));
+  const dupes = points.filter(p => existingNames.has(p.name.toLowerCase()));
+  const banner = document.getElementById('importConflictBanner');
+  if (dupes.length) {
+    const isMerge = _csvImportMode === 'lois' || points.some(p => p.observations && p.observations.length);
+    const action = isMerge ? 'will be merged (new observation added)' : 'will be skipped';
+    banner.textContent = `ℹ ${dupes.length} point(s) already exist and ${action}: ${dupes.map(p=>p.name).slice(0,5).join(', ')}${dupes.length>5?'…':''}`;
+    banner.style.background = isMerge ? 'var(--pass-bg)' : '';
+    banner.style.borderColor = isMerge ? 'var(--pass-border)' : '';
+    banner.style.color = isMerge ? 'var(--pass-text)' : '';
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = points.slice(0, 20).map(pt => {
+    const isDupe = existingNames.has(pt.name.toLowerCase());
+    const sta = pt.newStation || pt.oldStation || '—';
+    const dist = pt.distanceNew ?? pt.distanceOld ?? '—';
+    return `<tr${isDupe?' style="opacity:0.45;text-decoration:line-through"':''}>
+      <td>${escHtml(pt.name)}</td>
+      <td>${escHtml(sta)}</td>
+      <td>${dist}</td>
+      <td>${escHtml(pt.note)}</td>
+      <td>${pt.northing??'—'}</td>
+      <td>${pt.easting??'—'}</td>
+      <td>${pt.elevation??'—'}</td>
+    </tr>`;
+  }).join('');
+  if (points.length > 20) {
+    tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);font-style:italic;">… and ${points.length-20} more</td></tr>`;
+  }
+
+  document.getElementById('importStep3').classList.remove('hidden');
+}
+
+async function importPoints() {
+  const targetId = _loisTargetProjectId || currentProjectId;
+  // Load current points for the target project (may differ from open project)
+  const targetPoints = targetId === currentProjectId
+    ? currentPoints
+    : await ftGetControlPointsByProject(targetId);
+  const byName = new Map(targetPoints.map(p => [p.name.toLowerCase(), p]));
+
+  let created = 0, merged = 0;
+  for (const pt of _parsedPoints) {
+    const existing = byName.get(pt.name.toLowerCase());
+    if (existing && pt.observations && pt.observations.length) {
+      // Merge: append the new observation to existing point
+      const newObs = pt.observations[0];
+      existing.observations = [...(existing.observations || []), newObs];
+      // Update prefer* for any fields that were imported (non-null in new obs)
+      if (newObs.northing  != null) existing.preferNorthing  = newObs.id;
+      if (newObs.easting   != null) existing.preferEasting   = newObs.id;
+      if (newObs.elevation != null) existing.preferElevation = newObs.id;
+      applyPreferences(existing);
+      await ftSaveControlPoint(existing);
+      merged++;
+    } else if (!existing) {
+      // Strip internal marker before saving
+      const { _loisObs: _l, ...clean } = pt;
+      clean.projectId = targetId;
+      await ftSaveControlPoint(clean);
+      created++;
+    }
+  }
+  currentPoints = await ftGetControlPointsByProject(currentProjectId);
+  closeImportModal();
+  renderFilterBar();
+  renderPointList();
+  const parts = [];
+  if (created) parts.push(`${created} added`);
+  if (merged)  parts.push(`${merged} merged`);
+  showToast(parts.length ? parts.join(', ') : 'Nothing new to import');
+}
+
+// ── Confirm Dialog ────────────────────────────────────────────────────────────
+function showConfirm(title, msg, cb) {
+  _confirmCb = cb;
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOkBtn').onclick = () => { closeConfirm(); _confirmCb?.(); };
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

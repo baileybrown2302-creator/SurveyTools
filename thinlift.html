@@ -1,0 +1,1907 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Field Tools">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <script src="db.js"></script>
+    <title>Thinlift Compaction (T335) — Field Tools</title>
+    <style>
+        :root{
+            --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+            --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+            --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+            --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+            --accent-green:#22c55e;--accent-green-hover:#16a34a;
+            --accent-red:#ef4444;--accent-red-hover:#dc2626;
+            --accent-orange:#f97316;--accent-yellow:#eab308;
+            --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+            --input-bg:#ffffff;--input-border:#d1d5db;
+            --result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;
+            --pass-bg:#f0fdf4;--pass-border:#86efac;--pass-text:#166534;
+            --fail-bg:#fef2f2;--fail-border:#fca5a5;--fail-text:#991b1b;
+            --warn-bg:#fff7ed;--warn-border:#fed7aa;--warn-text:#9a3412;
+            --modal-overlay:rgba(0,0,0,0.65);
+        }
+        [data-theme="high-contrast"]{
+            --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+            --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+            --border-primary:#333333;--border-secondary:#444444;
+            --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+            --accent-green:#4ade80;--accent-green-hover:#86efac;
+            --accent-red:#f87171;--accent-red-hover:#fca5a5;
+            --accent-orange:#fb923c;--accent-yellow:#facc15;
+            --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+            --input-bg:#1a1a1a;--input-border:#555555;
+            --result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;
+            --pass-bg:#052e16;--pass-border:#166534;--pass-text:#4ade80;
+            --fail-bg:#450a0a;--fail-border:#991b1b;--fail-text:#f87171;
+            --warn-bg:#431407;--warn-border:#9a3412;--warn-text:#fb923c;
+            --modal-overlay:rgba(0,0,0,0.85);
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        /* Tabs */
+        .tabs{display:flex;background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);position:sticky;top:49px;z-index:40;}
+        .tab{flex:1;padding:12px 6px;text-align:center;font-size:0.8em;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.15s;}
+        .tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue);}
+        [data-theme="high-contrast"] .tab.active{color:#fbbf24;border-bottom-color:#fbbf24;}
+        .tab-view{display:none;}
+        .tab-view.active{display:block;}
+        /* Cards */
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:18px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:14px;}
+        .field-group{margin-bottom:14px;}
+        .field-group:last-child{margin-bottom:0;}
+        .label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+        .opt{font-weight:400;color:var(--text-muted);}
+        .input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;transition:border-color 0.2s;}
+        .input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .select-input{display:block;width:100%;padding:11px 13px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;-webkit-appearance:none;}
+        .select-input:focus{border-color:var(--accent-blue);}
+        .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+        /* Mode toggles */
+        .mode-toggle{display:flex;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:3px;margin-bottom:14px;}
+        .mode-btn{flex:1;padding:8px;text-align:center;font-size:0.78em;font-weight:700;color:var(--text-muted);border-radius:7px;cursor:pointer;transition:all 0.15s;border:none;background:none;}
+        .mode-btn.active{background:var(--accent-blue);color:white;}
+        [data-theme="high-contrast"] .mode-btn.active{background:#fbbf24;color:#000;}
+        /* Side toggle */
+        .side-toggle{display:flex;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:3px;}
+        .side-btn{flex:1;padding:7px;text-align:center;font-size:0.85em;font-weight:800;color:var(--text-muted);border-radius:6px;cursor:pointer;border:none;background:none;transition:all 0.15s;}
+        .side-btn.active{background:var(--accent-blue);color:white;}
+        [data-theme="high-contrast"] .side-btn.active{background:#fbbf24;color:#000;}
+        /* Buttons */
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:11px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:44px;-webkit-user-select:none;user-select:none;width:100%;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{border-color:var(--accent-blue);color:var(--accent-blue);}
+        .btn-danger{background:var(--accent-red);}
+        .btn-row{display:flex;gap:10px;margin-top:14px;}
+        /* Result panels */
+        .result-panel{border-radius:12px;padding:16px;margin:12px 0 0;}
+        .result-blue{background:var(--result-bg);border:1.5px solid var(--result-border);}
+        .result-green{background:var(--pass-bg);border:1.5px solid var(--pass-border);}
+        .result-red{background:var(--fail-bg);border:1.5px solid var(--fail-border);}
+        .result-orange{background:var(--warn-bg);border:1.5px solid var(--warn-border);}
+        .result-yellow{background:#fefce8;border:1.5px solid #fde047;}
+        [data-theme="high-contrast"] .result-yellow{background:#422006;border-color:#a16207;}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;color:var(--result-text);}
+        .result-green .result-title{color:var(--pass-text);}
+        .result-red .result-title{color:var(--fail-text);}
+        .result-orange .result-title{color:var(--warn-text);}
+        .result-yellow .result-title{color:#a16207;}
+        [data-theme="high-contrast"] .result-yellow .result-title{color:#fde047;}
+        .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+        .result-full{grid-column:1/-1;}
+        .result-label{font-size:0.7em;font-weight:700;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:3px;}
+        .result-value{font-size:1.05em;font-weight:800;font-variant-numeric:tabular-nums;}
+        .result-divider{border:none;border-top:1px solid var(--border-primary);margin:12px 0;}
+        /* Pass/fail badge */
+        .pf-badge{display:inline-block;padding:4px 10px;border-radius:20px;font-size:0.78em;font-weight:800;letter-spacing:0.4px;}
+        .pf-pass{background:var(--pass-bg);color:var(--pass-text);border:1.5px solid var(--pass-border);}
+        .pf-fail{background:var(--fail-bg);color:var(--fail-text);border:1.5px solid var(--fail-border);}
+        .pf-na{background:var(--bg-tertiary);color:var(--text-muted);border:1.5px solid var(--border-primary);}
+        /* Error / info */
+        .error-msg{background:var(--fail-bg);border:1.5px solid var(--fail-border);color:var(--fail-text);border-radius:9px;padding:10px 13px;font-size:0.85em;font-weight:600;margin-bottom:12px;}
+        .info-note{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:10px 13px;font-size:0.8em;color:var(--text-tertiary);margin-bottom:14px;line-height:1.5;}
+        .warn-note{background:#fefce8;border:1.5px solid #fde047;border-radius:9px;padding:10px 13px;font-size:0.82em;font-weight:600;color:#a16207;margin-bottom:14px;line-height:1.5;}
+        [data-theme="high-contrast"] .warn-note{background:#422006;border-color:#a16207;color:#fde047;}
+        .hidden{display:none!important;}
+        /* Sub-nav row */
+        .sub-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:8px 16px;display:flex;align-items:center;gap:8px;}
+        .sub-nav-title{flex:1;font-size:0.8em;font-weight:700;color:var(--text-muted);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        /* List view */
+        .record-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;margin-bottom:8px;padding:14px 16px;cursor:pointer;transition:border-color 0.15s;box-shadow:var(--shadow);}
+        .record-card:hover{border-color:var(--accent-blue);}
+        .record-title{font-size:0.95em;font-weight:800;color:var(--text-primary);}
+        .record-meta{font-size:0.75em;color:var(--text-muted);margin-top:3px;}
+        /* Test cards */
+        .test-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:0 16px 10px;box-shadow:var(--shadow);overflow:hidden;}
+        .test-card.pass-border{border-color:var(--accent-green);}
+        .test-card.fail-border{border-color:var(--accent-red);}
+        .test-card-header{display:flex;align-items:center;padding:14px 16px;cursor:pointer;user-select:none;gap:8px;}
+        .test-card-num{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted);flex-shrink:0;}
+        .test-card-sta{flex:1;font-size:0.9em;font-weight:700;color:var(--text-primary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .test-card-dist{font-size:0.72em;color:var(--text-muted);flex-shrink:0;white-space:nowrap;}
+        .test-card-pct{font-size:0.85em;font-weight:800;font-variant-numeric:tabular-nums;flex-shrink:0;}
+        .test-card-pct.pass{color:var(--accent-green);}
+        .test-card-pct.fail{color:var(--accent-red);}
+        .test-card-pct.na{color:var(--text-muted);}
+        .test-card-chevron{color:var(--text-muted);font-size:1.1em;transition:transform 0.2s;flex-shrink:0;}
+        .test-card.open .test-card-chevron{transform:rotate(90deg);}
+        .test-card-body{display:none;padding:0 16px 16px;}
+        .test-card.open .test-card-body{display:block;}
+        /* Calc display box */
+        .calc-box{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:10px 12px;margin-bottom:12px;font-family:'SF Mono','Fira Mono',monospace;font-size:0.74em;color:var(--text-tertiary);line-height:1.7;}
+        .calc-box .cb-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+        .calc-box .cb-label{color:var(--text-muted);}
+        .calc-box .cb-val{font-weight:700;color:var(--text-primary);text-align:right;}
+        .calc-box .cb-eq{color:var(--accent-blue);font-weight:800;}
+        .calc-extra-badge{display:inline-block;background:var(--warn-bg);border:1px solid var(--warn-border);color:var(--warn-text);border-radius:6px;padding:2px 8px;font-size:0.72em;font-weight:700;margin-bottom:10px;}
+        /* Readings */
+        .readings-section{margin-bottom:12px;}
+        .readings-label{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;}
+        .readings-grid{display:grid;grid-template-columns:24px 1fr;gap:6px;align-items:center;margin-bottom:6px;}
+        .rdg-num{font-size:0.72em;font-weight:700;color:var(--text-muted);text-align:center;}
+        .reading-input{width:100%;padding:9px 11px;border:1.5px solid var(--input-border);border-radius:8px;background:var(--input-bg);color:var(--text-primary);font-size:0.95em;font-variant-numeric:tabular-nums;outline:none;}
+        .reading-input:focus{border-color:var(--accent-blue);}
+        /* Joint section */
+        .joint-toggle-btn{display:flex;align-items:center;justify-content:space-between;width:100%;background:var(--bg-tertiary);border:1.5px dashed var(--border-secondary);border-radius:9px;padding:9px 13px;font-size:0.82em;font-weight:700;color:var(--text-muted);cursor:pointer;margin-bottom:8px;transition:border-color 0.15s;}
+        .joint-toggle-btn:hover{border-color:var(--accent-blue);color:var(--accent-blue);}
+        .joint-section{display:none;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:9px;padding:12px;margin-bottom:12px;}
+        .joint-section.open{display:block;}
+        /* Summary table */
+        .summary-table{width:100%;border-collapse:collapse;font-size:0.78em;}
+        .summary-table th{font-size:0.65em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);padding:6px 6px;text-align:left;border-bottom:2px solid var(--border-primary);background:var(--bg-tertiary);white-space:nowrap;}
+        .summary-table td{padding:7px 6px;border-bottom:1px solid var(--border-primary);font-variant-numeric:tabular-nums;vertical-align:middle;}
+        .summary-table tr:last-child td{border-bottom:none;}
+        .summary-table .row-pass td{background:var(--pass-bg);color:var(--pass-text);}
+        .summary-table .row-fail td{background:var(--fail-bg);color:var(--fail-text);}
+        /* Criteria table */
+        .criteria-table{width:100%;border-collapse:collapse;font-size:0.82em;margin-top:10px;}
+        .criteria-table th{font-size:0.65em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);padding:6px 8px;text-align:left;border-bottom:2px solid var(--border-primary);}
+        .criteria-table td{padding:9px 8px;border-bottom:1px solid var(--border-primary);vertical-align:middle;}
+        .criteria-table tr:last-child td{border-bottom:none;}
+        /* Area chip */
+        .area-chip{display:inline-block;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:20px;padding:3px 10px;font-size:0.76em;font-weight:700;color:var(--text-secondary);margin-top:6px;}
+        .area-chip.small-section{background:#fefce8;border-color:#fde047;color:#a16207;}
+        [data-theme="high-contrast"] .area-chip.small-section{background:#422006;border-color:#a16207;color:#fde047;}
+        /* Block picker */
+        .block-picker{display:flex;align-items:center;gap:10px;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:10px 12px;margin-bottom:14px;}
+        .block-picker label{font-size:0.82em;font-weight:700;color:var(--text-secondary);flex-shrink:0;}
+        .block-display{flex:1;font-size:0.9em;font-weight:800;color:var(--accent-blue);text-align:center;}
+        [data-theme="high-contrast"] .block-display{color:#fbbf24;}
+        .station-hint{font-size:0.72em;color:var(--text-muted);margin-top:4px;}
+        /* Mix design linker */
+        .linked-chip{display:inline-flex;align-items:center;gap:6px;background:var(--pass-bg);border:1.5px solid var(--pass-border);color:var(--pass-text);border-radius:20px;padding:5px 12px;font-size:0.8em;font-weight:700;margin-bottom:10px;}
+        .linked-chip .chip-clear{background:none;border:none;color:var(--pass-text);cursor:pointer;font-size:1em;padding:0 0 0 4px;line-height:1;}
+        /* Print frame — hidden on screen, visible when printing */
+        #printFrame{display:none;}
+        @media print{
+            body>*:not(#printFrame){display:none!important;}
+            #printFrame{display:block!important;font-family:'Times New Roman',Times,serif;font-size:9pt;color:#000;background:#fff;}
+            @page{size:letter portrait;margin:0.45in 0.45in 0.4in;}
+            .pf-header{text-align:center;margin-bottom:6pt;}
+            .pf-header h2{font-size:11pt;font-weight:bold;margin:0;}
+            .pf-header h3{font-size:10pt;font-weight:bold;text-transform:uppercase;margin:2pt 0 0;}
+            .pf-header p{font-size:9pt;font-weight:bold;text-transform:uppercase;margin:0;}
+            .pf-fields{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-bottom:4pt;}
+            .pf-field-row{display:flex;align-items:flex-end;gap:4pt;margin-bottom:2pt;}
+            .pf-label{font-size:8pt;white-space:nowrap;}
+            .pf-val{flex:1;border-bottom:1px solid #000;min-width:80pt;font-size:8pt;padding-bottom:1pt;}
+            .pf-section-title{text-align:center;font-weight:bold;font-size:9pt;margin:4pt 0 3pt;}
+            .pf-sta-cols{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid #000;border-collapse:collapse;margin-bottom:4pt;}
+            .pf-sta-col{border-right:1px solid #000;min-height:40pt;padding:2pt;}
+            .pf-sta-col:last-child{border-right:none;}
+            .pf-sta-label{font-size:7pt;font-weight:bold;border-bottom:1px solid #000;padding-bottom:1pt;margin-bottom:2pt;}
+            .pf-rand-row{display:flex;gap:12pt;align-items:baseline;margin-bottom:3pt;}
+            .pf-rand-box{border:1px solid #000;padding:1pt 4pt;min-width:30pt;text-align:center;font-size:8pt;}
+            .pf-calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:6pt;margin-bottom:4pt;}
+            .pf-calc-col h4{font-size:8pt;font-weight:bold;margin-bottom:2pt;}
+            .pf-calc-row{display:flex;align-items:baseline;gap:3pt;font-size:7.5pt;margin-bottom:1.5pt;}
+            .pf-calc-box{border:1px solid #666;padding:0 3pt;min-width:26pt;text-align:right;}
+            .pf-density-row{display:flex;gap:20pt;align-items:baseline;margin-bottom:4pt;font-size:8.5pt;}
+            .pf-main-table{width:100%;border-collapse:collapse;margin-bottom:4pt;font-size:7.5pt;}
+            .pf-main-table th,.pf-main-table td{border:1px solid #000;padding:1.5pt 2pt;text-align:center;vertical-align:middle;}
+            .pf-main-table th{font-weight:bold;background:#f0f0f0;font-size:7pt;}
+            .pf-main-table .row-label{text-align:left;font-weight:bold;font-size:7pt;}
+            .pf-footer-grid{display:grid;grid-template-columns:55% 45%;gap:8pt;margin-bottom:4pt;}
+            .pf-footer-left .pf-field-row{margin-bottom:3pt;}
+            .pf-remarks-box{border:1px solid #000;min-height:48pt;padding:2pt;font-size:8pt;}
+            .pf-spec-row{display:flex;align-items:baseline;gap:4pt;font-size:8pt;margin-bottom:2pt;}
+            .pf-spec-box{border:1px solid #000;padding:1pt 4pt;min-width:24pt;text-align:center;}
+            .pf-sig-row{display:flex;align-items:flex-end;justify-content:space-between;margin-top:6pt;}
+            .pf-sig-line{border-bottom:1px solid #000;flex:1;margin:0 6pt;}
+            .pf-ndot{font-size:7pt;color:#333;margin-top:4pt;}
+            .pf-circle-row{font-size:8pt;text-align:right;}
+        }
+    </style>
+</head>
+<body>
+<div class="top-nav">
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">🔬 Thinlift Compaction</span>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<!-- ═══════════════════════════════ LIST VIEW ═══════════════════════════════ -->
+<div id="listView">
+    <div style="padding:12px 16px 4px;">
+
+        <!-- Project selector card -->
+        <div class="card" style="margin:0 0 8px;">
+            <div class="card-title">Project</div>
+            <select class="select-input" id="listProjectSelect" onchange="onListProjectChange()">
+                <option value="">— All Tests (no project filter) —</option>
+            </select>
+            <div id="listProjectMeta" style="font-size:0.75em;color:var(--text-muted);margin-top:6px;display:none;"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <span style="font-size:1em;font-weight:800;" id="listHeading">Saved Tests</span>
+            <button class="btn btn-primary" style="width:auto;padding:8px 16px;font-size:0.85em;" onclick="newRecord()">＋ New Test</button>
+        </div>
+        <div id="recordList"></div>
+        <div id="listEmpty" class="hidden" style="text-align:center;padding:40px 16px;color:var(--text-muted);">
+            <div style="font-size:2.5em;margin-bottom:12px;">🔬</div>
+            <div style="font-weight:700;margin-bottom:6px;" id="listEmptyTitle">No saved tests</div>
+            <div style="font-size:0.85em;" id="listEmptyHint">Tap "＋ New Test" to begin.</div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════ EDITOR VIEW ═══════════════════════════════ -->
+<div id="editorView" class="hidden">
+    <div class="sub-nav">
+        <button class="btn btn-secondary" style="width:auto;padding:6px 12px;font-size:0.8em;" onclick="closeRecord()">‹ Tests</button>
+        <div class="sub-nav-title" id="recordSubtitle"></div>
+        <button class="btn btn-danger" style="width:auto;padding:6px 12px;font-size:0.8em;" onclick="deleteRecord()">🗑</button>
+    </div>
+
+    <div class="tabs">
+        <div class="tab active" onclick="setTab('setup')">Setup</div>
+        <div class="tab" onclick="setTab('tests')">Tests</div>
+        <div class="tab" onclick="setTab('results')">Results</div>
+    </div>
+
+    <!-- ─── TAB: SETUP ─── -->
+    <div id="tab-setup" class="tab-view active">
+
+        <!-- Test Header -->
+        <div class="card">
+            <div class="card-title">Test Header</div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Date</label>
+                    <input class="input" type="date" id="f_date">
+                </div>
+                <div class="field-group">
+                    <label class="label">Contract Number</label>
+                    <input class="input" type="text" id="f_contractNumber" placeholder="e.g. 999-123">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="label">Material Type</label>
+                <input class="input" type="text" id="f_materialType" placeholder="e.g. SM-9.5A Surface Course">
+            </div>
+            <div class="field-group">
+                <label class="label">Lift / Lane / Direction</label>
+                <input class="input" type="text" id="f_liftLane" placeholder="e.g. 1st Lift, NB">
+            </div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Depth (in)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_depth" placeholder="e.g. 1.5" step="0.25">
+                </div>
+                <div class="field-group">
+                    <label class="label">Lot / Sublot</label>
+                    <input class="input" type="text" id="f_lotSublot" placeholder="e.g. 1-1">
+                </div>
+            </div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Gauge Set No.</label>
+                    <input class="input" type="text" id="f_gaugeSetNumber" placeholder="">
+                </div>
+                <div class="field-group">
+                    <label class="label">Tested By</label>
+                    <input class="input" type="text" id="f_testedBy" placeholder="">
+                </div>
+            </div>
+            <div class="field-group" style="margin-bottom:0;">
+                <label class="label">Remarks <span class="opt">(optional)</span></label>
+                <textarea class="input" id="f_remarks" rows="3" placeholder="Notes, observations, conditions…" style="resize:vertical;min-height:72px;"></textarea>
+            </div>
+        </div>
+
+        <!-- Stationing -->
+        <div class="card">
+            <div class="card-title">Stationing</div>
+            <div class="mode-toggle" id="staTypeTgl">
+                <button class="mode-btn active" onclick="setStaType('station')">Station</button>
+                <button class="mode-btn" onclick="setStaType('equation')">Equation</button>
+                <button class="mode-btn" onclick="setStaType('milemarker')">Mile Marker</button>
+            </div>
+
+            <!-- Standard station fields -->
+            <div id="sta-fields-station">
+                <div class="two-col">
+                    <div class="field-group">
+                        <label class="label">Begin Station</label>
+                        <input class="input" type="text" id="f_beginStation" placeholder="e.g. 1+00" oninput="onSectionChange()">
+                        <div class="station-hint">Format: 1+00 or 100</div>
+                    </div>
+                    <div class="field-group">
+                        <label class="label">End Station</label>
+                        <input class="input" type="text" id="f_endStation" placeholder="e.g. 10+00" oninput="onSectionChange()">
+                        <div class="station-hint">Can be less than begin (downstation)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Equation fields -->
+            <div id="sta-fields-equation" class="hidden">
+                <div class="two-col">
+                    <div class="field-group">
+                        <label class="label">Begin Station</label>
+                        <input class="input" type="text" id="f_eqBeginStation" placeholder="e.g. 1+00" oninput="onSectionChange()">
+                    </div>
+                    <div class="field-group">
+                        <label class="label">End Station <span class="opt">(ahead)</span></label>
+                        <input class="input" type="text" id="f_eqEndStation" placeholder="e.g. 48+52" oninput="onSectionChange()">
+                    </div>
+                </div>
+                <div class="two-col">
+                    <div class="field-group">
+                        <label class="label">Equation Back</label>
+                        <input class="input" type="text" id="f_eqBack" placeholder="e.g. 50+00" oninput="onSectionChange()">
+                    </div>
+                    <div class="field-group">
+                        <label class="label">Equation Ahead</label>
+                        <input class="input" type="text" id="f_eqAhead" placeholder="e.g. 48+52" oninput="onSectionChange()">
+                    </div>
+                </div>
+                <div id="eqPhysLen" class="info-note hidden"></div>
+            </div>
+
+            <!-- Mile marker fields -->
+            <div id="sta-fields-milemarker" class="hidden">
+                <div class="two-col">
+                    <div class="field-group">
+                        <label class="label">Begin Mile Marker</label>
+                        <input class="input" type="number" inputmode="decimal" id="f_beginMM" placeholder="e.g. 1.234" step="0.001" oninput="onSectionChange()">
+                    </div>
+                    <div class="field-group">
+                        <label class="label">End Mile Marker</label>
+                        <input class="input" type="number" inputmode="decimal" id="f_endMM" placeholder="e.g. 2.456" step="0.001" oninput="onSectionChange()">
+                    </div>
+                </div>
+                <div id="mmConvertInfo" class="info-note hidden"></div>
+            </div>
+
+            <div class="field-group" style="margin-top:4px;">
+                <label class="label">Width (ft)</label>
+                <input class="input" type="number" inputmode="decimal" id="f_width" placeholder="e.g. 12.0" step="0.5" oninput="onSectionChange()">
+            </div>
+            <div id="areaChipWrap"></div>
+        </div>
+
+        <!-- Reference Values -->
+        <div class="card">
+            <div class="card-title">Reference Values</div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">RICE Density (pcf)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_ricePcf" placeholder="e.g. 148.5" step="0.1" oninput="onRefChange()">
+                </div>
+                <div class="field-group">
+                    <label class="label">Correction Factor</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_correctionFactor" value="1.000" step="0.001" oninput="onRefChange()">
+                </div>
+            </div>
+            <div class="card-title" style="margin-top:14px;">Pass / Fail Thresholds</div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Single Location Min (%)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_tSingleMin" value="90" step="0.1" oninput="onRefChange()">
+                </div>
+                <div class="field-group">
+                    <label class="label">Single Location Max (%)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_tSingleMax" value="97" step="0.1" oninput="onRefChange()">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="label">Joint Minimum (%)</label>
+                <input class="input" type="number" inputmode="decimal" id="f_tJoint" value="90" step="0.1" oninput="onRefChange()">
+            </div>
+            <div class="two-col">
+                <div class="field-group">
+                    <label class="label">Test Section Avg Min (%)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_tSectionMin" value="92" step="0.1" oninput="onRefChange()">
+                </div>
+                <div class="field-group">
+                    <label class="label">Test Section Avg Max (%)</label>
+                    <input class="input" type="number" inputmode="decimal" id="f_tSectionMax" value="96" step="0.1" oninput="onRefChange()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Mix Design Linker -->
+        <div class="card" id="mixLinkerCard">
+            <div class="card-title">Link Mix Design <span class="opt">(Optional)</span></div>
+            <div class="info-note">Linking a mix design auto-fills the material type field. Enter RICE density manually from the actual day's RICE test.</div>
+            <div id="linkedMixChip"></div>
+            <div id="mixPickerControls">
+                <div class="field-group">
+                    <label class="label">Project / Contract</label>
+                    <select class="select-input" id="mixContractSelect" onchange="onMixContractChange()">
+                        <option value="">— Select contract —</option>
+                    </select>
+                </div>
+                <div class="field-group" id="mixDesignGroup" style="display:none;">
+                    <label class="label">HMA Mix Design</label>
+                    <select class="select-input" id="mixDesignSelect">
+                        <option value="">— Select mix —</option>
+                    </select>
+                </div>
+                <button class="btn btn-secondary" style="margin-top:4px;" onclick="linkMixDesign()" id="mixLinkBtn">Link Mix Design</button>
+            </div>
+        </div>
+
+        <!-- Test Setup -->
+        <div class="card" id="testSetupCard">
+            <div class="card-title">Test Setup</div>
+            <div id="smallSectionBanner" class="warn-note hidden">⚠ Small Test Section (&lt;1,000 sq yd) — 1 random location, minimum 90% spec applies.</div>
+
+            <!-- Normal section controls -->
+            <div id="normalSetupControls">
+                <div class="mode-toggle" id="corrTgl">
+                    <button class="mode-btn active" onclick="setCorrelation(false)">Standard (5 locations)</button>
+                    <button class="mode-btn" onclick="setCorrelation(true)">Correlation (7 locations)</button>
+                </div>
+                <div class="block-picker">
+                    <label>Random Block:</label>
+                    <div class="block-display" id="blockDisplay">Not selected</div>
+                    <select class="select-input" id="blockSelect" style="width:auto;padding:6px 10px;font-size:0.85em;" onchange="onBlockChange()">
+                        <option value="auto">Auto (random)</option>
+                        <option value="1">Block 1</option>
+                        <option value="2">Block 2</option>
+                        <option value="3">Block 3</option>
+                        <option value="4">Block 4</option>
+                        <option value="5">Block 5</option>
+                        <option value="6">Block 6</option>
+                        <option value="7">Block 7</option>
+                        <option value="8">Block 8</option>
+                        <option value="9">Block 9</option>
+                        <option value="10">Block 10</option>
+                        <option value="11">Block 11</option>
+                        <option value="12">Block 12</option>
+                        <option value="13">Block 13</option>
+                        <option value="14">Block 14</option>
+                        <option value="15">Block 15</option>
+                        <option value="16">Block 16</option>
+                        <option value="17">Block 17</option>
+                        <option value="18">Block 18</option>
+                        <option value="19">Block 19</option>
+                        <option value="20">Block 20</option>
+                        <option value="21">Block 21</option>
+                        <option value="22">Block 22</option>
+                        <option value="23">Block 23</option>
+                        <option value="24">Block 24</option>
+                        <option value="25">Block 25</option>
+                        <option value="26">Block 26</option>
+                        <option value="27">Block 27</option>
+                        <option value="28">Block 28</option>
+                        <option value="29">Block 29</option>
+                        <option value="30">Block 30</option>
+                        <option value="31">Block 31</option>
+                        <option value="32">Block 32</option>
+                        <option value="33">Block 33</option>
+                        <option value="34">Block 34</option>
+                        <option value="35">Block 35</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="setupError" class="error-msg hidden"></div>
+            <button class="btn btn-primary" onclick="generateLocations()">⚄ Generate Locations</button>
+        </div>
+    </div><!-- end tab-setup -->
+
+    <!-- ─── TAB: TESTS ─── -->
+    <div id="tab-tests" class="tab-view">
+        <div style="padding:12px 16px 4px;">
+            <div class="info-note">Enter 4 nuclear gauge readings per location. Expand "Joint" to add joint density readings.</div>
+        </div>
+        <div id="testCards" style="padding-top:4px;"></div>
+    </div>
+
+    <!-- ─── TAB: RESULTS ─── -->
+    <div id="tab-results" class="tab-view">
+        <div id="resultsContent" style="padding-bottom:8px;"></div>
+
+        <div class="card">
+            <div class="card-title">Actions</div>
+            <div class="btn-row">
+                <button class="btn btn-primary" onclick="saveRecord()">💾 Save</button>
+                <button class="btn btn-secondary" onclick="exportRecord()">⬇ Export JSON</button>
+            </div>
+            <div class="btn-row" style="margin-top:8px;">
+                <button class="btn btn-secondary" onclick="printRecord()">🖨 Print / PDF</button>
+            </div>
+            <div id="saveMsg" class="hidden" style="margin-top:10px;font-size:0.82em;color:var(--accent-green);font-weight:700;text-align:center;"></div>
+        </div>
+    </div>
+
+</div><!-- end editorView -->
+
+<div id="printFrame"></div>
+
+<script>
+'use strict';
+
+// ═══════════ THEME ═══════════
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+    localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+});
+(async () => {
+    const saved = await ftGetSetting('surveyTheme');
+    if (saved === 'high-contrast') {
+        document.documentElement.setAttribute('data-theme', 'high-contrast');
+        themeBtn.textContent = '☀️ Light';
+    }
+})();
+
+// ═══════════ RANDOM NUMBER BLOCKS ═══════════
+// Each row: [5 length randoms, 5 offset randoms] for tests 1–5
+// Source: T335 Excel form "Mileposts" sheet
+const RANDOM_BLOCKS = [
+    [0.576,0.892,0.669,0.609,0.971, 0.730,0.948,0.726,0.482,0.824], // 1
+    [0.430,0.858,0.501,0.809,0.902, 0.754,0.025,0.402,0.140,0.470], // 2
+    [0.271,0.935,0.231,0.396,0.997, 0.870,0.114,0.305,0.025,0.392], // 3
+    [0.732,0.153,0.009,0.937,0.892, 0.721,0.508,0.420,0.310,0.957], // 4
+    [0.998,0.749,0.517,0.253,0.640, 0.239,0.291,0.858,0.761,0.463], // 5
+    [0.053,0.810,0.081,0.982,0.095, 0.899,0.159,0.277,0.468,0.801], // 6
+    [0.554,0.225,0.035,0.334,0.576, 0.627,0.163,0.039,0.921,0.417], // 7
+    [0.427,0.549,0.860,0.690,0.251, 0.760,0.405,0.507,0.806,0.884], // 8
+    [0.470,0.285,0.081,0.879,0.522, 0.040,0.542,0.538,0.414,0.235], // 9
+    [0.904,0.231,0.986,0.106,0.398, 0.993,0.919,0.501,0.031,0.222], // 10
+    [0.509,0.371,0.165,0.477,0.788, 0.025,0.059,0.996,0.535,0.101], // 11
+    [0.794,0.164,0.356,0.337,0.434, 0.850,0.838,0.375,0.155,0.638], // 12
+    [0.917,0.289,0.654,0.767,0.021, 0.887,0.169,0.939,0.187,0.894], // 13
+    [0.751,0.569,0.815,0.579,0.324, 0.608,0.977,0.592,0.787,0.871], // 14
+    [0.698,0.796,0.348,0.358,0.698, 0.683,0.996,0.743,0.595,0.539], // 15
+    [0.566,0.901,0.470,0.068,0.874, 0.815,0.342,0.682,0.242,0.420], // 16
+    [0.622,0.873,0.412,0.667,0.127, 0.548,0.964,0.064,0.356,0.284], // 17
+    [0.947,0.942,0.150,0.195,0.448, 0.169,0.985,0.962,0.313,0.215], // 18
+    [0.317,0.123,0.925,0.396,0.833, 0.472,0.086,0.355,0.460,0.652], // 19
+    [0.864,0.335,0.909,0.740,0.601, 0.466,0.212,0.019,0.247,0.326], // 20
+    [0.897,0.875,0.190,0.341,0.846, 0.877,0.969,0.696,0.688,0.355], // 21
+    [0.209,0.109,0.757,0.587,0.831, 0.862,0.843,0.283,0.908,0.218], // 22
+    [0.428,0.759,0.666,0.865,0.945, 0.117,0.239,0.491,0.333,0.364], // 23
+    [0.100,0.890,0.523,0.928,0.673, 0.259,0.317,0.665,0.404,0.305], // 24
+    [0.425,0.428,0.919,0.892,0.195, 0.284,0.802,0.146,0.696,0.887], // 25
+    [0.882,0.464,0.123,0.116,0.836, 0.227,0.658,0.791,0.120,0.206], // 26
+    [0.552,0.629,0.503,0.721,0.914, 0.077,0.269,0.447,0.137,0.574], // 27
+    [0.454,0.069,0.659,0.263,0.870, 0.731,0.998,0.463,0.176,0.390], // 28
+    [0.716,0.917,0.994,0.798,0.104, 0.265,0.217,0.307,0.879,0.755], // 29
+    [0.058,0.220,0.631,0.432,0.082, 0.075,0.659,0.422,0.391,0.939], // 30
+    [0.636,0.630,0.804,0.360,0.183, 0.195,0.673,0.112,0.193,0.651], // 31
+    [0.614,0.665,0.331,0.181,0.157, 0.486,0.666,0.606,0.399,0.150], // 32
+    [0.629,0.399,0.551,0.564,0.800, 0.663,0.592,0.928,0.772,0.875], // 33
+    [0.619,0.441,0.830,0.890,0.205, 0.007,0.649,0.841,0.062,0.446], // 34
+    [0.296,0.270,0.602,0.919,0.648, 0.456,0.612,0.183,0.875,0.685], // 35
+];
+
+// ═══════════ UTILITIES ═══════════
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fv(id) {
+    const el = document.getElementById(id);
+    if (!el || el.value === '') return null;
+    const v = parseFloat(el.value);
+    return isNaN(v) ? null : v;
+}
+function fmt(n, d=2) { return n == null ? '—' : parseFloat(n).toFixed(d); }
+function fmtN(n, d=1) { return n == null ? '—' : parseFloat(n).toFixed(d); }
+
+// Parse station string "X+XX.X" or plain number → decimal feet
+function parseSta(str) {
+    if (!str || String(str).trim() === '') return null;
+    str = String(str).trim();
+    const m = str.match(/^(\d+)\+(\d+(?:\.\d+)?)$/);
+    if (m) return parseFloat(m[1]) * 100 + parseFloat(m[2]);
+    const v = parseFloat(str);
+    return isNaN(v) ? null : v;
+}
+// Format decimal feet → "X+XX.X" notation
+function fmtSta(ft, decimals=0) {
+    if (ft == null) return '—';
+    const h = Math.floor(ft / 100);
+    const r = ft - h * 100;
+    const rStr = decimals > 0 ? r.toFixed(decimals) : Math.round(r).toString().padStart(2,'0');
+    return `${h}+${rStr}`;
+}
+// Format mile marker
+function fmtMM(ft) {
+    if (ft == null) return '—';
+    return 'MM ' + (ft / 5280).toFixed(3);
+}
+
+// ═══════════ STATE ═══════════
+let currentRecord = null;
+let allRecords = [];
+
+function emptyTest(isCorrelationExtra = false) {
+    return {
+        station: null, distFromEdge: null, side: 'L',
+        distFromBeginning: null, isCorrelationExtra,
+        segmentStart: null, segmentLength: null,
+        randomLength: null, rawLengthFt: null, exactStation: null,
+        randomOffset: null, rawOffsetFt: null,
+        readings: [null, null, null, null],
+        avgDensity: null, correctedDensity: null, pctCompaction: null,
+        jointReadings: [null, null],
+        jointMinDensity: null, jointMinPct: null, jointExpanded: false,
+    };
+}
+
+function emptyRecord() {
+    return {
+        id: uid(), projectId: null,
+        created: new Date().toISOString(), modified: new Date().toISOString(),
+        // Header
+        materialType: '', liftLane: '', depth: null, remarks: '',
+        contractNumber: '', date: new Date().toISOString().slice(0,10),
+        gaugeSetNumber: '', testedBy: '',
+        // Stationing
+        stationType: 'station',
+        beginStation: null, endStation: null,
+        equationBack: null, equationAhead: null,
+        beginMM: null, endMM: null,
+        width: null,
+        // Reference
+        ricePcf: null, correctionFactor: 1.0,
+        // Thresholds
+        thresholdSingleMin: 90, thresholdSingleMax: 97,
+        thresholdJoint: 90,
+        thresholdSectionMin: 92, thresholdSectionMax: 96,
+        // Test setup
+        isCorrelation: false, randomBlockNumber: null,
+        // Lot / mix link
+        lotSublot: '',
+        linkedContractId: null, linkedMixDesignId: null, linkedMixLabel: '',
+        // Tests
+        tests: Array.from({length:5}, () => emptyTest()),
+    };
+}
+
+// ═══════════ PHYSICAL LENGTH / STATION HELPERS ═══════════
+// Returns {physicalLength, physicalBegin, physicalEnd, direction} for the current record
+// direction: 1 = upstation (begin < end), -1 = downstation (begin > end)
+function getPhysicalSection(rec) {
+    if (!rec) return null;
+    const st = rec.stationType;
+    if (st === 'milemarker') {
+        const b = rec.beginMM != null ? rec.beginMM * 5280 : null;
+        const e = rec.endMM   != null ? rec.endMM   * 5280 : null;
+        if (b == null || e == null || b === e) return null;
+        return { physicalBegin: b, physicalEnd: e, physicalLength: Math.abs(e - b), direction: e > b ? 1 : -1 };
+    }
+    if (st === 'equation') {
+        // Equation stationing only supports upstation (begin < end)
+        const b  = rec.beginStation;
+        const eB = rec.equationBack;
+        const eA = rec.equationAhead;
+        const e  = rec.endStation;
+        if (b == null || eB == null || eA == null || e == null) return null;
+        if (eB <= b || e <= eA) return null;
+        const lenBefore = eB - b;
+        const lenAfter  = e - eA;
+        if (lenBefore <= 0 || lenAfter <= 0) return null;
+        return { physicalBegin: b, physicalEnd: e, physicalLength: lenBefore + lenAfter, equationBack: eB, equationAhead: eA, direction: 1 };
+    }
+    // Standard station — allow reverse (downstation) paving
+    const b = rec.beginStation, e = rec.endStation;
+    if (b == null || e == null || b === e) return null;
+    return { physicalBegin: b, physicalEnd: e, physicalLength: Math.abs(e - b), direction: e > b ? 1 : -1 };
+}
+
+// Physical offset from begin → display decimal ft (applies direction for reverse stationing)
+function physOffsetToDisplayFt(rec, section, physOffset) {
+    if (rec.stationType === 'equation') {
+        // Equation is always upstation
+        const physPos = section.physicalBegin + physOffset;
+        const lenBefore = section.equationBack - section.physicalBegin;
+        if (physOffset <= lenBefore) return physPos;
+        return section.equationAhead + (physOffset - lenBefore);
+    }
+    // Standard / milemarker: apply direction (1=upstation, -1=downstation)
+    return section.physicalBegin + section.direction * physOffset;
+}
+
+// Convert physical offset from begin → display station string
+function physOffsetToDisplaySta(rec, section, physOffset) {
+    const st = rec.stationType;
+    if (st === 'equation') {
+        const physPos = section.physicalBegin + physOffset;
+        const lenBefore = section.equationBack - section.physicalBegin;
+        if (physOffset <= lenBefore) return fmtSta(physPos);
+        return fmtSta(section.equationAhead + (physOffset - lenBefore));
+    }
+    const dispFt = physOffsetToDisplayFt(rec, section, physOffset);
+    if (st === 'milemarker') return fmtMM(dispFt);
+    return fmtSta(dispFt);
+}
+
+// Paving area sq yd
+function computeArea(rec) {
+    const sec = getPhysicalSection(rec);
+    if (!sec || !rec.width) return null;
+    return (sec.physicalLength * rec.width) / 9;
+}
+
+// ═══════════ TAB NAVIGATION ═══════════
+function setTab(tab) {
+    const names = ['setup','tests','results'];
+    document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', names[i] === tab));
+    document.querySelectorAll('.tab-view').forEach(v => v.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.add('active');
+    if (tab === 'results') refreshResults();
+    window.scrollTo(0,0);
+}
+
+// ═══════════ STATIONING MODE ═══════════
+let _staType = 'station';
+function setStaType(type) {
+    _staType = type;
+    ['station','equation','milemarker'].forEach(t => {
+        document.getElementById('sta-fields-' + t).classList.toggle('hidden', t !== type);
+        const btns = document.getElementById('staTypeTgl').querySelectorAll('.mode-btn');
+        btns[0].classList.toggle('active', type === 'station');
+        btns[1].classList.toggle('active', type === 'equation');
+        btns[2].classList.toggle('active', type === 'milemarker');
+    });
+    onSectionChange();
+}
+
+// ═══════════ CORRELATION MODE ═══════════
+let _isCorrelation = false;
+function setCorrelation(val) {
+    _isCorrelation = val;
+    const btns = document.getElementById('corrTgl').querySelectorAll('.mode-btn');
+    btns[0].classList.toggle('active', !val);
+    btns[1].classList.toggle('active', val);
+}
+
+// ═══════════ BLOCK SELECTOR ═══════════
+function onBlockChange() {
+    const sel = document.getElementById('blockSelect').value;
+    const disp = document.getElementById('blockDisplay');
+    disp.textContent = sel === 'auto' ? 'Auto (random)' : 'Block #' + sel;
+}
+
+// ═══════════ MIX DESIGN LINKER ═══════════
+async function loadMixDesignPicker() {
+    const contracts = await ftGetAllMaterials();
+    const withHMA = contracts.filter(c => c.materials && c.materials.some(m => m.category === 'HMA'));
+    const sel = document.getElementById('mixContractSelect');
+    sel.innerHTML = '<option value="">— Select contract —</option>' +
+        withHMA.map(c => `<option value="${escHtml(c.id)}">${escHtml(c.number || c.contractNumber || c.id)}</option>`).join('');
+    document.getElementById('mixDesignGroup').style.display = 'none';
+}
+
+async function onMixContractChange() {
+    const contractId = document.getElementById('mixContractSelect').value;
+    const grp = document.getElementById('mixDesignGroup');
+    if (!contractId) { grp.style.display = 'none'; return; }
+    const contracts = await ftGetAllMaterials();
+    const contract = contracts.find(c => c.id === contractId);
+    if (!contract) { grp.style.display = 'none'; return; }
+    const hmaMats = (contract.materials || []).filter(m => m.category === 'HMA');
+    if (!hmaMats.length) { grp.style.display = 'none'; return; }
+    const sel = document.getElementById('mixDesignSelect');
+    sel.innerHTML = '<option value="">— Select mix —</option>' +
+        hmaMats.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.hma_id || m.id)}${m.hma_density ? ' (' + m.hma_density + ' pcf)' : ''}</option>`).join('');
+    grp.style.display = 'block';
+}
+
+async function linkMixDesign() {
+    const contractId = document.getElementById('mixContractSelect').value;
+    const mixId = document.getElementById('mixDesignSelect').value;
+    if (!contractId || !mixId) return;
+    const contracts = await ftGetAllMaterials();
+    const contract = contracts.find(c => c.id === contractId);
+    if (!contract) return;
+    const mat = (contract.materials || []).find(m => m.id === mixId);
+    if (!mat) return;
+    currentRecord.linkedContractId = contractId;
+    currentRecord.linkedMixDesignId = mixId;
+    const mixName = mat.hma_id || mat.id;
+    const density = mat.hma_density || null;
+    currentRecord.linkedMixLabel = `${mixName}${density ? ' · ' + density + ' pcf' : ''} · ${contract.contractNumber || contractId}`;
+    // Auto-fill material type if blank (RICE is entered manually from actual day's test)
+    const matType = document.getElementById('f_materialType');
+    if (mixName && !matType.value.trim()) {
+        matType.value = mixName;
+        currentRecord.materialType = mixName;
+    }
+    renderLinkedMixChip();
+}
+
+function clearMixLink() {
+    if (!currentRecord) return;
+    currentRecord.linkedContractId = null;
+    currentRecord.linkedMixDesignId = null;
+    currentRecord.linkedMixLabel = '';
+    renderLinkedMixChip();
+}
+
+function renderLinkedMixChip() {
+    const chip = document.getElementById('linkedMixChip');
+    const controls = document.getElementById('mixPickerControls');
+    if (!chip || !controls) return;
+    if (!currentRecord || !currentRecord.linkedMixLabel) {
+        chip.innerHTML = '';
+        controls.style.display = 'block';
+    } else {
+        chip.innerHTML = `<span class="linked-chip">✓ ${escHtml(currentRecord.linkedMixLabel)}<button class="chip-clear" onclick="clearMixLink()" title="Clear link">✕</button></span>`;
+        controls.style.display = 'none';
+    }
+}
+
+// ═══════════ PRINT / PDF ═══════════
+function printRecord() {
+    if (!currentRecord) return;
+    readSetupFields();
+    currentRecord.tests.forEach((_,i) => { recalcTest(i); recalcJoint(i); });
+    const r = currentRecord;
+    const sec = getPhysicalSection(r);
+
+    // Compute summary values
+    const stdTests = r.tests.filter(t => !t.isCorrelationExtra);
+    const completed = stdTests.filter(t => t.correctedDensity != null);
+    const meanCorrDensity = completed.length ? completed.reduce((s,t)=>s+t.correctedDensity,0)/completed.length : null;
+    const meanPct = completed.length ? completed.reduce((s,t)=>s+t.pctCompaction,0)/completed.length : null;
+
+    // Header display values
+    const staBegin = r.stationType==='milemarker' && r.beginMM!=null ? `MM ${r.beginMM}` : (r.beginStation!=null ? fmtSta(r.beginStation) : '');
+    const staEnd   = r.stationType==='milemarker' && r.endMM!=null   ? `MM ${r.endMM}`   : (r.endStation!=null   ? fmtSta(r.endStation)   : '');
+
+    // Build 5 test columns (up to 5 std tests)
+    const fiveTests = r.tests.filter(t=>!t.isCorrelationExtra).slice(0,5);
+    while (fiveTests.length < 5) fiveTests.push(null);
+
+    function pfCell(v) { return v!=null ? v.toFixed(1) : ''; }
+    function pfStr(v,d=1) { return v!=null ? parseFloat(v).toFixed(d) : ''; }
+
+    // A/B calc rows (5 rows each)
+    let aRows='', bRows='';
+    for (let i=0;i<5;i++) {
+        const t = fiveTests[i];
+        const rL = t && t.randomLength!=null ? t.randomLength : '';
+        const sL = t && t.segmentLength!=null ? t.segmentLength.toFixed(1) : '';
+        const rA = t && t.rawLengthFt!=null ? t.rawLengthFt : '';
+        const rO = t && t.randomOffset!=null ? t.randomOffset : '';
+        const rW = t && t.rawOffsetFt!=null ? t.rawOffsetFt : '';
+        const wid = r.width!=null ? r.width : '';
+        aRows += `<div class="pf-calc-row"><span class="pf-calc-box">${rL}</span> × <span class="pf-calc-box">${sL}</span> = <span class="pf-calc-box">${rA}</span> ft</div>`;
+        bRows += `<div class="pf-calc-row"><span class="pf-calc-box">${rO}</span> × <span class="pf-calc-box">${wid}</span> = <span class="pf-calc-box">${rW}</span> ft</div>`;
+    }
+
+    // Main table — rows × 5 test columns
+    const rowDefs = [
+        { label: 'Station (nearest 25\')', fn: t => t ? (r.stationType==='milemarker' ? fmtMM(t.station) : fmtSta(t.station)) : '' },
+        { label: 'Dist. from Edge (ft)',   fn: t => t && t.distFromEdge!=null ? t.distFromEdge.toFixed(1) : '' },
+        { label: '*Joint LT / RT',         fn: t => t ? (pfStr(t.jointReadings&&t.jointReadings[0]) + ' / ' + pfStr(t.jointReadings&&t.jointReadings[1])) : '' },
+        { label: 'L or R',                 fn: t => t ? (t.side||'') : '' },
+        { label: 'Reading 1',              fn: t => t ? pfStr(t.readings&&t.readings[0]) : '' },
+        { label: 'Reading 2',              fn: t => t ? pfStr(t.readings&&t.readings[1]) : '' },
+        { label: 'Reading 3',              fn: t => t ? pfStr(t.readings&&t.readings[2]) : '' },
+        { label: 'Reading 4',              fn: t => t ? pfStr(t.readings&&t.readings[3]) : '' },
+        { label: 'Avg Density (pcf)',      fn: t => t ? pfStr(t.avgDensity) : '' },
+        { label: 'Corr. Density (pcf)',    fn: t => t ? pfStr(t.correctedDensity) : '' },
+        { label: '% Rel. Compaction',      fn: t => t ? pfStr(t.pctCompaction) : '' },
+    ];
+
+    const testNumHdr = fiveTests.map((_,i) => `<th>Test ${i+1}</th>`).join('');
+    const mainRows = rowDefs.map(rd => {
+        const cells = fiveTests.map(t => `<td>${escHtml(rd.fn(t))}</td>`).join('');
+        return `<tr><td class="row-label">${rd.label}</td>${cells}</tr>`;
+    }).join('');
+
+    const html = `
+<div class="pf-header">
+    <h2>STATE OF NEVADA — DEPARTMENT OF TRANSPORTATION</h2>
+    <h3>Nuclear Thin Layer Compaction Report</h3>
+    <p>For Plantmix Bituminous Pavements</p>
+</div>
+<div class="pf-fields">
+    <div>
+        <div class="pf-field-row"><span class="pf-label">Material Type:</span><span class="pf-val">${escHtml(r.materialType)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Lift, Lane &amp; Direction:</span><span class="pf-val">${escHtml(r.liftLane)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Width:</span><span class="pf-val">${r.width!=null?r.width+' ft':''}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Depth:</span><span class="pf-val">${r.depth!=null?r.depth+' in':''}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Lot / Sublot:</span><span class="pf-val">${escHtml(r.lotSublot||'')}</span></div>
+    </div>
+    <div>
+        <div class="pf-field-row"><span class="pf-label">Contract Number:</span><span class="pf-val">${escHtml(r.contractNumber)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Date:</span><span class="pf-val">${escHtml(r.date)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Gauge Set Number:</span><span class="pf-val">${escHtml(r.gaugeSetNumber)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Tested By:</span><span class="pf-val">${escHtml(r.testedBy)}</span></div>
+    </div>
+</div>
+
+<div class="pf-section-title">TEST SECTION</div>
+<div class="pf-sta-cols">
+    ${fiveTests.map((t,i) => {
+        const sta = t && t.station!=null ? (r.stationType==='milemarker' ? fmtMM(t.station) : fmtSta(t.station)) : '';
+        return `<div class="pf-sta-col"><div class="pf-sta-label">Test ${i+1}</div><div style="font-size:8pt;">${escHtml(sta)}</div></div>`;
+    }).join('')}
+</div>
+
+<div class="pf-rand-row">
+    <span>Random Number Block:</span><span class="pf-rand-box">${r.randomBlockNumber!=null?r.randomBlockNumber:''}</span>
+    <span>Beginning Station:</span><span class="pf-rand-box" style="min-width:60pt;">${escHtml(staBegin)}</span>
+    <span>Ending Station:</span><span class="pf-rand-box" style="min-width:60pt;">${escHtml(staEnd)}</span>
+</div>
+
+<div class="pf-calc-grid">
+    <div class="pf-calc-col">
+        <h4>Column A — R × Segment Length = Longitudinal Offset (ft)</h4>
+        ${aRows}
+    </div>
+    <div class="pf-calc-col">
+        <h4>Column B — R × Width = Transverse Offset (ft)</h4>
+        ${bRows}
+    </div>
+</div>
+
+<div class="pf-density-row">
+    <span>Target Density (RICE): <strong>${r.ricePcf!=null?r.ricePcf.toFixed(1):''} pcf</strong></span>
+    <span>From (RICE or Control Strip) Test #: <span style="border-bottom:1px solid #000;min-width:40pt;display:inline-block;">${escHtml(r.gaugeSetNumber)}</span></span>
+    <span>Correction Factor: <strong>${r.correctionFactor!=null?r.correctionFactor.toFixed(3):''}</strong></span>
+</div>
+
+<table class="pf-main-table">
+    <thead>
+        <tr><th class="row-label">Row</th>${testNumHdr}</tr>
+    </thead>
+    <tbody>
+        ${mainRows}
+    </tbody>
+</table>
+
+<div class="pf-footer-grid">
+    <div class="pf-footer-left">
+        <div class="pf-field-row"><span class="pf-label">Mean Test Section Density:</span><span class="pf-val">${meanCorrDensity!=null?meanCorrDensity.toFixed(1)+' pcf':''}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Mean % Relative Compaction:</span><span class="pf-val">${meanPct!=null?meanPct.toFixed(1)+'%':''}</span></div>
+        <div style="margin-top:6pt;font-size:8pt;font-weight:bold;">Specification</div>
+        <div class="pf-spec-row">Joint Test Min: <span class="pf-spec-box">${r.thresholdJoint}%</span></div>
+        <div class="pf-spec-row">Single Test Min: <span class="pf-spec-box">${r.thresholdSingleMin}%</span> Max: <span class="pf-spec-box">${r.thresholdSingleMax}%</span></div>
+        <div class="pf-spec-row">Mean Test Section Min: <span class="pf-spec-box">${r.thresholdSectionMin}%</span> Max: <span class="pf-spec-box">${r.thresholdSectionMax}%</span></div>
+    </div>
+    <div>
+        <div style="font-size:8pt;font-weight:bold;margin-bottom:3pt;">Remarks:</div>
+        <div class="pf-remarks-box">${escHtml(r.remarks||'')}</div>
+    </div>
+</div>
+
+<div class="pf-sig-row">
+    <span style="font-size:8pt;white-space:nowrap;">Resident Engineer Signature:</span>
+    <span class="pf-sig-line"></span>
+    <span class="pf-circle-row">Accepted ○&nbsp;&nbsp;Rejected ○</span>
+</div>
+<div class="pf-ndot">NDOT 040-017&nbsp;&nbsp;Rev. 9/20</div>`;
+
+    let frame = document.getElementById('printFrame');
+    frame.innerHTML = html;
+    window.print();
+}
+
+// ═══════════ SECTION CHANGE (area chip, small section banner) ═══════════
+function onSectionChange() {
+    if (!currentRecord) return;
+    readSetupFields();
+    const area = computeArea(currentRecord);
+    const wrap = document.getElementById('areaChipWrap');
+    const isSmall = area != null && area < 1000;
+
+    const sec = getPhysicalSection(currentRecord);
+    if (area != null) {
+        const cls = isSmall ? 'area-chip small-section' : 'area-chip';
+        const dirNote = sec && sec.direction === -1 ? ' · ↓ Downstation' : '';
+        wrap.innerHTML = `<span class="${cls}">Section Area: ${area.toLocaleString(undefined,{maximumFractionDigits:0})} sq yd${isSmall ? ' ⚠ Small' : ''}${dirNote}</span>`;
+    } else {
+        wrap.innerHTML = '';
+    }
+
+    // Equation info
+    if (_staType === 'equation') {
+        const infoEl = document.getElementById('eqPhysLen');
+        if (sec) {
+            infoEl.textContent = `Physical section length: ${sec.physicalLength.toFixed(1)} ft`;
+            infoEl.classList.remove('hidden');
+        } else {
+            infoEl.classList.add('hidden');
+        }
+    }
+    // MM info
+    if (_staType === 'milemarker') {
+        const infoEl = document.getElementById('mmConvertInfo');
+        if (sec) {
+            const dir = sec.direction === -1 ? ' · ↓ Downstation' : '';
+            infoEl.textContent = `Begin: ${fmtSta(sec.physicalBegin)} (${sec.physicalBegin.toFixed(0)} ft)  ·  End: ${fmtSta(sec.physicalEnd)} (${sec.physicalEnd.toFixed(0)} ft)  ·  Length: ${sec.physicalLength.toFixed(0)} ft${dir}`;
+            infoEl.classList.remove('hidden');
+        } else {
+            infoEl.classList.add('hidden');
+        }
+    }
+
+    // Small section banner
+    document.getElementById('smallSectionBanner').classList.toggle('hidden', !isSmall);
+    document.getElementById('normalSetupControls').classList.toggle('hidden', isSmall);
+}
+
+// ═══════════ READ SETUP FIELDS → currentRecord ═══════════
+function readSetupFields() {
+    if (!currentRecord) return;
+    const r = currentRecord;
+    r.date             = document.getElementById('f_date').value;
+    r.contractNumber   = document.getElementById('f_contractNumber').value.trim();
+    r.materialType     = document.getElementById('f_materialType').value.trim();
+    r.liftLane         = document.getElementById('f_liftLane').value.trim();
+    r.depth            = fv('f_depth');
+    r.remarks          = document.getElementById('f_remarks').value;
+    r.gaugeSetNumber   = document.getElementById('f_gaugeSetNumber').value.trim();
+    r.testedBy         = document.getElementById('f_testedBy').value.trim();
+    r.lotSublot        = document.getElementById('f_lotSublot').value.trim();
+    r.stationType      = _staType;
+
+    if (_staType === 'milemarker') {
+        r.beginMM = fv('f_beginMM');
+        r.endMM   = fv('f_endMM');
+        r.beginStation = r.beginMM != null ? r.beginMM * 5280 : null;
+        r.endStation   = r.endMM   != null ? r.endMM   * 5280 : null;
+    } else if (_staType === 'equation') {
+        r.beginStation = parseSta(document.getElementById('f_eqBeginStation').value);
+        r.endStation   = parseSta(document.getElementById('f_eqEndStation').value);
+        r.equationBack  = parseSta(document.getElementById('f_eqBack').value);
+        r.equationAhead = parseSta(document.getElementById('f_eqAhead').value);
+    } else {
+        r.beginStation = parseSta(document.getElementById('f_beginStation').value);
+        r.endStation   = parseSta(document.getElementById('f_endStation').value);
+    }
+
+    r.width            = fv('f_width');
+    r.ricePcf          = fv('f_ricePcf');
+    r.correctionFactor = fv('f_correctionFactor') ?? 1.0;
+    r.thresholdSingleMin = fv('f_tSingleMin') ?? 90;
+    r.thresholdSingleMax = fv('f_tSingleMax') ?? 97;
+    r.thresholdJoint     = fv('f_tJoint')     ?? 90;
+    r.thresholdSectionMin = fv('f_tSectionMin') ?? 92;
+    r.thresholdSectionMax = fv('f_tSectionMax') ?? 96;
+    r.isCorrelation = _isCorrelation;
+    updateSubtitle();
+}
+
+// ═══════════ POPULATE FIELDS FROM currentRecord ═══════════
+function populateSetupFields() {
+    const r = currentRecord;
+    if (!r) return;
+    const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+    set('f_date', r.date);
+    set('f_contractNumber', r.contractNumber);
+    set('f_materialType', r.materialType);
+    set('f_liftLane', r.liftLane);
+    set('f_depth', r.depth);
+    const remarksEl = document.getElementById('f_remarks');
+    if (remarksEl) remarksEl.value = r.remarks || '';
+    set('f_gaugeSetNumber', r.gaugeSetNumber);
+    set('f_testedBy', r.testedBy);
+    set('f_lotSublot', r.lotSublot || '');
+
+    _staType = r.stationType || 'station';
+    setStaType(_staType);
+
+    if (_staType === 'milemarker') {
+        set('f_beginMM', r.beginMM);
+        set('f_endMM', r.endMM);
+    } else if (_staType === 'equation') {
+        set('f_eqBeginStation', r.beginStation != null ? fmtSta(r.beginStation) : '');
+        set('f_eqEndStation',   r.endStation   != null ? fmtSta(r.endStation)   : '');
+        set('f_eqBack',  r.equationBack  != null ? fmtSta(r.equationBack)  : '');
+        set('f_eqAhead', r.equationAhead != null ? fmtSta(r.equationAhead) : '');
+    } else {
+        set('f_beginStation', r.beginStation != null ? fmtSta(r.beginStation) : '');
+        set('f_endStation',   r.endStation   != null ? fmtSta(r.endStation)   : '');
+    }
+
+    set('f_width', r.width);
+    set('f_ricePcf', r.ricePcf);
+    set('f_correctionFactor', r.correctionFactor ?? 1.0);
+    set('f_tSingleMin', r.thresholdSingleMin ?? 90);
+    set('f_tSingleMax', r.thresholdSingleMax ?? 97);
+    set('f_tJoint',     r.thresholdJoint     ?? 90);
+    set('f_tSectionMin', r.thresholdSectionMin ?? 92);
+    set('f_tSectionMax', r.thresholdSectionMax ?? 96);
+
+    _isCorrelation = r.isCorrelation || false;
+    const btns = document.getElementById('corrTgl').querySelectorAll('.mode-btn');
+    btns[0].classList.toggle('active', !_isCorrelation);
+    btns[1].classList.toggle('active', _isCorrelation);
+
+    // Block select
+    const bSel = document.getElementById('blockSelect');
+    const bDisp = document.getElementById('blockDisplay');
+    if (r.randomBlockNumber != null) {
+        bSel.value = String(r.randomBlockNumber);
+        bDisp.textContent = 'Block #' + r.randomBlockNumber;
+    } else {
+        bSel.value = 'auto';
+        bDisp.textContent = 'Auto (random)';
+    }
+
+    onSectionChange();
+    renderLinkedMixChip();
+}
+
+// ═══════════ GENERATE LOCATIONS ═══════════
+function generateLocations() {
+    document.getElementById('setupError').classList.add('hidden');
+    readSetupFields();
+    const r = currentRecord;
+    const sec = getPhysicalSection(r);
+
+    if (!sec) { showSetupError('Enter valid Begin and End stations/markers.'); return; }
+    if (!r.width || r.width <= 0) { showSetupError('Enter a valid Width.'); return; }
+
+    const area = computeArea(r);
+    const isSmall = area != null && area < 1000;
+
+    if (isSmall) {
+        // Small test section: 1 random location, no block
+        r.randomBlockNumber = null;
+        const rndFt  = Math.random() * sec.physicalLength;
+        const rndOff = parseFloat((Math.random() * r.width).toFixed(1));
+        const physPos = rndFt;
+        const displayFt = physOffsetToDisplayFt(r, sec, physPos);
+        const roundedFt = Math.round(displayFt / 25) * 25;
+        const roundedPhys = roundedFt; // approximate (display == physical for standard; good enough)
+        r.tests = [Object.assign(emptyTest(false), {
+            station: roundedFt,
+            distFromEdge: rndOff,
+            side: 'L',
+            distFromBeginning: Math.round(physPos / 25) * 25,
+            isCorrelationExtra: false,
+            // No block math
+            segmentStart: null, segmentLength: null,
+            randomLength: null, rawLengthFt: null, exactStation: null,
+            randomOffset: null, rawOffsetFt: null,
+        })];
+    } else {
+        // Normal: determine block
+        let blockNum = null;
+        const bSel = document.getElementById('blockSelect').value;
+        if (bSel === 'auto') {
+            blockNum = Math.floor(Math.random() * 35) + 1;
+        } else {
+            blockNum = parseInt(bSel);
+        }
+        r.randomBlockNumber = blockNum;
+        document.getElementById('blockDisplay').textContent = 'Block #' + blockNum;
+        const block = RANDOM_BLOCKS[blockNum - 1];
+
+        const numStd = 5;
+        const segLen = sec.physicalLength / numStd;
+        const tests = [];
+
+        for (let i = 0; i < numStd; i++) {
+            const segStart  = sec.physicalBegin + i * segLen;
+            const rawLenFt  = block[i] * segLen;
+            const physPos   = i * segLen + rawLenFt; // physical offset from begin
+            const dispFt    = physOffsetToDisplayFt(r, sec, physPos);
+            const roundedDisp = Math.round(dispFt / 25) * 25;
+            const rawOffFt  = parseFloat((block[i+5] * r.width).toFixed(1));
+            const distFB    = Math.round(physPos / 25) * 25;
+
+            tests.push(Object.assign(emptyTest(false), {
+                station: roundedDisp,
+                distFromEdge: rawOffFt,
+                side: 'L',
+                distFromBeginning: distFB,
+                segmentStart: segStart,
+                segmentLength: segLen,
+                randomLength: block[i],
+                rawLengthFt: parseFloat(rawLenFt.toFixed(1)),
+                exactStation: parseFloat(dispFt.toFixed(1)),
+                randomOffset: block[i+5],
+                rawOffsetFt: rawOffFt,
+            }));
+        }
+
+        // Correlation extra tests (6 & 7)
+        if (_isCorrelation) {
+            for (let i = 0; i < 2; i++) {
+                const rndPhys = Math.random() * sec.physicalLength;
+                const dispFt  = physOffsetToDisplayFt(r, sec, rndPhys);
+                const rounded = Math.round(dispFt / 25) * 25;
+                const rawOff  = parseFloat((Math.random() * r.width).toFixed(1));
+                tests.push(Object.assign(emptyTest(true), {
+                    station: rounded,
+                    distFromEdge: rawOff,
+                    side: 'L',
+                    distFromBeginning: Math.round(rndPhys / 25) * 25,
+                }));
+            }
+        }
+
+        r.tests = tests;
+    }
+
+    renderTestCards();
+    setTab('tests');
+}
+
+function showSetupError(msg) {
+    const el = document.getElementById('setupError');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+}
+
+// ═══════════ ON REF CHANGE (RICE / CF / thresholds) ═══════════
+function onRefChange() {
+    if (!currentRecord) return;
+    readSetupFields();
+    currentRecord.tests.forEach((_, i) => recalcTest(i));
+}
+
+// ═══════════ RENDER TEST CARDS ═══════════
+function renderTestCards() {
+    const container = document.getElementById('testCards');
+    if (!currentRecord || !currentRecord.tests.length) { container.innerHTML = ''; return; }
+    container.innerHTML = currentRecord.tests.map((t, i) => buildTestCardHTML(t, i)).join('');
+}
+
+function buildTestCardHTML(t, i) {
+    const r = currentRecord;
+    const isSmall = (() => { const a = computeArea(r); return a != null && a < 1000; })();
+    const sec = getPhysicalSection(r);
+
+    // Station display label
+    let staLabel = '—';
+    if (t.station != null) {
+        if (r.stationType === 'milemarker') staLabel = fmtMM(t.station);
+        else staLabel = fmtSta(t.station);
+    }
+
+    // % compaction badge
+    const pct = t.pctCompaction;
+    let pctClass = 'na', pctLabel = '—';
+    if (pct != null) {
+        const pass = pct >= r.thresholdSingleMin && pct <= r.thresholdSingleMax;
+        pctClass = pass ? 'pass' : 'fail';
+        pctLabel = pct.toFixed(1) + '%';
+    }
+    let cardBorderClass = '';
+    if (pct != null) cardBorderClass = pctClass === 'pass' ? 'pass-border' : 'fail-border';
+
+    // Distance from beginning
+    const distLabel = t.distFromBeginning != null ? t.distFromBeginning.toLocaleString() + ' ft from begin' : '';
+
+    // Calc box HTML (only for block-based tests)
+    let calcBoxHTML = '';
+    if (!t.isCorrelationExtra && t.segmentStart != null && r.randomBlockNumber != null && sec) {
+        const segEndPhys = t.segmentStart + t.segmentLength;
+        const segStartDisp = physOffsetToDisplayFt(r, sec, t.segmentStart - sec.physicalBegin);
+        const segEndDisp   = physOffsetToDisplayFt(r, sec, segEndPhys - sec.physicalBegin);
+        const segStartLabel = r.stationType === 'milemarker' ? fmtMM(segStartDisp) : fmtSta(segStartDisp);
+        const segEndLabel   = r.stationType === 'milemarker' ? fmtMM(segEndDisp)   : fmtSta(segEndDisp);
+        const exactLabel    = r.stationType === 'milemarker' ? fmtMM(t.exactStation) : fmtSta(t.exactStation);
+        const roundedLabel  = r.stationType === 'milemarker' ? fmtMM(t.station)      : fmtSta(t.station);
+
+        calcBoxHTML = `<div class="calc-box">
+            <div class="cb-row"><span class="cb-label">Block #${r.randomBlockNumber} · Seg ${i+1}:</span><span class="cb-val">${escHtml(segStartLabel)} – ${escHtml(segEndLabel)}</span></div>
+            <div class="cb-row"><span class="cb-label">${t.randomLength} × ${t.segmentLength.toFixed(1)} ft</span><span class="cb-eq">= ${t.rawLengthFt} ft</span></div>
+            <div class="cb-row"><span class="cb-label">Exact → Rounded (nearest 25')</span><span class="cb-val">${escHtml(exactLabel)} → ${escHtml(roundedLabel)}</span></div>
+            <div class="cb-row"><span class="cb-label">Dist. from beginning</span><span class="cb-val">${t.distFromBeginning != null ? t.distFromBeginning.toLocaleString() : '—'} ft</span></div>
+            <div class="cb-row"><span class="cb-label">${t.randomOffset} × ${r.width} ft width</span><span class="cb-eq">= ${t.rawOffsetFt} ft from edge</span></div>
+        </div>`;
+    } else if (t.isCorrelationExtra) {
+        calcBoxHTML = `<div class="calc-extra-badge">Correlation Extra — random location within section</div>`;
+    } else if (isSmall) {
+        calcBoxHTML = `<div class="calc-extra-badge">Small Test Section — random location</div>`;
+    }
+
+    // Readings rows
+    const readingRows = t.readings.map((v, ri) => `
+        <div class="readings-grid">
+            <div class="rdg-num">${ri+1}</div>
+            <input class="reading-input" type="number" inputmode="decimal" step="0.1"
+                id="rdg_${i}_${ri}" value="${v != null ? v : ''}" placeholder="0.0"
+                oninput="updateReading(${i},${ri})">
+        </div>`).join('');
+
+    // Joint reading rows
+    const jointRows = t.jointReadings.map((v, ji) => `
+        <div class="readings-grid">
+            <div class="rdg-num">${ji+1}</div>
+            <input class="reading-input" type="number" inputmode="decimal" step="0.1"
+                id="jrdg_${i}_${ji}" value="${v != null ? v : ''}" placeholder="0.0"
+                oninput="updateJointReading(${i},${ji})">
+        </div>`).join('');
+
+    // Calculated output
+    const avgStr  = t.avgDensity       != null ? t.avgDensity.toFixed(1)       + ' pcf' : '—';
+    const corrStr = t.correctedDensity != null ? t.correctedDensity.toFixed(1) + ' pcf' : '—';
+    const pctStr  = t.pctCompaction    != null ? t.pctCompaction.toFixed(1)    + '%'    : '—';
+
+    // Joint result
+    const jPct = t.jointMinPct;
+    let jPctStr = '—', jPass = null;
+    if (jPct != null) {
+        jPctStr = jPct.toFixed(1) + '%';
+        jPass = jPct >= r.thresholdJoint;
+    }
+    const jBadge = jPct != null
+        ? `<span class="pf-badge ${jPass ? 'pf-pass' : 'pf-fail'}">${jPass ? 'PASS' : 'FAIL'}</span>`
+        : `<span class="pf-badge pf-na">No data</span>`;
+
+    return `<div class="test-card ${cardBorderClass}" id="test-card-${i}">
+        <div class="test-card-header" onclick="toggleTestCard(${i})">
+            <span class="test-card-num">Test ${i+1}</span>
+            <span class="test-card-sta" id="tc-sta-${i}">${escHtml(staLabel)}</span>
+            <span class="test-card-dist" id="tc-dist-${i}">${escHtml(distLabel)}</span>
+            <span class="test-card-pct ${pctClass}" id="tc-pct-${i}">${escHtml(pctLabel)}</span>
+            <span class="test-card-chevron">›</span>
+        </div>
+        <div class="test-card-body">
+            ${calcBoxHTML}
+            <div class="two-col" style="margin-bottom:10px;">
+                <div class="field-group" style="margin-bottom:0;">
+                    <label class="label">Station</label>
+                    <input class="input" type="text" id="tc_sta_${i}"
+                        value="${t.station != null ? (r.stationType==='milemarker' ? (t.station/5280).toFixed(3) : fmtSta(t.station)) : ''}"
+                        placeholder="e.g. 5+75" onchange="updateTestStation(${i})">
+                </div>
+                <div class="field-group" style="margin-bottom:0;">
+                    <label class="label">Offset from Edge (ft)</label>
+                    <input class="input" type="number" inputmode="decimal" step="0.1"
+                        id="tc_off_${i}" value="${t.distFromEdge != null ? t.distFromEdge : ''}"
+                        placeholder="0.0" onchange="updateTestOffset(${i})">
+                </div>
+            </div>
+            <div class="field-group">
+                <label class="label">Side</label>
+                <div class="side-toggle">
+                    <button class="side-btn ${t.side==='L'?'active':''}" id="side-L-${i}" onclick="setSide(${i},'L')">Left</button>
+                    <button class="side-btn ${t.side==='R'?'active':''}" id="side-R-${i}" onclick="setSide(${i},'R')">Right</button>
+                </div>
+            </div>
+            <div class="readings-section">
+                <div class="readings-label">Standard Readings (pcf)</div>
+                ${readingRows}
+            </div>
+            <div class="result-panel result-blue" style="margin:0 0 12px;">
+                <div class="result-grid" style="gap:8px;">
+                    <div><div class="result-label">Avg Density</div><div class="result-value" id="out-avg-${i}">${avgStr}</div></div>
+                    <div><div class="result-label">Corrected Density</div><div class="result-value" id="out-corr-${i}">${corrStr}</div></div>
+                    <div class="result-full"><div class="result-label">% Compaction</div><div class="result-value" id="out-pct-${i}">${pctStr}</div></div>
+                </div>
+            </div>
+            <button class="joint-toggle-btn" onclick="toggleJoint(${i})" id="joint-btn-${i}">
+                <span>Joint Readings</span>
+                <span id="joint-chevron-${i}">${t.jointExpanded ? '▾' : '▸'}</span>
+            </button>
+            <div class="joint-section ${t.jointExpanded ? 'open' : ''}" id="joint-section-${i}">
+                <div class="readings-label" style="margin-bottom:8px;">Joint Density Readings (pcf)</div>
+                ${jointRows}
+                <div style="display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                    <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);">
+                        Min Joint: <span id="out-jmin-${i}">${t.jointMinDensity != null ? t.jointMinDensity.toFixed(1) + ' pcf' : '—'}</span>
+                        &nbsp;/&nbsp; <span id="out-jpct-${i}">${jPctStr}</span>
+                    </div>
+                    <div id="out-jbadge-${i}">${jBadge}</div>
+                </div>
+            </div>
+        </div>
+    </div>`;
+}
+
+function toggleTestCard(i) {
+    document.getElementById('test-card-' + i).classList.toggle('open');
+}
+
+function toggleJoint(i) {
+    const sec  = document.getElementById('joint-section-' + i);
+    const chev = document.getElementById('joint-chevron-' + i);
+    const open = sec.classList.toggle('open');
+    chev.textContent = open ? '▾' : '▸';
+    if (currentRecord) currentRecord.tests[i].jointExpanded = open;
+}
+
+// ═══════════ AUTO-SAVE ═══════════
+let _autoSaveTimer = null;
+function scheduleAutoSave() {
+    if (!currentRecord) return;
+    clearTimeout(_autoSaveTimer);
+    _autoSaveTimer = setTimeout(async () => {
+        if (!currentRecord) return;
+        readSetupFields();
+        currentRecord.tests.forEach((_,i) => { recalcTest(i); recalcJoint(i); });
+        currentRecord.modified = new Date().toISOString();
+        await ftSaveCompactionTest(currentRecord);
+        const msg = document.getElementById('saveMsg');
+        if (msg) {
+            msg.textContent = '✓ Auto-saved ' + new Date().toLocaleTimeString();
+            msg.classList.remove('hidden');
+            setTimeout(() => msg.classList.add('hidden'), 2500);
+        }
+    }, 1500);
+}
+
+// ═══════════ READINGS ═══════════
+function updateReading(testIdx, rdgIdx) {
+    if (!currentRecord) return;
+    const el = document.getElementById(`rdg_${testIdx}_${rdgIdx}`);
+    const v  = el.value === '' ? null : parseFloat(el.value);
+    currentRecord.tests[testIdx].readings[rdgIdx] = isNaN(v) ? null : v;
+    recalcTest(testIdx);
+    scheduleAutoSave();
+}
+
+function updateJointReading(testIdx, rdgIdx) {
+    if (!currentRecord) return;
+    const el = document.getElementById(`jrdg_${testIdx}_${rdgIdx}`);
+    const v  = el.value === '' ? null : parseFloat(el.value);
+    currentRecord.tests[testIdx].jointReadings[rdgIdx] = isNaN(v) ? null : v;
+    recalcJoint(testIdx);
+    scheduleAutoSave();
+}
+
+function updateTestStation(i) {
+    if (!currentRecord) return;
+    const el = document.getElementById(`tc_sta_${i}`);
+    const r  = currentRecord;
+    let val;
+    if (r.stationType === 'milemarker') {
+        const mm = parseFloat(el.value);
+        val = isNaN(mm) ? null : mm * 5280;
+    } else {
+        val = parseSta(el.value);
+    }
+    r.tests[i].station = val;
+    const staLabel = val != null ? (r.stationType === 'milemarker' ? fmtMM(val) : fmtSta(val)) : '—';
+    const hdr = document.getElementById('tc-sta-' + i);
+    if (hdr) hdr.textContent = staLabel;
+}
+
+function updateTestOffset(i) {
+    if (!currentRecord) return;
+    const el = document.getElementById(`tc_off_${i}`);
+    const v  = parseFloat(el.value);
+    currentRecord.tests[i].distFromEdge = isNaN(v) ? null : v;
+}
+
+function setSide(testIdx, side) {
+    if (!currentRecord) return;
+    currentRecord.tests[testIdx].side = side;
+    ['L','R'].forEach(s => {
+        const btn = document.getElementById(`side-${s}-${testIdx}`);
+        if (btn) btn.classList.toggle('active', s === side);
+    });
+}
+
+// ═══════════ CALCULATIONS ═══════════
+function recalcTest(i) {
+    if (!currentRecord) return;
+    const t   = currentRecord.tests[i];
+    const cf  = currentRecord.correctionFactor ?? 1.0;
+    const rice = currentRecord.ricePcf;
+    const sMin = currentRecord.thresholdSingleMin ?? 90;
+    const sMax = currentRecord.thresholdSingleMax ?? 97;
+
+    const valid = t.readings.filter(v => v != null && !isNaN(v));
+    if (valid.length === 0) {
+        t.avgDensity = null; t.correctedDensity = null; t.pctCompaction = null;
+    } else {
+        t.avgDensity       = valid.reduce((a,b) => a+b, 0) / valid.length;
+        t.correctedDensity = t.avgDensity * cf;
+        t.pctCompaction    = rice ? (t.correctedDensity / rice) * 100 : null;
+    }
+
+    // Update inline DOM
+    const pct = t.pctCompaction;
+    let pctClass = 'na', pctLabel = '—';
+    if (pct != null) {
+        const pass = pct >= sMin && pct <= sMax;
+        pctClass = pass ? 'pass' : 'fail';
+        pctLabel = pct.toFixed(1) + '%';
+    }
+
+    const avgEl  = document.getElementById(`out-avg-${i}`);
+    const corrEl = document.getElementById(`out-corr-${i}`);
+    const pctEl  = document.getElementById(`out-pct-${i}`);
+    const hdrPct = document.getElementById(`tc-pct-${i}`);
+    const card   = document.getElementById(`test-card-${i}`);
+
+    if (avgEl)  avgEl.textContent  = t.avgDensity       != null ? t.avgDensity.toFixed(1)       + ' pcf' : '—';
+    if (corrEl) corrEl.textContent = t.correctedDensity != null ? t.correctedDensity.toFixed(1) + ' pcf' : '—';
+    if (pctEl)  pctEl.textContent  = pctLabel;
+    if (hdrPct) { hdrPct.textContent = pctLabel; hdrPct.className = `test-card-pct ${pctClass}`; }
+    if (card)   {
+        card.className = card.className.replace(/\bpass-border\b|\bfail-border\b/g,'').trim();
+        if (pct != null) card.classList.add(pctClass === 'pass' ? 'pass-border' : 'fail-border');
+    }
+}
+
+function recalcJoint(i) {
+    if (!currentRecord) return;
+    const t    = currentRecord.tests[i];
+    const cf   = currentRecord.correctionFactor ?? 1.0;
+    const rice = currentRecord.ricePcf;
+    const jThr = currentRecord.thresholdJoint ?? 90;
+
+    const valid = t.jointReadings.filter(v => v != null && !isNaN(v));
+    if (valid.length === 0) {
+        t.jointMinDensity = null; t.jointMinPct = null;
+    } else {
+        const minRaw = Math.min(...valid);
+        t.jointMinDensity = minRaw * cf;
+        t.jointMinPct     = rice ? (t.jointMinDensity / rice) * 100 : null;
+    }
+
+    const jPct = t.jointMinPct;
+    const jPass = jPct != null && jPct >= jThr;
+    const jBadge = jPct != null
+        ? `<span class="pf-badge ${jPass ? 'pf-pass' : 'pf-fail'}">${jPass ? 'PASS' : 'FAIL'}</span>`
+        : `<span class="pf-badge pf-na">No data</span>`;
+
+    const jMinEl    = document.getElementById(`out-jmin-${i}`);
+    const jPctEl    = document.getElementById(`out-jpct-${i}`);
+    const jBadgeEl  = document.getElementById(`out-jbadge-${i}`);
+    if (jMinEl)   jMinEl.textContent  = t.jointMinDensity != null ? t.jointMinDensity.toFixed(1) + ' pcf' : '—';
+    if (jPctEl)   jPctEl.textContent  = jPct != null ? jPct.toFixed(1) + '%' : '—';
+    if (jBadgeEl) jBadgeEl.innerHTML  = jBadge;
+}
+
+// ═══════════ RESULTS ═══════════
+function refreshResults() {
+    if (!currentRecord) return;
+    readSetupFields();
+    currentRecord.tests.forEach((_, i) => { recalcTest(i); recalcJoint(i); });
+
+    const r = currentRecord;
+    const area = computeArea(r);
+    const isSmall = area != null && area < 1000;
+    const areaStr = area != null ? area.toLocaleString(undefined,{maximumFractionDigits:0}) + ' sq yd' : '—';
+
+    const completed = r.tests.filter(t => t.pctCompaction != null);
+    const meanPct   = completed.length ? completed.reduce((s,t) => s+t.pctCompaction, 0) / completed.length : null;
+    const minPct    = completed.length ? Math.min(...completed.map(t => t.pctCompaction)) : null;
+    const maxPct    = completed.length ? Math.max(...completed.map(t => t.pctCompaction)) : null;
+    const jDone     = r.tests.filter(t => t.jointMinPct != null);
+    const minJoint  = jDone.length ? Math.min(...jDone.map(t => t.jointMinPct)) : null;
+
+    let singlePass, jointPass, sectionPass;
+
+    if (isSmall) {
+        const t0 = r.tests[0];
+        singlePass  = t0.pctCompaction == null || t0.pctCompaction >= 90;
+        jointPass   = t0.jointMinPct   == null || t0.jointMinPct   >= 90;
+        sectionPass = true;
+    } else {
+        singlePass  = r.tests.every(t => t.pctCompaction == null || (t.pctCompaction >= r.thresholdSingleMin && t.pctCompaction <= r.thresholdSingleMax));
+        jointPass   = r.tests.every(t => t.jointMinPct   == null || t.jointMinPct   >= r.thresholdJoint);
+        sectionPass = meanPct != null && meanPct >= r.thresholdSectionMin && meanPct <= r.thresholdSectionMax;
+    }
+
+    const overallPass = singlePass && jointPass && sectionPass;
+    const allDataEntered = completed.length === r.tests.length;
+
+    // ─── Criteria rows ───
+    let criteriaRows;
+    if (isSmall) {
+        criteriaRows = `
+        <tr>
+            <td>Single Location (small section)</td>
+            <td>≥ 90%</td>
+            <td>${minPct != null ? minPct.toFixed(1)+'%' : '—'}</td>
+            <td>${completed.length > 0 ? (singlePass ? '<span class="pf-badge pf-pass">PASS</span>' : '<span class="pf-badge pf-fail">FAIL</span>') : '<span class="pf-badge pf-na">—</span>'}</td>
+        </tr>
+        <tr>
+            <td>Joint Min (small section)</td>
+            <td>≥ 90%</td>
+            <td>${minJoint != null ? minJoint.toFixed(1)+'%' : '—'}</td>
+            <td>${minJoint != null ? (jointPass ? '<span class="pf-badge pf-pass">PASS</span>' : '<span class="pf-badge pf-fail">FAIL</span>') : '<span class="pf-badge pf-na">—</span>'}</td>
+        </tr>`;
+    } else {
+        criteriaRows = `
+        <tr>
+            <td>Each Location</td>
+            <td>${r.thresholdSingleMin}% – ${r.thresholdSingleMax}%</td>
+            <td>${minPct != null ? minPct.toFixed(1)+'% – '+maxPct.toFixed(1)+'%' : '—'}</td>
+            <td>${completed.length > 0 ? (singlePass ? '<span class="pf-badge pf-pass">PASS</span>' : '<span class="pf-badge pf-fail">FAIL</span>') : '<span class="pf-badge pf-na">—</span>'}</td>
+        </tr>
+        <tr>
+            <td>Joint (min shot)</td>
+            <td>≥ ${r.thresholdJoint}%</td>
+            <td>${minJoint != null ? minJoint.toFixed(1)+'%' : '—'}</td>
+            <td>${minJoint != null ? (jointPass ? '<span class="pf-badge pf-pass">PASS</span>' : '<span class="pf-badge pf-fail">FAIL</span>') : '<span class="pf-badge pf-na">—</span>'}</td>
+        </tr>
+        <tr>
+            <td>Test Section Avg</td>
+            <td>${r.thresholdSectionMin}% – ${r.thresholdSectionMax}%</td>
+            <td>${meanPct != null ? meanPct.toFixed(1)+'%' : '—'}</td>
+            <td>${meanPct != null ? (sectionPass ? '<span class="pf-badge pf-pass">PASS</span>' : '<span class="pf-badge pf-fail">FAIL</span>') : '<span class="pf-badge pf-na">—</span>'}</td>
+        </tr>`;
+    }
+
+    // ─── Summary table rows ───
+    const tbodyRows = r.tests.map((t, i) => {
+        const pct  = t.pctCompaction;
+        const pass = pct != null && (isSmall ? pct >= 90 : (pct >= r.thresholdSingleMin && pct <= r.thresholdSingleMax));
+        const rowCls = pct == null ? '' : pass ? 'row-pass' : 'row-fail';
+        const staLabel = t.station != null ? (r.stationType === 'milemarker' ? fmtMM(t.station) : fmtSta(t.station)) : '—';
+        const jPct = t.jointMinPct;
+        return `<tr class="${rowCls}">
+            <td>${i+1}${t.isCorrelationExtra ? '*' : ''}</td>
+            <td>${escHtml(staLabel)}</td>
+            <td>${t.distFromBeginning != null ? t.distFromBeginning.toLocaleString()+' ft' : '—'}</td>
+            <td>${t.distFromEdge != null ? t.distFromEdge.toFixed(1) : '—'}</td>
+            <td>${escHtml(t.side||'—')}</td>
+            <td>${t.avgDensity != null ? t.avgDensity.toFixed(1) : '—'}</td>
+            <td>${t.correctedDensity != null ? t.correctedDensity.toFixed(1) : '—'}</td>
+            <td>${pct != null ? pct.toFixed(1)+'%' : '—'}</td>
+            <td>${jPct != null ? jPct.toFixed(1)+'%' : '—'}</td>
+            <td>${pct == null ? '—' : pass ? '✓' : '✗'}</td>
+        </tr>`;
+    }).join('');
+
+    const overallPanelClass = !allDataEntered ? 'result-blue' : overallPass ? 'result-green' : 'result-red';
+    const overallLabel = !allDataEntered ? 'Incomplete' : overallPass ? 'PASS' : 'FAIL';
+    const badgeClass   = !allDataEntered ? 'pf-na' : overallPass ? 'pf-pass' : 'pf-fail';
+
+    const blockLine = r.randomBlockNumber ? `<div style="font-size:0.8em;color:var(--text-muted);margin-top:4px;">Random Block: #${r.randomBlockNumber}</div>` : '';
+
+    document.getElementById('resultsContent').innerHTML = `
+    ${isSmall ? `<div class="warn-note" style="margin:12px 16px 0;">⚠ Small Test Section (&lt;1,000 sq yd) — Single minimum 90% spec applies.</div>` : ''}
+    <div class="card" style="margin-top:${isSmall?'8px':'12px'};">
+        <div class="card-title">Pass / Fail Summary</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <div>
+                <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);">Paving Area: ${areaStr}</div>
+                ${blockLine}
+            </div>
+            <span class="pf-badge ${badgeClass}" style="font-size:0.92em;padding:6px 14px;">${overallLabel}</span>
+        </div>
+        <table class="criteria-table">
+            <thead><tr><th>Criterion</th><th>Required</th><th>Result</th><th>Status</th></tr></thead>
+            <tbody>${criteriaRows}</tbody>
+        </table>
+    </div>
+    <div class="card">
+        <div class="card-title">Test Detail${r.isCorrelation ? ' (* = correlation extra)' : ''}</div>
+        <div style="overflow-x:auto;">
+            <table class="summary-table">
+                <thead><tr>
+                    <th>#</th><th>Station</th><th>Dist Begin</th><th>Offset</th><th>Side</th>
+                    <th>Avg Density</th><th>Corr Density</th><th>% Comp</th><th>Joint %</th><th>P/F</th>
+                </tr></thead>
+                <tbody>${tbodyRows}</tbody>
+            </table>
+        </div>
+    </div>`;
+}
+
+// ═══════════ LIST VIEW ═══════════
+let _allProjects = [];
+let _selectedProjectId = null;
+
+async function loadRecordList() {
+    // Load projects for picker
+    _allProjects = await ftGetAllProjects();
+    _allProjects.sort((a,b) => (a.projectNumber||'').localeCompare(b.projectNumber||''));
+    const sel = document.getElementById('listProjectSelect');
+    if (sel) {
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">— All Tests (no project filter) —</option>' +
+            _allProjects.filter(p => !p.archived).map(p =>
+                `<option value="${escHtml(p.id)}">${escHtml(ftProjectTitle(p))}</option>`
+            ).join('');
+        if (_selectedProjectId) sel.value = _selectedProjectId;
+    }
+
+    allRecords = await ftGetAllCompactionTests();
+    allRecords.sort((a,b) => (b.created||'').localeCompare(a.created||''));
+    renderRecordList();
+}
+
+function renderRecordList() {
+    const filtered = _selectedProjectId
+        ? allRecords.filter(r => r.projectId === _selectedProjectId)
+        : allRecords;
+
+    const list  = document.getElementById('recordList');
+    const empty = document.getElementById('listEmpty');
+    if (!filtered.length) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        const proj = _selectedProjectId ? _allProjects.find(p => p.id === _selectedProjectId) : null;
+        document.getElementById('listEmptyTitle').textContent = proj ? `No tests for ${proj.projectNumber || 'this project'}` : 'No saved tests';
+        document.getElementById('listEmptyHint').textContent = 'Tap "＋ New Test" to begin.';
+        return;
+    }
+    empty.classList.add('hidden');
+    list.innerHTML = filtered.map(rec => {
+        const title = rec.materialType || rec.contractNumber || 'Untitled Test';
+        const date  = rec.date || (rec.created||'').slice(0,10) || '';
+        let range = '';
+        if (rec.stationType === 'milemarker' && rec.beginMM != null && rec.endMM != null) {
+            range = `MM ${rec.beginMM} – ${rec.endMM}`;
+        } else if (rec.beginStation != null && rec.endStation != null) {
+            range = `${fmtSta(rec.beginStation)} – ${fmtSta(rec.endStation)}`;
+        }
+        const small = (() => { const a = computeArea(rec); return a!=null && a<1000; })();
+        const tag = small ? ' · <em>Small</em>' : rec.isCorrelation ? ' · <em>Correlation</em>' : '';
+        return `<div class="record-card" onclick="openRecord('${escHtml(rec.id)}')">
+            <div class="record-title">${escHtml(title)}</div>
+            <div class="record-meta">${escHtml(date)}${range ? ' · '+escHtml(range) : ''}${tag}</div>
+        </div>`;
+    }).join('');
+}
+
+function onListProjectChange() {
+    const sel = document.getElementById('listProjectSelect');
+    _selectedProjectId = sel ? (sel.value || null) : null;
+    const heading = document.getElementById('listHeading');
+    const meta = document.getElementById('listProjectMeta');
+    if (_selectedProjectId) {
+        const proj = _allProjects.find(p => p.id === _selectedProjectId);
+        heading.textContent = proj ? ftProjectTitle(proj) : 'Project Tests';
+        meta.style.display = 'none';
+    } else {
+        heading.textContent = 'Saved Tests';
+        meta.style.display = 'none';
+    }
+    renderRecordList();
+}
+
+function openRecord(id) {
+    const rec = allRecords.find(r => r.id === id);
+    if (!rec) return;
+    currentRecord = JSON.parse(JSON.stringify(rec));
+    showEditor();
+}
+
+function newRecord() {
+    currentRecord = emptyRecord();
+    // Pre-fill from selected project
+    if (_selectedProjectId) {
+        currentRecord.projectId = _selectedProjectId;
+        const proj = _allProjects.find(p => p.id === _selectedProjectId);
+        if (proj) {
+            currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+        }
+    }
+    showEditor();
+}
+
+function showEditor() {
+    document.getElementById('listView').classList.add('hidden');
+    document.getElementById('editorView').classList.remove('hidden');
+    loadMixDesignPicker();
+    populateSetupFields();
+    renderTestCards();
+    setTab('setup');
+    updateSubtitle();
+    window.scrollTo(0,0);
+}
+
+function closeRecord() {
+    currentRecord = null;
+    document.getElementById('editorView').classList.add('hidden');
+    document.getElementById('listView').classList.remove('hidden');
+    loadRecordList();
+}
+
+async function deleteRecord() {
+    if (!currentRecord) return;
+    if (!confirm('Delete this test record? This cannot be undone.')) return;
+    await ftDeleteCompactionTest(currentRecord.id);
+    closeRecord();
+}
+
+function updateSubtitle() {
+    const el = document.getElementById('recordSubtitle');
+    if (!currentRecord) { el.textContent = ''; return; }
+    el.textContent = currentRecord.materialType || currentRecord.contractNumber || 'New Test';
+}
+
+// ═══════════ SAVE / EXPORT ═══════════
+async function saveRecord() {
+    if (!currentRecord) return;
+    readSetupFields();
+    currentRecord.tests.forEach((_,i) => { recalcTest(i); recalcJoint(i); });
+    currentRecord.modified = new Date().toISOString();
+    await ftSaveCompactionTest(currentRecord);
+    const msg = document.getElementById('saveMsg');
+    msg.textContent = '✓ Saved ' + new Date().toLocaleTimeString();
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 3000);
+}
+
+function exportRecord() {
+    if (!currentRecord) return;
+    readSetupFields();
+    const text = JSON.stringify(currentRecord, null, 2);
+    const label = (currentRecord.contractNumber || 'compaction').replace(/[^a-z0-9]/gi, '_');
+    const date  = (currentRecord.date || new Date().toISOString().slice(0,10)).replace(/-/g,'');
+    const filename = `thinlift_T335_${label}_${date}.json`;
+    if (navigator.share) {
+        navigator.share({ title: 'T335 Export', text }).catch(() => fallbackDownload(text, filename));
+    } else {
+        fallbackDownload(text, filename);
+    }
+}
+
+function fallbackDownload(text, filename) {
+    const a = document.createElement('a');
+    a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(text);
+    a.download = filename;
+    a.click();
+}
+
+// ═══════════ INIT ═══════════
+(async function init() {
+    const params = new URLSearchParams(window.location.search);
+    const urlTestId = params.get('testId');
+    const urlProjectId = params.get('projectId');
+
+    // If opening via URL param for a specific project, pre-select it in the picker
+    if (urlProjectId) _selectedProjectId = urlProjectId;
+
+    await loadRecordList();
+
+    if (urlTestId) {
+        const rec = await ftGetCompactionTest(urlTestId);
+        if (rec) {
+            currentRecord = JSON.parse(JSON.stringify(rec));
+            showEditor();
+        }
+    } else if (urlProjectId) {
+        // Auto-launch new test for this project
+        currentRecord = emptyRecord();
+        currentRecord.projectId = urlProjectId;
+        const proj = _allProjects.find(p => p.id === urlProjectId) || await ftGet('projects', urlProjectId);
+        if (proj) {
+            currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+        }
+        showEditor();
+    }
+})();
+</script>
+</body>
+</html>

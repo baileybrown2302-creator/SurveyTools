@@ -1,6 +1,6 @@
 {
-  "name": "Survey Tool",
-  "short_name": "Survey Tool",
+  "name": "Field Tools",
+  "short_name": "Field Tools",
   "description": "Mobile surveying field tools",
   "start_url": "./index.html",
   "display": "standalone",

@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="apple-mobile-web-app-title" content="Field Tools">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
     <script src="db.js"></script>
-    <title>Leveling — Survey Tool</title>
+    <title>Leveling — Field Tools</title>
     <style>
         :root {
             --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
@@ -382,7 +382,7 @@
         const stakeSessions = await ftGetStakeSessions(projectId);
         const payload = JSON.stringify({
             exportedAt: new Date().toISOString(),
-            surveyTool: 'NDOT Survey Tool',
+            surveyTool: 'NDOT Field Tools',
             project: { id: p.id, name: p.number, description: p.desc, created: p.created },
             leveling: { project: { ...p, loops: undefined }, loops: loops },
             materials: materialsData || null,

@@ -1,0 +1,1588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Field Tools">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <script src="db.js"></script>
+    <title>Soil Compaction (T103G) — Field Tools</title>
+    <style>
+        :root {
+            --bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;
+            --text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;
+            --border-primary:#e5e7eb;--border-secondary:#d1d5db;
+            --accent-blue:#3b82f6;--accent-blue-hover:#2563eb;
+            --accent-green:#22c55e;--accent-green-hover:#16a34a;
+            --accent-red:#ef4444;--accent-red-hover:#dc2626;
+            --accent-orange:#f97316;--accent-amber:#f59e0b;
+            --shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);
+            --input-bg:#ffffff;--input-border:#d1d5db;
+            --modal-overlay:rgba(0,0,0,0.65);
+            --pass-bg:#f0fdf4;--pass-border:#86efac;--pass-text:#166534;
+            --fail-bg:#fef2f2;--fail-border:#fca5a5;--fail-text:#991b1b;
+            --warn-bg:#fffbeb;--warn-border:#fcd34d;--warn-text:#92400e;
+        }
+        [data-theme="high-contrast"] {
+            --bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;
+            --text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;
+            --border-primary:#333333;--border-secondary:#444444;
+            --accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;
+            --accent-green:#4ade80;--accent-green-hover:#86efac;
+            --accent-red:#f87171;--accent-red-hover:#fca5a5;
+            --accent-orange:#fb923c;--accent-amber:#fcd34d;
+            --shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);
+            --input-bg:#1a1a1a;--input-border:#555555;
+            --modal-overlay:rgba(0,0,0,0.85);
+            --pass-bg:#052e16;--pass-border:#166534;--pass-text:#4ade80;
+            --fail-bg:#450a0a;--fail-border:#991b1b;--fail-text:#f87171;
+            --warn-bg:#431407;--warn-border:#92400e;--warn-text:#fcd34d;
+        }
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 80px;-webkit-tap-highlight-color:transparent;}
+
+        /* ── Nav ── */
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;cursor:pointer;background:none;border:none;padding:0;}
+        .nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+
+        /* ── Buttons ── */
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;color:white;min-height:42px;-webkit-user-select:none;user-select:none;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);}.btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-success{background:var(--accent-green);}.btn-success:hover{background:var(--accent-green-hover);}
+        .btn-danger{background:var(--accent-red);}.btn-danger:hover{background:var(--accent-red-hover);}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}.btn-secondary:hover{background:var(--border-primary);}
+        .btn-small{padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;}
+        .btn-ghost{background:none;color:var(--accent-blue);border:1.5px solid var(--accent-blue);padding:6px 12px;font-size:0.78em;min-height:32px;border-radius:8px;font-weight:700;cursor:pointer;}
+        .btn-full{width:100%;}
+
+        /* ── Layout ── */
+        .content{padding:16px;}
+        .card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+        .card-title{font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin-bottom:12px;}
+        .field-group{margin-bottom:12px;}
+        .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+        .label{display:block;font-size:0.8em;font-weight:700;color:var(--text-secondary);margin-bottom:4px;}
+        .input,.select-input{display:block;width:100%;padding:10px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:0.95em;outline:none;transition:border-color 0.2s;font-family:inherit;}
+        .input:focus,.select-input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+        .input-sm{padding:8px 10px;font-size:0.88em;}
+        textarea.input{resize:vertical;min-height:70px;}
+
+        /* ── Tabs ── */
+        .tabs{display:flex;background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);position:sticky;top:57px;z-index:40;}
+        .tab{flex:1;padding:11px 6px;text-align:center;font-size:0.82em;font-weight:700;color:var(--text-muted);cursor:pointer;border-bottom:2.5px solid transparent;transition:all 0.15s;}
+        .tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue);}
+        .tab-view{display:none;padding:16px;}
+        .tab-view.active{display:block;}
+
+        /* ── List view ── */
+        .record-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow);transition:border-color 0.15s;}
+        .record-card:hover{border-color:var(--accent-blue);}
+        .record-title{font-size:0.95em;font-weight:800;color:var(--text-primary);}
+        .record-meta{font-size:0.75em;color:var(--text-muted);margin-top:3px;}
+        .record-badge{display:inline-block;font-size:0.65em;font-weight:800;text-transform:uppercase;padding:2px 7px;border-radius:5px;margin-left:6px;vertical-align:middle;}
+        .badge-pass{background:var(--pass-bg);color:var(--pass-text);border:1px solid var(--pass-border);}
+        .badge-fail{background:var(--fail-bg);color:var(--fail-text);border:1px solid var(--fail-border);}
+        .badge-incomplete{background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-secondary);}
+
+        /* ── Section header ── */
+        .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+        .section-title{font-size:1.05em;font-weight:800;color:var(--text-primary);}
+
+        /* ── 6% check badge ── */
+        .check-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.78em;font-weight:700;padding:5px 10px;border-radius:8px;margin:6px 0;}
+        .check-pass{background:var(--pass-bg);color:var(--pass-text);border:1px solid var(--pass-border);}
+        .check-warn{background:var(--warn-bg);color:var(--warn-text);border:1px solid var(--warn-border);}
+        .check-na{background:var(--bg-tertiary);color:var(--text-muted);border:1px solid var(--border-primary);}
+
+        /* ── Readings table ── */
+        .reading-row{display:grid;gap:8px;margin-bottom:8px;align-items:end;}
+        .reading-row-3{grid-template-columns:0.8fr 1fr 1fr;}
+        .reading-row-4{grid-template-columns:0.6fr 0.8fr 1fr 1fr;}
+        .reading-label{font-size:0.78em;font-weight:700;color:var(--text-secondary);padding-bottom:3px;}
+        .extra-readings{display:none;}
+        .extra-readings.show{display:block;}
+        .divider{border-top:1.5px dashed var(--border-secondary);margin:8px 0;}
+        .avg-row{background:var(--bg-tertiary);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;margin-top:6px;}
+        .avg-label{font-size:0.8em;font-weight:700;color:var(--text-secondary);}
+        .avg-value{font-size:1em;font-weight:800;color:var(--text-primary);}
+
+        /* ── Results ── */
+        .result-card{border-radius:12px;padding:14px 16px;margin-bottom:12px;}
+        .result-pass{background:var(--pass-bg);border:1.5px solid var(--pass-border);}
+        .result-fail{background:var(--fail-bg);border:1.5px solid var(--fail-border);}
+        .result-neutral{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);}
+        .result-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;}
+        .result-pass .result-title{color:var(--pass-text);}
+        .result-fail .result-title{color:var(--fail-text);}
+        .result-neutral .result-title{color:var(--text-tertiary);}
+        .result-row{display:flex;align-items:center;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.05);}
+        .result-row:last-child{border-bottom:none;}
+        .result-row-label{font-size:0.82em;color:var(--text-secondary);}
+        .result-row-value{font-size:0.9em;font-weight:700;color:var(--text-primary);}
+        .verdict{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px;border-radius:10px;margin-top:10px;font-size:1.1em;font-weight:800;}
+        .verdict-pass{background:var(--pass-bg);color:var(--pass-text);border:2px solid var(--pass-border);}
+        .verdict-fail{background:var(--fail-bg);color:var(--fail-text);border:2px solid var(--fail-border);}
+        .verdict-na{background:var(--bg-tertiary);color:var(--text-muted);border:2px solid var(--border-secondary);}
+
+        /* ── Proctor linker ── */
+        .linked-chip{display:flex;align-items:center;gap:8px;background:var(--pass-bg);border:1.5px solid var(--pass-border);border-radius:9px;padding:8px 12px;margin-bottom:10px;font-size:0.82em;font-weight:700;color:var(--pass-text);}
+        .linked-chip-clear{background:none;border:none;color:var(--pass-text);cursor:pointer;font-size:1em;padding:0;line-height:1;margin-left:auto;}
+
+        /* ── Save message ── */
+        .save-msg{font-size:0.75em;color:var(--accent-green);font-weight:600;text-align:center;margin-top:6px;}
+        .save-msg.hidden{display:none;}
+
+        /* ── Empty state ── */
+        .empty-state{text-align:center;padding:48px 16px;color:var(--text-muted);}
+        .empty-icon{font-size:3em;margin-bottom:12px;}
+        .empty-title{font-size:1em;font-weight:700;color:var(--text-secondary);margin-bottom:6px;}
+        .empty-sub{font-size:0.85em;line-height:1.5;}
+
+        /* ── Toast ── */
+        .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#111827;color:#fff;padding:10px 18px;border-radius:10px;font-size:0.85em;font-weight:600;opacity:0;transition:all 0.3s;z-index:2000;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center;}
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+        /* ── Confirm modal ── */
+        .modal{position:fixed;top:0;left:0;width:100%;height:100%;background:var(--modal-overlay);display:flex;align-items:flex-end;justify-content:center;z-index:1000;}
+        .modal.hidden{display:none!important;}
+        .modal-sheet{background:var(--bg-secondary);border-radius:20px 20px 0 0;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+        .modal-handle{width:40px;height:4px;background:var(--border-secondary);border-radius:2px;margin:0 auto 16px;}
+        .modal-title{font-size:1em;font-weight:800;color:var(--text-primary);margin-bottom:12px;}
+        .modal-msg{font-size:0.88em;color:var(--text-secondary);margin-bottom:16px;line-height:1.5;}
+        .modal-actions{display:flex;gap:10px;margin-top:6px;}
+
+        /* ── Project filter ── */
+        .project-filter{margin-bottom:12px;}
+
+        /* ── Run selector ── */
+        .run-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+        .run-pill{padding:7px 16px;border-radius:9px;font-size:0.82em;font-weight:700;cursor:pointer;border:1.5px solid var(--border-secondary);background:var(--bg-tertiary);color:var(--text-secondary);-webkit-user-select:none;user-select:none;}
+        .run-pill.active{background:var(--accent-blue);color:#fff;border-color:var(--accent-blue);}
+        .run-pill-add{padding:7px 14px;border-radius:9px;font-size:0.82em;font-weight:700;cursor:pointer;border:1.5px dashed var(--border-secondary);background:none;color:var(--text-muted);}
+        .run-pill-remove{padding:5px 10px;border-radius:8px;font-size:0.78em;font-weight:700;cursor:pointer;border:1.5px solid var(--accent-red);background:none;color:var(--accent-red);margin-left:auto;}
+
+        /* hidden utility */
+        .hidden{display:none!important;}
+
+        /* Print frame — hidden on screen, visible when printing */
+        #printFrame{display:none;}
+        @media print{
+            body>*:not(#printFrame){display:none!important;}
+            #printFrame{display:block!important;font-family:'Arial',Helvetica,sans-serif;font-size:8.5pt;color:#000;background:#fff;}
+            @page{size:letter portrait;margin:0.5in 0.45in 0.4in;}
+            /* Header */
+            .pf-header{text-align:center;margin-bottom:6pt;}
+            .pf-header h2{font-size:10.5pt;font-weight:bold;margin:0;}
+            .pf-header p{font-size:10pt;font-weight:bold;text-decoration:underline;margin:4pt 0 0;}
+            /* Top area: DSC box + header fields */
+            .pf-top{display:flex;gap:16pt;align-items:flex-start;margin-bottom:5pt;}
+            .pf-dsc-box{border:1px solid #000;padding:2pt 4pt;font-size:8pt;}
+            .pf-dsc-title{font-size:7.5pt;font-weight:bold;margin-bottom:2pt;text-align:center;}
+            .pf-dsc-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;}
+            .pf-dsc-cell{border:1px solid #000;padding:2pt 6pt;text-align:center;min-width:28pt;}
+            .pf-dsc-hdr{font-weight:bold;font-size:7.5pt;}
+            .pf-hdr-fields{flex:1;}
+            .pf-field-row{display:flex;align-items:flex-end;gap:4pt;margin-bottom:2pt;}
+            .pf-label{font-size:7.5pt;white-space:nowrap;}
+            .pf-val{flex:1;border-bottom:1px solid #000;font-size:8pt;padding-bottom:1pt;padding-left:2pt;min-width:40pt;}
+            /* Main table */
+            .pf-main{width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:5pt;}
+            .pf-main td{border:1px solid #000;padding:1.5pt 2.5pt;vertical-align:middle;}
+            .pf-row-label{text-align:left;background:#fff;}
+            .pf-bold{font-weight:bold;}
+            .pf-section-row td{text-align:center;font-weight:bold;font-size:8pt;background:#e0e0e0;padding:2pt;}
+            /* Remarks */
+            .pf-remarks-section{margin-bottom:6pt;}
+            /* Signatures */
+            .pf-sig-row{display:flex;gap:24pt;margin-top:6pt;}
+            .pf-sig-group{flex:1;}
+            /* Form number */
+            .pf-form-no{font-size:7pt;color:#333;margin-top:4pt;}
+        }
+    </style>
+</head>
+<body>
+    <div class="top-nav">
+        <button class="nav-back" id="navBack">‹ Back</button>
+        <span class="nav-title">🪨 Soil Compaction (T103G)</span>
+        <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+    </div>
+
+    <!-- ══════════════ LIST VIEW ══════════════ -->
+    <div id="listView">
+        <div class="content">
+            <div class="section-header">
+                <span class="section-title">Compaction Tests</span>
+                <button class="btn btn-primary btn-small" id="newTestBtn">＋ New Test</button>
+            </div>
+            <div class="field-group project-filter">
+                <select class="select-input input-sm" id="projectFilter">
+                    <option value="">All Projects</option>
+                </select>
+            </div>
+            <div id="recordList"></div>
+            <div id="listEmpty" class="empty-state hidden">
+                <div class="empty-icon">🪨</div>
+                <div class="empty-title">No tests yet</div>
+                <div class="empty-sub">Tap "＋ New Test" to record a soil compaction test.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════ EDITOR VIEW ══════════════ -->
+    <div id="editorView" class="hidden">
+        <div class="tabs">
+            <div class="tab active" id="tab-info-btn" onclick="setTab('info')">Info</div>
+            <div class="tab" id="tab-readings-btn" onclick="setTab('readings')">Readings</div>
+            <div class="tab" id="tab-results-btn" onclick="setTab('results')">Results</div>
+        </div>
+
+        <!-- ── INFO TAB ── -->
+        <div id="tab-info" class="tab-view active">
+            <!-- Test Header — shared fields only -->
+            <div class="card">
+                <div class="card-title">Test Header — NDOT 040-007</div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Contract No.</label>
+                        <input class="input input-sm" id="f_contractNumber" type="text" placeholder="e.g. T1234" autocomplete="off" list="contractDatalist">
+                        <datalist id="contractDatalist"></datalist>
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Date</label>
+                        <input class="input input-sm" id="f_date" type="date">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Nuclear Set No.</label>
+                        <input class="input input-sm" id="f_nuclearSetNo" type="text" placeholder="e.g. 12345A" autocomplete="off">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Correlation Date</label>
+                        <input class="input input-sm" id="f_correlationDate" type="date">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label class="label">Tested By</label>
+                    <input class="input input-sm" id="f_testedBy" type="text" placeholder="Name" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Daily Standard Counts -->
+            <div class="card">
+                <div class="card-title">Daily Standard Counts</div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Density Count</label>
+                        <input class="input input-sm" id="f_dailyDensityCount" type="number" placeholder="e.g. 1498" inputmode="numeric">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Moisture Count</label>
+                        <input class="input input-sm" id="f_dailyMoistureCount" type="number" placeholder="e.g. 72" inputmode="numeric">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Proctor Reference -->
+            <div class="card">
+                <div class="card-title">Proctor Reference (T108)</div>
+
+                <!-- Linked material chip -->
+                <div id="linkedMaterialChip" class="linked-chip hidden">
+                    <span>✓</span>
+                    <span id="linkedMaterialLabel"></span>
+                    <button class="linked-chip-clear" id="clearMaterialLink" title="Clear link">✕</button>
+                </div>
+
+                <!-- Material picker (shown when not linked) -->
+                <div id="materialPicker">
+                    <div class="field-row">
+                        <div class="field-group" style="margin-bottom:0;">
+                            <label class="label">Contract / Project</label>
+                            <select class="select-input input-sm" id="proctorContractSelect">
+                                <option value="">— Select contract —</option>
+                            </select>
+                        </div>
+                        <div class="field-group" style="margin-bottom:0;">
+                            <label class="label">Material</label>
+                            <select class="select-input input-sm" id="proctorMaterialSelect" disabled>
+                                <option value="">— Select material —</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-small" id="linkMaterialBtn" style="margin-bottom:10px;" disabled>Link Material</button>
+                </div>
+
+                <!-- Manual / linked values -->
+                <div class="field-group">
+                    <label class="label">Proctor Test No. <span style="font-weight:400;color:var(--text-muted);">(reference)</span></label>
+                    <input class="input input-sm" id="f_proctorTestNo" type="text" placeholder="e.g. T108-2024-01" autocomplete="off">
+                </div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Max Dry Density (lb/ft³)</label>
+                        <input class="input input-sm" id="f_maxDryDensity" type="number" step="0.1" placeholder="e.g. 132.5" inputmode="decimal">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Optimum Moisture (%)</label>
+                        <input class="input input-sm" id="f_optimumMoisture" type="number" step="0.1" placeholder="e.g. 7.2" inputmode="decimal">
+                    </div>
+                </div>
+
+                <!-- Corrected values (always visible) -->
+                <div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:10px 0 6px;">Corrected Values (if applicable)</div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Corr. Max Dry Density (lb/ft³)</label>
+                        <input class="input input-sm" id="f_corrMaxDryDensity" type="number" step="0.1" placeholder="optional" inputmode="decimal">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Corr. Optimum Moisture (%)</label>
+                        <input class="input input-sm" id="f_corrOptimumMoisture" type="number" step="0.1" placeholder="optional" inputmode="decimal">
+                    </div>
+                </div>
+
+                <!-- Min % compaction -->
+                <div class="field-group" style="margin-top:10px;">
+                    <label class="label">Min % Compaction Required <span style="font-weight:400;color:var(--text-muted);">(auto-filled from test code)</span></label>
+                    <input class="input input-sm" id="f_minPctCompaction" type="number" step="1" placeholder="e.g. 90" inputmode="numeric">
+                </div>
+
+                <!-- Gauge Correlation Offsets -->
+                <div style="font-size:0.72em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin:14px 0 6px;">Gauge Correlation Offsets</div>
+                <div id="gaugeCorrelationBadge" class="hidden" style="font-size:0.78em;color:var(--accent-green);font-weight:700;margin-bottom:8px;padding:5px 10px;background:var(--pass-bg);border:1px solid var(--pass-border);border-radius:7px;"></div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Moisture Offset (MCF)</label>
+                        <input class="input input-sm" id="f_moistureOffset" type="number" step="0.01" placeholder="e.g. 0.00" inputmode="decimal">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Wet Density Offset</label>
+                        <input class="input input-sm" id="f_wetDensityOffset" type="number" step="0.01" placeholder="e.g. 0.00" inputmode="decimal">
+                    </div>
+                </div>
+
+                <!-- Proctor drift banner -->
+                <div id="proctorDriftBanner" class="hidden" style="margin-top:10px;padding:10px 12px;border-radius:9px;background:var(--warn-bg);border:1.5px solid var(--warn-border);">
+                    <div id="proctorDriftMsg" style="font-size:0.82em;font-weight:700;color:var(--warn-text);margin-bottom:8px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <button class="btn btn-secondary btn-small" id="proctorDriftAddBtn">Add to Material Log</button>
+                        <button class="btn btn-secondary btn-small" id="proctorDriftDismissBtn">Dismiss</button>
+                    </div>
+                </div>
+            </div>
+        </div><!-- /tab-info -->
+
+        <!-- ── READINGS TAB ── -->
+        <div id="tab-readings" class="tab-view">
+
+            <!-- Run selector + per-run location fields -->
+            <div class="card">
+                <div class="card-title">Test Run</div>
+                <div class="run-pills" id="runSelector"></div>
+                <div class="field-group">
+                    <label class="label">Test No. / Code</label>
+                    <input class="input input-sm" id="f_testCode" type="text" placeholder="e.g. 60-SB-90" autocomplete="off">
+                </div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Station</label>
+                        <input class="input input-sm" id="f_station" type="text" placeholder="e.g. STA 10+50" autocomplete="off">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Dist to Centerline</label>
+                        <input class="input input-sm" id="f_distToCL" type="text" placeholder="e.g. 3.0' Lt" autocomplete="off">
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Embankment Depth</label>
+                        <input class="input input-sm" id="f_embankmentDepth" type="text" placeholder="e.g. 0-2 ft" autocomplete="off">
+                    </div>
+                    <div class="field-group" style="margin-bottom:0;">
+                        <label class="label">Type of Material</label>
+                        <input class="input input-sm" id="f_materialType" type="text" placeholder="e.g. Granular Backfill" autocomplete="off">
+                    </div>
+                </div>
+                <div class="field-group" style="margin-bottom:0;">
+                    <label class="label">Compaction Equipment</label>
+                    <input class="input input-sm" id="f_equipment" type="text" placeholder="e.g. Wacker Plate" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Probe Depth -->
+            <div class="card">
+                <div class="card-title">Probe Depth</div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <input class="input input-sm" id="f_probeDepth" type="number" step="0.5" placeholder="4" inputmode="decimal" style="max-width:100px;">
+                    <span style="font-size:0.85em;color:var(--text-secondary);font-weight:600;">inches</span>
+                </div>
+            </div>
+
+            <!-- Density Readings -->
+            <div class="card">
+                <div class="card-title">Wet Density Readings</div>
+
+                <!-- Required readings header -->
+                <div class="reading-row reading-row-3" style="margin-bottom:4px;">
+                    <div class="reading-label">#</div>
+                    <div class="reading-label">Count</div>
+                    <div class="reading-label">Wet Density (lb/ft³)</div>
+                </div>
+                <div class="reading-row reading-row-3">
+                    <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">1</div>
+                    <input class="input input-sm" id="d_count_0" type="number" placeholder="e.g. 1486" inputmode="numeric">
+                    <input class="input input-sm" id="d_wd_0" type="number" step="0.1" placeholder="e.g. 141.9" inputmode="decimal">
+                </div>
+                <div class="reading-row reading-row-3">
+                    <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">2</div>
+                    <input class="input input-sm" id="d_count_1" type="number" placeholder="e.g. 1512" inputmode="numeric">
+                    <input class="input input-sm" id="d_wd_1" type="number" step="0.1" placeholder="e.g. 141.8" inputmode="decimal">
+                </div>
+
+                <div class="divider"></div>
+                <div id="density6Check" class="check-badge check-na">— Enter both counts to check 6% rule</div>
+
+                <!-- Extra readings (shown when 6% exceeded) -->
+                <div class="extra-readings" id="densityExtraReadings">
+                    <div style="font-size:0.78em;color:var(--warn-text);font-weight:600;margin-bottom:8px;">Rotate gauge 10-20° and take 2 additional readings:</div>
+                    <div class="reading-row reading-row-3">
+                        <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">3</div>
+                        <input class="input input-sm" id="d_count_2" type="number" placeholder="count" inputmode="numeric">
+                        <input class="input input-sm" id="d_wd_2" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                    </div>
+                    <div class="reading-row reading-row-3">
+                        <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">4</div>
+                        <input class="input input-sm" id="d_count_3" type="number" placeholder="count" inputmode="numeric">
+                        <input class="input input-sm" id="d_wd_3" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="avg-row">
+                    <span class="avg-label">Avg Wet Density</span>
+                    <span class="avg-value" id="out_avgWD">—</span>
+                </div>
+            </div>
+
+            <!-- Moisture Readings -->
+            <div class="card">
+                <div class="card-title">Moisture Readings</div>
+
+                <div class="reading-row reading-row-4" style="margin-bottom:4px;">
+                    <div class="reading-label">#</div>
+                    <div class="reading-label">Count</div>
+                    <div class="reading-label">Moisture (lb/ft³)</div>
+                    <div class="reading-label">Moisture (%)</div>
+                </div>
+                <div class="reading-row reading-row-4">
+                    <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">1</div>
+                    <input class="input input-sm" id="m_count_0" type="number" placeholder="e.g. 69" inputmode="numeric">
+                    <input class="input input-sm" id="m_pcf_0" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                    <input class="input input-sm" id="m_pct_0" type="number" step="0.1" placeholder="e.g. 13.6" inputmode="decimal">
+                </div>
+                <div class="reading-row reading-row-4">
+                    <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">2</div>
+                    <input class="input input-sm" id="m_count_1" type="number" placeholder="e.g. 64" inputmode="numeric">
+                    <input class="input input-sm" id="m_pcf_1" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                    <input class="input input-sm" id="m_pct_1" type="number" step="0.1" placeholder="e.g. 13.8" inputmode="decimal">
+                </div>
+
+                <div class="divider"></div>
+                <div id="moisture6Check" class="check-badge check-na">— Enter both counts to check 6% rule</div>
+
+                <!-- Extra readings -->
+                <div class="extra-readings" id="moistureExtraReadings">
+                    <div style="font-size:0.78em;color:var(--warn-text);font-weight:600;margin-bottom:8px;">Rotate gauge 10-20° and take 2 additional readings:</div>
+                    <div class="reading-row reading-row-4">
+                        <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">3</div>
+                        <input class="input input-sm" id="m_count_2" type="number" placeholder="count" inputmode="numeric">
+                        <input class="input input-sm" id="m_pcf_2" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                        <input class="input input-sm" id="m_pct_2" type="number" step="0.1" placeholder="%" inputmode="decimal">
+                    </div>
+                    <div class="reading-row reading-row-4">
+                        <div style="font-size:0.82em;font-weight:700;color:var(--text-secondary);padding-top:10px;">4</div>
+                        <input class="input input-sm" id="m_count_3" type="number" placeholder="count" inputmode="numeric">
+                        <input class="input input-sm" id="m_pcf_3" type="number" step="0.1" placeholder="lb/ft³" inputmode="decimal">
+                        <input class="input input-sm" id="m_pct_3" type="number" step="0.1" placeholder="%" inputmode="decimal">
+                    </div>
+                </div>
+
+                <div class="avg-row" style="margin-top:6px;">
+                    <span class="avg-label">Avg Moisture</span>
+                    <span class="avg-value" id="out_avgMoisturePcf">—</span>
+                    <span style="margin:0 6px;color:var(--text-muted);">|</span>
+                    <span class="avg-label">Avg M%</span>
+                    <span class="avg-value" id="out_avgMoisturePct">—</span>
+                </div>
+            </div>
+
+        </div><!-- /tab-readings -->
+
+        <!-- ── RESULTS TAB ── -->
+        <div id="tab-results" class="tab-view">
+            <div id="resultsContent">
+                <div class="empty-state" style="padding:32px 16px;">
+                    <div style="font-size:2em;margin-bottom:8px;">📊</div>
+                    <div style="font-size:0.88em;color:var(--text-muted);">Enter readings to see results.</div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card" style="margin-top:4px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary" id="saveBtn" style="flex:1;">💾 Save</button>
+                    <button class="btn btn-secondary" id="exportBtn" style="flex:1;">⬇ Export JSON</button>
+                </div>
+                <div style="margin-top:8px;">
+                    <button class="btn btn-secondary btn-full" id="printBtn">🖨 Print / PDF</button>
+                </div>
+                <div class="save-msg hidden" id="saveMsg"></div>
+            </div>
+
+            <!-- Delete -->
+            <div style="padding:0 0 8px;">
+                <button class="btn btn-danger btn-small" id="deleteBtn" style="width:100%;">Delete This Test</button>
+            </div>
+        </div><!-- /tab-results -->
+    </div><!-- /editorView -->
+
+    <!-- Confirm Modal -->
+    <div class="modal hidden" id="confirmModal">
+        <div class="modal-sheet">
+            <div class="modal-handle"></div>
+            <div class="modal-title" id="confirmTitle">Confirm</div>
+            <div class="modal-msg" id="confirmMsg"></div>
+            <div class="modal-actions">
+                <button class="btn btn-danger" id="confirmOk" style="flex:1;">Confirm</button>
+                <button class="btn btn-secondary" id="confirmCancel" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+    <div id="printFrame"></div>
+
+    <script>
+    // ─── State ───────────────────────────────────────────────────────────
+    let currentRecord  = null;
+    let allRecords     = [];
+    let allMaterials   = [];
+    let _autoSaveTimer = null;
+    let _pendingConfirm = null;
+
+    // ─── Init ────────────────────────────────────────────────────────────
+    async function init() {
+        bindEvents();
+        applyTheme();
+        try {
+            allRecords   = await ftGetAllSoilTests();
+            allMaterials = await ftGetAllMaterials();
+            populateContractDatalist();
+        } catch(e) { console.error('[init]', e); }
+
+        const params = new URLSearchParams(window.location.search);
+        const urlProjectId = params.get('projectId');
+        const urlTestId    = params.get('testId');
+
+        if (urlTestId) {
+            const rec = await ftGetSoilTest(urlTestId).catch(() => null);
+            if (rec) { ensureRuns(rec); currentRecord = rec; showEditor(); return; }
+        }
+        if (urlProjectId) {
+            currentRecord = emptyRecord();
+            currentRecord.projectId = urlProjectId;
+            const proj = await ftGet('projects', urlProjectId).catch(() => null);
+            if (proj) currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+            showEditor();
+            return;
+        }
+        showList();
+    }
+
+    // ─── Theme ───────────────────────────────────────────────────────────
+    function applyTheme() {
+        const isHC = localStorage.getItem('ft_theme') === 'high-contrast';
+        if (isHC) {
+            document.documentElement.setAttribute('data-theme', 'high-contrast');
+            document.getElementById('themeBtn').textContent = '☀️ Light';
+        }
+    }
+
+    // ─── Record schema ────────────────────────────────────────────────────
+    function emptyRun() {
+        return {
+            testCode: '', station: '', distToCL: '', embankmentDepth: '',
+            materialType: '', equipment: '', probeDepth: null,
+            densityCounts: [null,null,null,null], wetDensities: [null,null,null,null],
+            moistureCounts: [null,null,null,null], moisturePcf: [null,null,null,null],
+            moisturePct: [null,null,null,null],
+        };
+    }
+    function emptyRecord() {
+        return {
+            id: 'soil_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+            projectId: null,
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            // Shared Info
+            contractNumber: '', date: new Date().toISOString().slice(0,10),
+            nuclearSetNo: '', correlationDate: '', testedBy: '',
+            dailyDensityCount: null, dailyMoistureCount: null,
+            // Proctor
+            linkedContractId: null, linkedMaterialId: null, linkedMaterialLabel: '',
+            proctorTestNo: '', maxDryDensity: null, optimumMoisture: null,
+            corrMaxDryDensity: null, corrOptimumMoisture: null, useCorr: false,
+            minPctCompaction: 90,
+            moistureOffset: null, wetDensityOffset: null,
+            remarks: '',
+            // Test runs (up to 3)
+            runs: [emptyRun()],
+            activeRunIdx: 0,
+        };
+    }
+    // Migrate old flat-field records into the runs[] schema
+    function ensureRuns(r) {
+        if (r.runs && r.runs.length) { if (r.activeRunIdx == null) r.activeRunIdx = 0; return; }
+        r.runs = [{
+            testCode: r.testCode || '', station: r.station || '',
+            distToCL: r.distToCL || '', embankmentDepth: r.embankmentDepth || '',
+            materialType: r.materialType || '', equipment: r.equipment || '',
+            probeDepth: r.probeDepth ?? null,
+            densityCounts: r.densityCounts || [null,null,null,null],
+            wetDensities:  r.wetDensities  || [null,null,null,null],
+            moistureCounts:r.moistureCounts|| [null,null,null,null],
+            moisturePcf:   r.moisturePcf   || [null,null,null,null],
+            moisturePct:   r.moisturePct   || [null,null,null,null],
+        }];
+        r.activeRunIdx = 0;
+    }
+    function activeRun() {
+        if (!currentRecord) return null;
+        return currentRecord.runs?.[(currentRecord.activeRunIdx ?? 0)] ?? null;
+    }
+
+    // ─── 6% check ────────────────────────────────────────────────────────
+    function check6pct(c1, c2) {
+        if (c1 == null || c2 == null || isNaN(c1) || isNaN(c2) || (c1 + c2) === 0)
+            return { pct: null, exceeds: false };
+        const diff = Math.abs(c1 - c2);
+        const avg  = (c1 + c2) / 2;
+        const pct  = (diff / avg) * 100;
+        return { pct, exceeds: pct > 6 };
+    }
+
+    // ─── Calculations ─────────────────────────────────────────────────────
+    function calcRun(run, r) {
+        const nan = { avgWD:null, avgMF:null, avgMP:null, ddVals:[], avgDD:null, pctComp:null, passed:null, dCheck:{pct:null,exceeds:false}, mCheck:{pct:null,exceeds:false}, dCount:2, mCount:2, target:null };
+        if (!run) return nan;
+        const dCheck = check6pct(run.densityCounts[0], run.densityCounts[1]);
+        const mCheck = check6pct(run.moistureCounts[0], run.moistureCounts[1]);
+        const dCount = (dCheck.exceeds && run.wetDensities[2] != null) ? 4 : 2;
+        const mCount = (mCheck.exceeds && run.moisturePct[2]  != null) ? 4 : 2;
+        const wdVals = run.wetDensities.slice(0, dCount).filter(v => v != null && !isNaN(v));
+        const avgWD  = wdVals.length ? wdVals.reduce((a,b)=>a+b,0)/wdVals.length : null;
+        const mpVals = run.moisturePct.slice(0, mCount).filter(v => v != null && !isNaN(v));
+        const avgMP  = mpVals.length ? mpVals.reduce((a,b)=>a+b,0)/mpVals.length : null;
+        const mfVals = run.moisturePcf.slice(0, mCount).filter(v => v != null && !isNaN(v));
+        const avgMF  = mfVals.length ? mfVals.reduce((a,b)=>a+b,0)/mfVals.length : null;
+        const pairs  = Math.min(dCount, mCount);
+        const ddVals = [];
+        for (let i = 0; i < pairs; i++) {
+            const wd = run.wetDensities[i], mp = run.moisturePct[i];
+            if (wd != null && mp != null && !isNaN(wd) && !isNaN(mp) && mp > -100)
+                ddVals.push(wd / (1 + mp / 100));
+        }
+        const avgDD   = ddVals.length ? ddVals.reduce((a,b)=>a+b,0)/ddVals.length : null;
+        const target  = (r.corrMaxDryDensity != null) ? r.corrMaxDryDensity : r.maxDryDensity;
+        const pctComp = (avgDD != null && target) ? (avgDD / target) * 100 : null;
+        const passed  = pctComp != null ? pctComp >= (r.minPctCompaction ?? 90) : null;
+        return { avgWD, avgMF, avgMP, ddVals, avgDD, pctComp, passed, dCheck, mCheck, dCount, mCount, target };
+    }
+    function recalc() { return calcRun(activeRun(), currentRecord); }
+
+    // ─── View switching ───────────────────────────────────────────────────
+    function showList() {
+        document.getElementById('editorView').classList.add('hidden');
+        document.getElementById('listView').classList.remove('hidden');
+        document.getElementById('navBack').textContent = '‹ Home';
+        renderRecordList();
+        loadProjectFilter();
+    }
+    function showEditor() {
+        document.getElementById('listView').classList.add('hidden');
+        document.getElementById('editorView').classList.remove('hidden');
+        document.getElementById('navBack').textContent = '‹ Tests';
+        setTab('info');
+        populateFields();
+        loadProctorPicker();
+    }
+    function setTab(name) {
+        ['info','readings','results'].forEach(t => {
+            document.getElementById('tab-' + t).classList.toggle('active', t === name);
+            document.getElementById('tab-' + t + '-btn').classList.toggle('active', t === name);
+        });
+        if (name === 'results') renderResults();
+    }
+
+    // ─── List view ────────────────────────────────────────────────────────
+    function renderRecordList() {
+        const filter = document.getElementById('projectFilter').value;
+        const filtered = filter ? allRecords.filter(r => r.projectId === filter) : allRecords;
+        const sorted   = filtered.slice().sort((a,b) => (b.created||'').localeCompare(a.created||''));
+        const list  = document.getElementById('recordList');
+        const empty = document.getElementById('listEmpty');
+        if (sorted.length === 0) { list.innerHTML = ''; empty.classList.remove('hidden'); return; }
+        empty.classList.add('hidden');
+        list.innerHTML = sorted.map(rec => {
+            const title = rec.materialType || rec.station || 'Soil Test';
+            const date  = rec.date || (rec.created||'').slice(0,10);
+            const sta   = rec.station ? ' · ' + rec.station : '';
+            // Quick calc for badge
+            const cr = quickCalcForBadge(rec);
+            let badge = '';
+            if (cr.pctComp != null) {
+                const pass = cr.pctComp >= (rec.minPctCompaction ?? 90);
+                badge = pass
+                    ? `<span class="record-badge badge-pass">✓ ${cr.pctComp.toFixed(1)}%</span>`
+                    : `<span class="record-badge badge-fail">✗ ${cr.pctComp.toFixed(1)}%</span>`;
+            } else {
+                badge = '<span class="record-badge badge-incomplete">Incomplete</span>';
+            }
+            return `<div class="record-card" onclick="openRecord('${escHtml(rec.id)}')">
+                <div class="record-title">${escHtml(title)}${badge}</div>
+                <div class="record-meta">${escHtml(date)}${escHtml(sta)}</div>
+            </div>`;
+        }).join('');
+    }
+    function quickCalcForBadge(r) {
+        // Use the last run that has data; fall back to first
+        const runs = r.runs || [];
+        let pctComp = null;
+        for (const run of runs) {
+            if (!run) continue;
+            const c = calcRun(run, r);
+            if (c.pctComp != null) pctComp = c.pctComp;
+        }
+        return { pctComp };
+    }
+    async function loadProjectFilter() {
+        const sel = document.getElementById('projectFilter');
+        const cur = sel.value;
+        const projs = await ftGetAllProjects().catch(()=>[]);
+        sel.innerHTML = '<option value="">All Projects</option>' +
+            projs.map(p=>`<option value="${escHtml(p.id)}">${escHtml(ftProjectTitle(p))}</option>`).join('');
+        sel.value = cur;
+    }
+
+    // ─── Run management ───────────────────────────────────────────────────
+    function renderRunSelector() {
+        const r = currentRecord;
+        const container = document.getElementById('runSelector');
+        if (!container || !r) return;
+        const runs = r.runs || [];
+        const active = r.activeRunIdx ?? 0;
+        let html = '';
+        for (let i = 0; i < 3; i++) {
+            if (i < runs.length) {
+                html += `<button class="run-pill${i===active?' active':''}" onclick="switchRun(${i})">Test ${i+1}</button>`;
+            } else if (i === runs.length && runs.length < 3) {
+                html += `<button class="run-pill-add" onclick="addRun()">＋ Add Test ${i+1}</button>`;
+            }
+        }
+        if (runs.length > 1) {
+            html += `<button class="run-pill-remove" onclick="removeRun(${active})">✕ Remove</button>`;
+        }
+        container.innerHTML = html;
+    }
+    function switchRun(idx) {
+        if (!currentRecord) return;
+        readRunFields();
+        currentRecord.activeRunIdx = idx;
+        renderRunSelector();
+        populateRunFields();
+        scheduleAutoSave();
+    }
+    function addRun() {
+        if (!currentRecord || (currentRecord.runs||[]).length >= 3) return;
+        readRunFields();
+        currentRecord.runs.push(emptyRun());
+        currentRecord.activeRunIdx = currentRecord.runs.length - 1;
+        renderRunSelector();
+        populateRunFields();
+        scheduleAutoSave();
+    }
+    function removeRun(idx) {
+        if (!currentRecord || (currentRecord.runs||[]).length <= 1) return;
+        currentRecord.runs.splice(idx, 1);
+        currentRecord.activeRunIdx = Math.max(0, idx - 1);
+        renderRunSelector();
+        populateRunFields();
+        scheduleAutoSave();
+    }
+
+    // ─── Open / new / delete ──────────────────────────────────────────────
+    function newRecord() {
+        currentRecord = emptyRecord();
+        showEditor();
+    }
+    async function openRecord(id) {
+        const rec = allRecords.find(r => r.id === id) || await ftGetSoilTest(id).catch(()=>null);
+        if (!rec) return;
+        ensureRuns(rec);
+        currentRecord = rec;
+        showEditor();
+    }
+    function deleteRecord() {
+        if (!currentRecord) return;
+        showConfirm('Delete Test?', 'This test will be permanently deleted.', async () => {
+            await ftDeleteSoilTest(currentRecord.id).catch(()=>{});
+            allRecords = allRecords.filter(r => r.id !== currentRecord.id);
+            currentRecord = null;
+            showToast('Test deleted');
+            showList();
+        });
+    }
+
+    // ─── Populate / read fields ───────────────────────────────────────────
+    function populateFields() {
+        const r = currentRecord;
+        if (!r) return;
+        // Shared Info tab fields
+        setVal('f_contractNumber', r.contractNumber);
+        setVal('f_date', r.date);
+        setVal('f_nuclearSetNo', r.nuclearSetNo);
+        setVal('f_correlationDate', r.correlationDate);
+        setVal('f_testedBy', r.testedBy);
+        setNum('f_dailyDensityCount', r.dailyDensityCount);
+        setNum('f_dailyMoistureCount', r.dailyMoistureCount);
+        setVal('f_proctorTestNo', r.proctorTestNo);
+        setNum('f_maxDryDensity', r.maxDryDensity);
+        setNum('f_optimumMoisture', r.optimumMoisture);
+        setNum('f_corrMaxDryDensity', r.corrMaxDryDensity);
+        setNum('f_corrOptimumMoisture', r.corrOptimumMoisture);
+        setNum('f_minPctCompaction', r.minPctCompaction ?? 90);
+        setNum('f_moistureOffset', r.moistureOffset);
+        setNum('f_wetDensityOffset', r.wetDensityOffset);
+        renderLinkedChip();
+        renderRunSelector();
+        populateRunFields();
+    }
+    function populateRunFields() {
+        const run = activeRun();
+        if (!run) return;
+        setVal('f_testCode', run.testCode);
+        setVal('f_station', run.station);
+        setVal('f_distToCL', run.distToCL);
+        setVal('f_embankmentDepth', run.embankmentDepth);
+        setVal('f_materialType', run.materialType);
+        setVal('f_equipment', run.equipment);
+        setNum('f_probeDepth', run.probeDepth);
+        for (let i=0;i<4;i++) {
+            setNum('d_count_'+i, run.densityCounts[i]);
+            setNum('d_wd_'+i,    run.wetDensities[i]);
+            setNum('m_count_'+i, run.moistureCounts[i]);
+            setNum('m_pcf_'+i,   run.moisturePcf[i]);
+            setNum('m_pct_'+i,   run.moisturePct[i]);
+        }
+        updateAverages();
+        update6pctBadges();
+    }
+    function readFields() {
+        const r = currentRecord;
+        if (!r) return;
+        r.contractNumber      = getVal('f_contractNumber');
+        r.date                = getVal('f_date');
+        r.nuclearSetNo        = getVal('f_nuclearSetNo');
+        r.correlationDate     = getVal('f_correlationDate');
+        r.testedBy            = getVal('f_testedBy');
+        r.dailyDensityCount   = getNum('f_dailyDensityCount');
+        r.dailyMoistureCount  = getNum('f_dailyMoistureCount');
+        r.proctorTestNo       = getVal('f_proctorTestNo');
+        r.maxDryDensity       = getNum('f_maxDryDensity');
+        r.optimumMoisture     = getNum('f_optimumMoisture');
+        r.corrMaxDryDensity   = getNum('f_corrMaxDryDensity');
+        r.corrOptimumMoisture = getNum('f_corrOptimumMoisture');
+        r.useCorr             = r.corrMaxDryDensity != null;
+        r.minPctCompaction    = getNum('f_minPctCompaction') ?? 90;
+        r.moistureOffset      = getNum('f_moistureOffset');
+        r.wetDensityOffset    = getNum('f_wetDensityOffset');
+        readRunFields();
+        r.modified = new Date().toISOString();
+    }
+    function readRunFields() {
+        const run = activeRun();
+        if (!run) return;
+        run.testCode        = getVal('f_testCode');
+        run.station         = getVal('f_station');
+        run.distToCL        = getVal('f_distToCL');
+        run.embankmentDepth = getVal('f_embankmentDepth');
+        run.materialType    = getVal('f_materialType');
+        run.equipment       = getVal('f_equipment');
+        run.probeDepth      = getNum('f_probeDepth');
+        for (let i=0;i<4;i++) {
+            run.densityCounts[i] = getNum('d_count_'+i);
+            run.wetDensities[i]  = getNum('d_wd_'+i);
+            run.moistureCounts[i]= getNum('m_count_'+i);
+            run.moisturePcf[i]   = getNum('m_pcf_'+i);
+            run.moisturePct[i]   = getNum('m_pct_'+i);
+        }
+    }
+
+    // ─── 6% badges & extra reading visibility ────────────────────────────
+    function update6pctBadges() {
+        if (!currentRecord) return;
+        const run = activeRun();
+        if (!run) return;
+
+        // Density
+        const dc = check6pct(run.densityCounts[0], run.densityCounts[1]);
+        const db = document.getElementById('density6Check');
+        const de = document.getElementById('densityExtraReadings');
+        if (dc.pct == null) {
+            db.className = 'check-badge check-na';
+            db.textContent = '— Enter both counts to check 6% rule';
+            de.classList.remove('show');
+        } else if (dc.exceeds) {
+            db.className = 'check-badge check-warn';
+            db.textContent = `⚠ Counts differ ${dc.pct.toFixed(1)}% — exceeds 6%, 2 additional readings required`;
+            de.classList.add('show');
+        } else {
+            db.className = 'check-badge check-pass';
+            db.textContent = `✓ Within 6% (${dc.pct.toFixed(1)}% difference)`;
+            de.classList.remove('show');
+        }
+
+        // Moisture
+        const mc = check6pct(run.moistureCounts[0], run.moistureCounts[1]);
+        const mb = document.getElementById('moisture6Check');
+        const me = document.getElementById('moistureExtraReadings');
+        if (mc.pct == null) {
+            mb.className = 'check-badge check-na';
+            mb.textContent = '— Enter both counts to check 6% rule';
+            me.classList.remove('show');
+        } else if (mc.exceeds) {
+            mb.className = 'check-badge check-warn';
+            mb.textContent = `⚠ Counts differ ${mc.pct.toFixed(1)}% — exceeds 6%, 2 additional readings required`;
+            me.classList.add('show');
+        } else {
+            mb.className = 'check-badge check-pass';
+            mb.textContent = `✓ Within 6% (${mc.pct.toFixed(1)}% difference)`;
+            me.classList.remove('show');
+        }
+    }
+
+    // ─── Averages on readings tab ─────────────────────────────────────────
+    function updateAverages() {
+        if (!currentRecord) return;
+        const calc = recalc();
+        document.getElementById('out_avgWD').textContent =
+            calc.avgWD != null ? calc.avgWD.toFixed(1) + ' lb/ft³' : '—';
+        document.getElementById('out_avgMoisturePcf').textContent =
+            calc.avgMF != null ? calc.avgMF.toFixed(1) + ' lb/ft³' : '—';
+        document.getElementById('out_avgMoisturePct').textContent =
+            calc.avgMP != null ? calc.avgMP.toFixed(1) + '%' : '—';
+    }
+
+    // ─── Results tab ──────────────────────────────────────────────────────
+    function renderResults() {
+        readFields();
+        const r = currentRecord;
+        if (!r) return;
+        const minPct = r.minPctCompaction ?? 90;
+        let html = '';
+
+        for (let ri = 0; ri < (r.runs||[]).length; ri++) {
+            const run  = r.runs[ri];
+            const calc = calcRun(run, r);
+            const { avgWD, avgMF, avgMP, ddVals, avgDD, pctComp, passed, dCheck, mCheck } = calc;
+            const target = calc.target;
+            const label  = run.station ? `Test ${ri+1} — ${escHtml(run.station)}` : `Test ${ri+1}`;
+            html += `<div style="font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-tertiary);margin:${ri>0?'20px':0} 16px 0;">${label}</div>`;
+
+            // DD calculations
+            html += `<div class="card result-neutral">
+                <div class="result-title">Dry Density Calculations</div>
+                <div style="font-size:0.78em;color:var(--text-muted);margin-bottom:8px;">DD = Wet Density ÷ (1 + Moisture% ÷ 100)</div>`;
+            if (ddVals.length === 0) {
+                html += `<div style="color:var(--text-muted);font-size:0.85em;">Enter readings for Test ${ri+1}.</div>`;
+            } else {
+                ddVals.forEach((dd, i) => {
+                    const wd = run.wetDensities[i], mp = run.moisturePct[i];
+                    html += `<div class="result-row">
+                        <span class="result-row-label">DD #${i+1} = ${fmtN(wd)} ÷ (1 + ${fmtN(mp)}÷100)</span>
+                        <span class="result-row-value">${dd.toFixed(2)} lb/ft³</span>
+                    </div>`;
+                });
+                html += `<div class="result-row" style="margin-top:4px;border-top:2px solid var(--border-secondary);padding-top:8px;">
+                    <span class="result-row-label" style="font-weight:800;">Average Dry Density</span>
+                    <span class="result-row-value">${avgDD != null ? avgDD.toFixed(2) + ' lb/ft³' : '—'}</span>
+                </div>`;
+            }
+            html += `</div>`;
+
+            // Compaction result
+            const cardClass = passed === true ? 'result-pass' : passed === false ? 'result-fail' : 'result-neutral';
+            html += `<div class="card ${cardClass}">
+                <div class="result-title">% Compaction — Test ${ri+1}</div>
+                <div class="result-row"><span class="result-row-label">Avg Wet Density</span><span class="result-row-value">${avgWD!=null?avgWD.toFixed(2)+' lb/ft³':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Avg Moisture %</span><span class="result-row-value">${avgMP!=null?avgMP.toFixed(1)+'%':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Average Dry Density</span><span class="result-row-value">${avgDD!=null?avgDD.toFixed(2)+' lb/ft³':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Target MDD${r.corrMaxDryDensity!=null?' (corrected)':''}</span><span class="result-row-value">${target!=null?target.toFixed(2)+' lb/ft³':'— not set'}</span></div>
+                <div class="result-row"><span class="result-row-label">% Compaction</span><span class="result-row-value" style="font-size:1.05em;">${pctComp!=null?pctComp.toFixed(1)+'%':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Minimum Required</span><span class="result-row-value">${minPct}%</span></div>
+                <div class="verdict ${passed===true?'verdict-pass':passed===false?'verdict-fail':'verdict-na'}">
+                    ${passed===true?'✓ ACCEPTED':passed===false?'✗ REJECTED':'— Incomplete'}
+                </div>
+            </div>`;
+
+            // 6% summary
+            html += `<div class="card result-neutral">
+                <div class="result-title">Reading Averages — Test ${ri+1}</div>
+                <div class="result-row"><span class="result-row-label">Avg Wet Density (${calc.dCount})</span><span class="result-row-value">${avgWD!=null?avgWD.toFixed(2)+' lb/ft³':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Avg Moisture (${calc.mCount})</span><span class="result-row-value">${avgMF!=null?avgMF.toFixed(2)+' lb/ft³':'—'}</span></div>
+                <div class="result-row"><span class="result-row-label">Density 6% Check</span><span class="result-row-value" style="color:${dCheck.pct==null?'var(--text-muted)':dCheck.exceeds?'var(--accent-amber)':'var(--accent-green)'};">${dCheck.pct==null?'—':dCheck.exceeds?`⚠ ${dCheck.pct.toFixed(1)}% (exceeded)`:`✓ ${dCheck.pct.toFixed(1)}%`}</span></div>
+                <div class="result-row"><span class="result-row-label">Moisture 6% Check</span><span class="result-row-value" style="color:${mCheck.pct==null?'var(--text-muted)':mCheck.exceeds?'var(--accent-amber)':'var(--accent-green)'};">${mCheck.pct==null?'—':mCheck.exceeds?`⚠ ${mCheck.pct.toFixed(1)}% (exceeded)`:`✓ ${mCheck.pct.toFixed(1)}%`}</span></div>
+            </div>`;
+        }
+
+        // Shared remarks
+        html += `<div class="card">
+            <div class="card-title">Remarks</div>
+            <textarea class="input" id="f_remarks" placeholder="Any notes or observations..." rows="3">${escHtml(r.remarks||'')}</textarea>
+        </div>`;
+
+        document.getElementById('resultsContent').innerHTML = html;
+        const ta = document.getElementById('f_remarks');
+        if (ta) ta.addEventListener('input', () => { currentRecord.remarks = ta.value; scheduleAutoSave(); });
+    }
+
+    // ─── Proctor picker ───────────────────────────────────────────────────
+    async function loadProctorPicker() {
+        if (!currentRecord) return;
+        // Always re-fetch so picker reflects latest saved contracts
+        try {
+            allMaterials = await ftGetAllMaterials();
+            populateContractDatalist();
+        } catch(e) { console.error('[loadProctorPicker] refresh:', e); }
+        const sel = document.getElementById('proctorContractSelect');
+        sel.innerHTML = '<option value="">— Select contract —</option>' +
+            allMaterials
+                .map(c => `<option value="${escHtml(c.id)}">${escHtml(c.contractNumber || c.number || c.id)}</option>`)
+                .join('');
+        sel.value = currentRecord.linkedContractId || '';
+        if (sel.value) onProctorContractChange();
+        renderLinkedChip();
+    }
+    function onProctorContractChange() {
+        const cid = document.getElementById('proctorContractSelect').value;
+        const sel = document.getElementById('proctorMaterialSelect');
+        const btn = document.getElementById('linkMaterialBtn');
+        if (!cid) { sel.innerHTML = '<option value="">— Select material —</option>'; sel.disabled = true; btn.disabled = true; return; }
+        const contract = allMaterials.find(c => c.id === cid);
+        const grans = (contract?.materials || []).filter(m => m.category === 'Granular');
+        sel.innerHTML = '<option value="">— Select material —</option>' +
+            grans.map(m => `<option value="${escHtml(m.id)}">${escHtml(m.gran_name || m.id)}${m.gran_mdd ? ' · ' + m.gran_mdd + ' pcf' : ''}</option>`).join('');
+        sel.disabled = false;
+        sel.value = currentRecord.linkedMaterialId || '';
+        btn.disabled = !sel.value;
+    }
+    function onProctorMaterialChange() {
+        document.getElementById('linkMaterialBtn').disabled = !document.getElementById('proctorMaterialSelect').value;
+    }
+    function linkProctorMaterial() {
+        const cid = document.getElementById('proctorContractSelect').value;
+        const mid = document.getElementById('proctorMaterialSelect').value;
+        if (!cid || !mid) return;
+        const contract  = allMaterials.find(c => c.id === cid);
+        const mat       = (contract?.materials || []).find(m => m.id === mid);
+        if (!mat) return;
+        currentRecord.linkedContractId   = cid;
+        currentRecord.linkedMaterialId   = mid;
+        const mddDisplay = mat.gran_mdd ? ' · ' + mat.gran_mdd + ' pcf' : '';
+        const contractNum = contract.contractNumber || contract.number || '';
+        const label = `${mat.gran_name || 'Material'}${mddDisplay} · ${contractNum || cid}`;
+        currentRecord.linkedMaterialLabel = label;
+        // Auto-fill contract number if field is empty
+        if (contractNum && !getVal('f_contractNumber')) {
+            setVal('f_contractNumber', contractNum);
+            currentRecord.contractNumber = contractNum;
+        }
+        // Auto-fill primary proctor values
+        if (mat.gran_proctorTestNo) setVal('f_proctorTestNo', mat.gran_proctorTestNo);
+        if (mat.gran_mdd  != null) { currentRecord.maxDryDensity     = mat.gran_mdd;      setNum('f_maxDryDensity', mat.gran_mdd); }
+        if (mat.gran_omc  != null) { currentRecord.optimumMoisture   = mat.gran_omc;      setNum('f_optimumMoisture', mat.gran_omc); }
+        if (mat.gran_mdd_corr != null) { currentRecord.corrMaxDryDensity   = mat.gran_mdd_corr; setNum('f_corrMaxDryDensity', mat.gran_mdd_corr); }
+        if (mat.gran_omc_corr != null) { currentRecord.corrOptimumMoisture = mat.gran_omc_corr; setNum('f_corrOptimumMoisture', mat.gran_omc_corr); }
+        // Show historical test log selector if available
+        renderProctorTestSelect(mat);
+        renderLinkedChip();
+        // Auto-apply gauge correlation
+        applyGaugeCorrelation();
+        scheduleAutoSave();
+    }
+    function clearProctorLink() {
+        if (!currentRecord) return;
+        currentRecord.linkedContractId   = null;
+        currentRecord.linkedMaterialId   = null;
+        currentRecord.linkedMaterialLabel = '';
+        document.getElementById('proctorTestSelectRow')?.remove();
+        const badge = document.getElementById('gaugeCorrelationBadge');
+        if (badge) badge.classList.add('hidden');
+        const banner = document.getElementById('proctorDriftBanner');
+        if (banner) banner.classList.add('hidden');
+        renderLinkedChip();
+        loadProctorPicker();
+    }
+    function renderLinkedChip() {
+        const chip   = document.getElementById('linkedMaterialChip');
+        const picker = document.getElementById('materialPicker');
+        const label  = document.getElementById('linkedMaterialLabel');
+        if (currentRecord?.linkedMaterialId) {
+            chip.classList.remove('hidden');
+            picker.classList.add('hidden');
+            label.textContent = currentRecord.linkedMaterialLabel || 'Linked material';
+        } else {
+            chip.classList.add('hidden');
+            picker.classList.remove('hidden');
+        }
+    }
+
+    // ─── Auto-save ────────────────────────────────────────────────────────
+    function scheduleAutoSave() {
+        clearTimeout(_autoSaveTimer);
+        _autoSaveTimer = setTimeout(async () => {
+            if (!currentRecord) return;
+            readFields();
+            try {
+                await ftSaveSoilTest(currentRecord);
+                const idx = allRecords.findIndex(r => r.id === currentRecord.id);
+                if (idx >= 0) allRecords[idx] = currentRecord;
+                else allRecords.push(currentRecord);
+                const msg = document.getElementById('saveMsg');
+                if (msg) { msg.textContent = '✓ Auto-saved ' + new Date().toLocaleTimeString(); msg.classList.remove('hidden'); setTimeout(() => msg.classList.add('hidden'), 2500); }
+            } catch(e) { console.error('[autoSave]', e); }
+        }, 2000);
+    }
+    async function saveNow() {
+        if (!currentRecord) return;
+        readFields();
+        try {
+            await ftSaveSoilTest(currentRecord);
+            const idx = allRecords.findIndex(r => r.id === currentRecord.id);
+            if (idx >= 0) allRecords[idx] = currentRecord; else allRecords.push(currentRecord);
+            showToast('Saved');
+        } catch(e) { showToast('Save failed'); console.error(e); }
+    }
+
+    // ─── Export JSON ──────────────────────────────────────────────────────
+    function exportRecord() {
+        if (!currentRecord) return;
+        readFields();
+        const json  = JSON.stringify(currentRecord, null, 2);
+        const fname = `soiltest_${(currentRecord.station||currentRecord.date||'export').replace(/[^a-z0-9]/gi,'_')}_${new Date().toISOString().replace(/[:.]/g,'-').slice(0,19)}.json`;
+        if (navigator.share && /iPhone|iPad|Android/i.test(navigator.userAgent)) {
+            navigator.share({ title: fname, text: json }).catch(() => dlJson(json, fname));
+        } else { dlJson(json, fname); }
+    }
+    function dlJson(text, fname) {
+        const a = document.createElement('a');
+        a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(text);
+        a.download = fname; a.click();
+    }
+
+    // ─── Helpers ──────────────────────────────────────────────────────────
+    function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v || ''; }
+    function setNum(id, v) { const el = document.getElementById(id); if (el) el.value = (v != null && !isNaN(v)) ? v : ''; }
+    function getVal(id)    { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+    function getNum(id)    { const el = document.getElementById(id); if (!el || el.value === '') return null; const n = parseFloat(el.value); return isNaN(n) ? null : n; }
+    function fmtN(v) { return (v != null && !isNaN(v)) ? v : '—'; }
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+    let _toastTimer;
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg; t.classList.add('show');
+        clearTimeout(_toastTimer);
+        _toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+    }
+    function showConfirm(title, msg, onOk) {
+        document.getElementById('confirmTitle').textContent = title;
+        document.getElementById('confirmMsg').textContent   = msg;
+        _pendingConfirm = onOk;
+        document.getElementById('confirmModal').classList.remove('hidden');
+    }
+
+    // ─── Contract datalist ────────────────────────────────────────────────
+    function populateContractDatalist() {
+        const dl = document.getElementById('contractDatalist');
+        if (!dl) return;
+        dl.innerHTML = allMaterials
+            .map(c => c.contractNumber || c.number)
+            .filter(Boolean)
+            .map(n => `<option value="${escHtml(n)}">`)
+            .join('');
+    }
+
+    // ─── Proctor test log selector ────────────────────────────────────────
+    function renderProctorTestSelect(mat) {
+        document.getElementById('proctorTestSelectRow')?.remove();
+        if (!mat?.gran_proctors?.length) return;
+        const sorted = [...mat.gran_proctors].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+        const div = document.createElement('div');
+        div.id = 'proctorTestSelectRow';
+        div.className = 'field-group';
+        div.style.marginTop = '8px';
+        const opts = sorted.map(p =>
+            `<option value="${escHtml(p.id)}">${escHtml(p.testNo||'No no.')} · ${escHtml(p.date||'No date')} · ${p.mdd != null ? p.mdd + ' pcf' : '?'}</option>`
+        ).join('');
+        div.innerHTML = `<label class="label">Select T108 Test from Log</label>
+            <select class="select-input input-sm" id="proctorTestSelect">
+                <option value="">— Current values (${mat.gran_mdd ?? '?'} pcf) —</option>${opts}
+            </select>`;
+        document.getElementById('linkMaterialBtn').after(div);
+        document.getElementById('proctorTestSelect').addEventListener('change', () => onProctorTestSelect(mat));
+    }
+    function onProctorTestSelect(mat) {
+        const id = document.getElementById('proctorTestSelect')?.value;
+        if (!id) {
+            if (mat.gran_mdd  != null) setNum('f_maxDryDensity', mat.gran_mdd);
+            if (mat.gran_omc  != null) setNum('f_optimumMoisture', mat.gran_omc);
+            if (mat.gran_mdd_corr != null) setNum('f_corrMaxDryDensity', mat.gran_mdd_corr);
+            if (mat.gran_omc_corr != null) setNum('f_corrOptimumMoisture', mat.gran_omc_corr);
+            return;
+        }
+        const entry = (mat.gran_proctors||[]).find(p => p.id === id);
+        if (!entry) return;
+        if (entry.mdd     != null) setNum('f_maxDryDensity', entry.mdd);
+        if (entry.omc     != null) setNum('f_optimumMoisture', entry.omc);
+        if (entry.mdd_corr!= null) setNum('f_corrMaxDryDensity', entry.mdd_corr);
+        if (entry.omc_corr!= null) setNum('f_corrOptimumMoisture', entry.omc_corr);
+        if (entry.testNo) setVal('f_proctorTestNo', entry.testNo);
+        scheduleAutoSave();
+    }
+
+    // ─── Gauge correlation auto-apply ─────────────────────────────────────
+    function applyGaugeCorrelation() {
+        if (!currentRecord?.linkedMaterialId) return;
+        const contract = allMaterials.find(c => c.id === currentRecord.linkedContractId);
+        const mat = (contract?.materials || []).find(m => m.id === currentRecord.linkedMaterialId);
+        if (!mat?.gran_correlations?.length) return;
+        const gaugeNo = document.getElementById('f_nuclearSetNo').value.trim();
+        if (!gaugeNo) return;
+        const matches = mat.gran_correlations
+            .filter(c => (c.gaugeNo || '').trim() === gaugeNo)
+            .sort((a,b) => (b.date||'').localeCompare(a.date||''));
+        if (!matches.length) return;
+        const best = matches[0];
+        if (best.moistureOffset    != null) setNum('f_moistureOffset', best.moistureOffset);
+        if (best.wetDensityOffset  != null) setNum('f_wetDensityOffset', best.wetDensityOffset);
+        // Auto-fill correlation date from the matched gauge's most recent date
+        if (best.date) {
+            setVal('f_correlationDate', best.date);
+            currentRecord.correlationDate = best.date;
+        }
+        const badge = document.getElementById('gaugeCorrelationBadge');
+        if (badge) {
+            badge.textContent = `\u2713 Auto-applied: Gauge ${gaugeNo} \u00b7 ${best.date || 'no date'}`;
+            badge.classList.remove('hidden');
+        }
+        scheduleAutoSave();
+    }
+
+    // ─── Proctor drift detection ──────────────────────────────────────────
+    let _driftTimer = null;
+    function scheduleDriftCheck() {
+        clearTimeout(_driftTimer);
+        _driftTimer = setTimeout(checkProctorDrift, 1500);
+    }
+    function checkProctorDrift() {
+        if (!currentRecord?.linkedMaterialId) return;
+        const enteredMDD = getNum('f_maxDryDensity');
+        if (enteredMDD == null) return;
+        const contract = allMaterials.find(c => c.id === currentRecord.linkedContractId);
+        const mat = (contract?.materials || []).find(m => m.id === currentRecord.linkedMaterialId);
+        if (!mat || mat.gran_mdd == null) return;
+        if (Math.abs(enteredMDD - mat.gran_mdd) < 0.01) {
+            document.getElementById('proctorDriftBanner').classList.add('hidden');
+            return;
+        }
+        document.getElementById('proctorDriftMsg').textContent =
+            `MDD differs from linked material (${mat.gran_mdd} pcf). Add ${enteredMDD} pcf to material log?`;
+        document.getElementById('proctorDriftBanner').classList.remove('hidden');
+        // Wire the add button with current context
+        const addBtn = document.getElementById('proctorDriftAddBtn');
+        addBtn.onclick = () => addDriftedProctorToMaterial(mat, contract, enteredMDD);
+    }
+    async function addDriftedProctorToMaterial(mat, contract, enteredMDD) {
+        const entry = {
+            id: 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+            testNo: getVal('f_proctorTestNo'),
+            date: getVal('f_date'),
+            mdd: enteredMDD,
+            omc: getNum('f_optimumMoisture'),
+            mdd_corr: getNum('f_corrMaxDryDensity'),
+            omc_corr: getNum('f_corrOptimumMoisture'),
+            notes: ''
+        };
+        if (!mat.gran_proctors) mat.gran_proctors = [];
+        mat.gran_proctors.unshift(entry);
+        mat.gran_mdd = enteredMDD; // update primary
+        if (entry.omc != null) mat.gran_omc = entry.omc;
+        try {
+            await ftSaveMaterials(contract);
+            allMaterials = await ftGetAllMaterials();
+            populateContractDatalist();
+            document.getElementById('proctorDriftBanner').classList.add('hidden');
+            showToast('Added to material log');
+        } catch(e) { console.error('[driftSave]', e); showToast('Save failed'); }
+    }
+
+    // ─── Event bindings ───────────────────────────────────────────────────
+    function bindEvents() {
+        // Theme
+        document.getElementById('themeBtn').addEventListener('click', () => {
+            const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+            document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+            document.getElementById('themeBtn').textContent = isHC ? '🌙 Dark' : '☀️ Light';
+            localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
+            ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+        });
+
+        // Nav back
+        document.getElementById('navBack').addEventListener('click', () => {
+            if (!document.getElementById('editorView').classList.contains('hidden')) {
+                readFields();
+                scheduleAutoSave();
+                showList();
+            } else {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // List
+        document.getElementById('newTestBtn').addEventListener('click', newRecord);
+        document.getElementById('projectFilter').addEventListener('change', renderRecordList);
+
+        // Results tab actions
+        document.getElementById('saveBtn').addEventListener('click', saveNow);
+        document.getElementById('exportBtn').addEventListener('click', exportRecord);
+        document.getElementById('printBtn').addEventListener('click', printRecord);
+        document.getElementById('deleteBtn').addEventListener('click', deleteRecord);
+
+        // Proctor picker
+        document.getElementById('proctorContractSelect').addEventListener('change', onProctorContractChange);
+        document.getElementById('proctorMaterialSelect').addEventListener('change', onProctorMaterialChange);
+        document.getElementById('linkMaterialBtn').addEventListener('click', linkProctorMaterial);
+        document.getElementById('clearMaterialLink').addEventListener('click', clearProctorLink);
+
+        // Test code → parse min pct
+        document.getElementById('f_testCode').addEventListener('input', e => {
+            const code = e.target.value.trim();
+            const m = code.match(/[-_](\d+)$/);
+            if (m) {
+                const pct = parseInt(m[1], 10);
+                if (pct >= 80 && pct <= 100) {
+                    setNum('f_minPctCompaction', pct);
+                    if (currentRecord) currentRecord.minPctCompaction = pct;
+                }
+            }
+            scheduleAutoSave();
+        });
+
+        // Gauge serial no → auto-apply correlation
+        document.getElementById('f_nuclearSetNo').addEventListener('input', () => {
+            applyGaugeCorrelation();
+            scheduleAutoSave();
+        });
+
+        // MDD field → drift check when a material is linked
+        document.getElementById('f_maxDryDensity').addEventListener('input', () => {
+            scheduleDriftCheck();
+            scheduleAutoSave();
+        });
+
+        // Drift banner dismiss
+        document.getElementById('proctorDriftDismissBtn').addEventListener('click', () => {
+            document.getElementById('proctorDriftBanner').classList.add('hidden');
+        });
+
+        // Shared Info fields → auto-save
+        ['f_contractNumber','f_date','f_nuclearSetNo','f_correlationDate','f_testedBy',
+         'f_proctorTestNo','f_minPctCompaction',
+         'f_optimumMoisture','f_corrMaxDryDensity','f_corrOptimumMoisture',
+         'f_dailyDensityCount','f_dailyMoistureCount',
+         'f_moistureOffset','f_wetDensityOffset'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', scheduleAutoSave);
+        });
+        // Per-run fields → auto-save
+        ['f_station','f_distToCL','f_embankmentDepth','f_materialType','f_equipment'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('input', scheduleAutoSave);
+        });
+
+        // Density count inputs → 6% check + averages
+        for (let i=0;i<4;i++) {
+            const dc = document.getElementById('d_count_'+i);
+            const dw = document.getElementById('d_wd_'+i);
+            if (dc) dc.addEventListener('input', () => { readFields(); update6pctBadges(); updateAverages(); scheduleAutoSave(); });
+            if (dw) dw.addEventListener('input', () => { readFields(); updateAverages(); scheduleAutoSave(); });
+        }
+        // Moisture inputs → 6% check + averages
+        for (let i=0;i<4;i++) {
+            const mc = document.getElementById('m_count_'+i);
+            const mf = document.getElementById('m_pcf_'+i);
+            const mp = document.getElementById('m_pct_'+i);
+            if (mc) mc.addEventListener('input', () => { readFields(); update6pctBadges(); updateAverages(); scheduleAutoSave(); });
+            if (mf) mf.addEventListener('input', () => { readFields(); updateAverages(); scheduleAutoSave(); });
+            if (mp) mp.addEventListener('input', () => { readFields(); updateAverages(); scheduleAutoSave(); });
+        }
+        // Probe depth
+        const pd = document.getElementById('f_probeDepth');
+        if (pd) pd.addEventListener('input', scheduleAutoSave);
+
+        // Confirm modal
+        document.getElementById('confirmOk').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.add('hidden');
+            if (_pendingConfirm) { _pendingConfirm(); _pendingConfirm = null; }
+        });
+        document.getElementById('confirmCancel').addEventListener('click', () => {
+            document.getElementById('confirmModal').classList.add('hidden');
+            _pendingConfirm = null;
+        });
+        document.getElementById('confirmModal').addEventListener('click', e => {
+            if (e.target === document.getElementById('confirmModal')) {
+                document.getElementById('confirmModal').classList.add('hidden');
+                _pendingConfirm = null;
+            }
+        });
+    }
+
+    // ─── Print / PDF ──────────────────────────────────────────────────────
+    function printRecord() {
+        if (!currentRecord) return;
+        readFields();
+        const r    = currentRecord;
+        const runs = r.runs || [emptyRun()];
+        const fN = (v, d=2) => (v != null && !isNaN(v)) ? Number(v).toFixed(d) : '';
+        const fV = v => escHtml(v || '');
+
+        // Build per-run cell data for each section
+        // Each helper returns an array of 3 cell values (empty string for missing runs)
+        function runCell(fn) {
+            return [0,1,2].map(i => runs[i] ? fn(runs[i], calcRun(runs[i], r)) : '');
+        }
+        function td(v) { return `<td>${v}</td>`; }
+        function tds(arr) { return arr.map(td).join(''); }
+
+        const html = `
+<div class="pf-header">
+    <h2>STATE OF NEVADA</h2>
+    <h2>DEPARTMENT OF TRANSPORTATION</h2>
+    <p style="font-size:10pt;font-weight:bold;margin-top:4pt;">NUCLEAR COMPACTION REPORT FOR SOILS AND AGGREGATES</p>
+</div>
+
+<div class="pf-top">
+    <div class="pf-dsc-box">
+        <div class="pf-dsc-title">Daily Standard Counts</div>
+        <div class="pf-dsc-grid">
+            <div class="pf-dsc-cell pf-dsc-hdr">Density</div>
+            <div class="pf-dsc-cell pf-dsc-hdr">Moisture</div>
+            <div class="pf-dsc-cell">${r.dailyDensityCount ?? ''}</div>
+            <div class="pf-dsc-cell">${r.dailyMoistureCount ?? ''}</div>
+        </div>
+    </div>
+    <div class="pf-hdr-fields">
+        <div class="pf-field-row"><span class="pf-label">Contract No.</span><span class="pf-val">${fV(r.contractNumber)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Date</span><span class="pf-val">${fV(r.date)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Nuclear Set No.</span><span class="pf-val">${fV(r.nuclearSetNo)}</span></div>
+        <div class="pf-field-row"><span class="pf-label">Correlation Date</span><span class="pf-val">${fV(r.correlationDate)}</span></div>
+    </div>
+</div>
+
+<table class="pf-main">
+<colgroup><col style="width:36%;"><col style="width:21.3%;"><col style="width:21.3%;"><col style="width:21.3%;"></colgroup>
+<tbody>
+<tr><td class="pf-row-label">Test No. (code)</td>${tds(runCell(ru => fV(ru.testCode)))}</tr>
+<tr><td class="pf-row-label">Station</td>${tds(runCell(ru => fV(ru.station)))}</tr>
+<tr><td class="pf-row-label">Distance to Centerline</td>${tds(runCell(ru => fV(ru.distToCL)))}</tr>
+<tr><td class="pf-row-label">Embankment Depth</td>${tds(runCell(ru => fV(ru.embankmentDepth)))}</tr>
+<tr><td class="pf-row-label">Type of Material</td>${tds(runCell(ru => fV(ru.materialType)))}</tr>
+<tr><td class="pf-row-label">Compaction Equipment</td>${tds(runCell(ru => fV(ru.equipment)))}</tr>
+
+<tr class="pf-section-row"><td colspan="4">WET DENSITY</td></tr>
+<tr><td class="pf-row-label">Probe Depth</td>${tds(runCell(ru => ru.probeDepth != null ? ru.probeDepth + '"' : ''))}</tr>
+<tr><td class="pf-row-label pf-bold">Counts</td>${tds(runCell(ru => (ru.densityCounts[0]??'') + (ru.densityCounts[1]!=null?' / '+ru.densityCounts[1]:'')))}</tr>
+${[0,1,2,3].map(i => `<tr><td class="pf-row-label">Wet Density #${i+1} Mg/m³ (lb/ft³)</td>${tds(runCell(ru => ru.wetDensities[i] != null ? ru.wetDensities[i].toFixed(1) : ''))}</tr>`).join('')}
+<tr><td class="pf-row-label pf-bold">Average Wet Density Mg/m³ (lb/ft³)</td>${tds(runCell((ru,c) => c.avgWD != null ? c.avgWD.toFixed(2) : ''))}</tr>
+
+<tr class="pf-section-row"><td colspan="4">MOISTURE AND MOISTURE %</td></tr>
+<tr><td class="pf-row-label pf-bold">Counts</td>${tds(runCell(ru => {
+    return (ru.moistureCounts[0]??'') + (ru.moistureCounts[1] != null ? ' / ' + ru.moistureCounts[1] : '');
+}))}</tr>
+${[0,1,2,3].map(i => `<tr><td class="pf-row-label">Moisture #${i+1} Mg/m³ (lb/ft³) / M %</td>${tds(runCell(ru => {
+    const pcf = ru.moisturePcf[i], pct = ru.moisturePct[i];
+    return (pcf!=null?pcf.toFixed(1):'') + (pct!=null?' / '+pct.toFixed(1)+'%':'');
+}))}</tr>`).join('')}
+<tr><td class="pf-row-label pf-bold">Avg. Moisture Mg/m³ (lb/ft³) / Avg. M %</td>${tds(runCell((ru,c) => {
+    return (c.avgMF!=null?c.avgMF.toFixed(2):'') + (c.avgMP!=null?' / '+c.avgMP.toFixed(1)+'%':'');
+}))}</tr>
+
+<tr class="pf-section-row"><td colspan="4">CORRELATION DATA</td></tr>
+<tr><td class="pf-row-label">Moisture Offset (MCF)</td><td colspan="3" style="text-align:left;padding-left:4pt;">${r.moistureOffset ?? ''}</td></tr>
+<tr><td class="pf-row-label">Wet Density Offset</td><td colspan="3" style="text-align:left;padding-left:4pt;">${r.wetDensityOffset ?? ''}</td></tr>
+
+<tr class="pf-section-row"><td colspan="4">MODIFIED PROCTOR COMPACTION TEST RESULTS</td></tr>
+<tr><td class="pf-row-label">Test No.</td><td colspan="3" style="text-align:left;padding-left:4pt;">${fV(r.proctorTestNo)}</td></tr>
+<tr><td class="pf-row-label">Maximum Dry Density = (d) Mg/m³ (lb/ft³)</td><td colspan="3" style="text-align:left;padding-left:4pt;">${fN(r.maxDryDensity)}</td></tr>
+<tr><td class="pf-row-label">Optimum Moisture %</td><td colspan="3" style="text-align:left;padding-left:4pt;">${fN(r.optimumMoisture,1)}</td></tr>
+<tr><td class="pf-row-label" style="font-style:italic;text-align:center;" colspan="4">(if applicable)</td></tr>
+<tr><td class="pf-row-label">Corr. Max. Dry Density = (D) Mg/m³ (lb/ft³)</td><td colspan="3" style="text-align:left;padding-left:4pt;">${r.corrMaxDryDensity != null ? fN(r.corrMaxDryDensity) : ''}</td></tr>
+<tr><td class="pf-row-label">Corr. Optimum Moisture %</td><td colspan="3" style="text-align:left;padding-left:4pt;">${r.corrOptimumMoisture != null ? fN(r.corrOptimumMoisture,1) : ''}</td></tr>
+
+<tr class="pf-section-row"><td colspan="4">DRY DENSITY</td></tr>
+${[0,1,2,3].map(i => `<tr><td class="pf-row-label">Dry Density #${i+1} Mg/m³ (lb/ft³)</td>${tds(runCell((ru,c) => {
+    const wd = ru.wetDensities[i], mp = ru.moisturePct[i];
+    if (wd==null||mp==null) return '';
+    return (wd/(1+mp/100)).toFixed(2);
+}))}</tr>`).join('')}
+<tr><td class="pf-row-label pf-bold">Average Dry Density Mg/m³ (lb/ft³)</td>${tds(runCell((ru,c) => c.avgDD != null ? c.avgDD.toFixed(2) : ''))}</tr>
+<tr><td class="pf-row-label pf-bold">% Compaction Average</td>${tds(runCell((ru,c) => c.pctComp != null ? c.pctComp.toFixed(1) + '%' : ''))}</tr>
+<tr><td class="pf-row-label pf-bold">Accepted or Rejected</td>${tds(runCell((ru,c) => c.passed === true ? 'ACCEPTED' : c.passed === false ? 'REJECTED' : ''))}</tr>
+</tbody>
+</table>
+
+<div class="pf-remarks-section">
+    <div class="pf-field-row" style="margin-bottom:0;"><span class="pf-label" style="white-space:nowrap;">Remarks:</span><span class="pf-val">${r.remarks ? escHtml(r.remarks) : ''}</span></div>
+    <div class="pf-val" style="margin-top:4pt;">&nbsp;</div>
+    <div class="pf-val" style="margin-top:4pt;">&nbsp;</div>
+</div>
+
+<div class="pf-sig-row">
+    <div class="pf-sig-group">
+        <div class="pf-field-row"><span class="pf-label">Tested By:</span><span class="pf-val">${fV(r.testedBy)}</span></div>
+    </div>
+    <div class="pf-sig-group">
+        <div class="pf-field-row"><span class="pf-label">Resident Engineer:</span><span class="pf-val"></span></div>
+    </div>
+</div>
+<div class="pf-form-no">NDOT &nbsp; 040-007 &nbsp; Rev. 07/14 &nbsp;&nbsp;·&nbsp;&nbsp; Generated ${new Date().toLocaleDateString()}</div>`;
+
+        document.getElementById('printFrame').innerHTML = html;
+        window.print();
+    }
+
+    init();
+    </script>
+</body>
+</html>

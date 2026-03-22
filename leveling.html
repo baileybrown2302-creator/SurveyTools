@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Survey Tool">
+    <meta name="apple-mobile-web-app-title" content="Field Tools">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
-    <title>Differential Leveling — Survey Tool</title>
+    <script src="db.js"></script>
+    <title>Differential Leveling — Field Tools</title>
     <style>
         .mt-2 { margin-top:0.5rem; } .mt-3 { margin-top:0.75rem; } .hidden { display:none!important; }
         :root {
@@ -174,7 +175,7 @@
 <div id="ipToast" class="ip-toast">IP Added!</div>
 <!-- Sticky Summary Bar -->
 <div class="summary-bar no-print" id="summaryBar">
-    <div class="summary-item" style="flex:0 0 auto;"><a href="leveling_home.html" style="background:none;border:none;color:var(--summary-text);font-size:0.75em;font-weight:700;cursor:pointer;padding:2px 4px;opacity:0.8;text-decoration:none;">‹ Menu</a></div>
+    <div class="summary-item" style="flex:0 0 auto;"><a href="index.html" style="background:none;border:none;color:var(--summary-text);font-size:0.75em;font-weight:700;cursor:pointer;padding:2px 4px;opacity:0.8;text-decoration:none;">‹ Menu</a></div>
     <div class="summary-item"><div class="summary-label">Point</div><div class="summary-value" id="summaryCurrentPoint">—</div></div>
     <div class="summary-item"><div class="summary-label" id="summaryHILabel">HI</div><div class="summary-value" id="summaryHI">—</div></div>
     <div class="summary-item"><div class="summary-label">Setups</div><div class="summary-value" id="summarySetups">0</div></div>
@@ -280,8 +281,8 @@
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
-            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 12, 2026 — 20:00</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.7 — Changelog</button>
+            <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 10, 2026 — 20:00</span>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.5 — Changelog</button>
         </div>
     </div>
 </div>
@@ -290,40 +291,8 @@
 <div id="changelogModal" class="modal hidden no-print">
     <div class="modal-content" style="max-width:480px;">
         <h3 style="margin-bottom:4px;">Changelog</h3>
-        <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Survey Tool — Differential Leveling</p>
+        <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Field Tools — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
-            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-weight:800;color:var(--text-primary);">v1.0.8</span>
-                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026</span>
-                </div>
-                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
-                    <li><b>Fixed:</b> Editing a BS reading (or any reading) was not recalculating HI and downstream elevations — the edit timestamp was appended to remarks <i>before</i> recalculation, corrupting the "BS on [PointName]" parsing so the recalc couldn't find the previous point</li>
-                    <li>Edit timestamp now appended <i>after</i> recalculation completes</li>
-                    <li>Hardened all "BS on" regex patterns to stop at bracket characters, protecting against residual timestamps in remarks from prior edits</li>
-                </ul>
-            </div>
-            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-weight:800;color:var(--text-primary);">v1.0.7</span>
-                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026 — 20:00</span>
-                </div>
-                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
-                    <li>Fixed root cause of edits not recalculating — dynamically unlocked fields (BS, FS, IFS, distances) were not being type-coerced on form submit, so changes were silently ignored</li>
-                    <li>All number inputs in the edit form are now explicitly coerced to float at submit time, regardless of how they were added to the modal</li>
-                    <li>Dynamically added edit fields now have required:false to prevent silent browser validation blocks on submit</li>
-                </ul>
-            </div>
-            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <span style="font-weight:800;color:var(--text-primary);">v1.0.6</span>
-                    <span style="font-size:0.8em;color:var(--text-muted);">March 12, 2026 — 19:00</span>
-                </div>
-                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
-                    <li>Fixed BS edit not updating HI — recalculation now correctly propagates through the full loop and syncs the active setup if currently in-progress</li>
-                    <li>Edit history now shows the resulting HI (for BS edits) or resulting Elevation (for IP/FS edits) after each change, logged post-recalculation</li>
-                </ul>
-            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.5</span>
@@ -390,7 +359,7 @@
                     <span style="font-size:0.8em;color:var(--text-muted);">March 5, 2026</span>
                 </div>
                 <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
-                    <li>Initial release of Survey Tool — Differential Leveling</li>
+                    <li>Initial release of Field Tools — Differential Leveling</li>
                     <li>Level loops with BS, IP, FS, and closing shots</li>
                     <li>Three-wire entry with stadia distance calculation</li>
                     <li>DiNi Line Leveling mode — rod reading stored in remarks and exported to TBC</li>
@@ -490,13 +459,13 @@ const stadiaCheckBtn=document.getElementById('stadiaCheckBtn'),stadiaCheckModal=
 let projectDetails={units:'ft'},levelRows=[],tpCounter=0,currentHI=null,lastCalculatedElevation=null,lastPointNameForBS=null,activeSetupData=null,lastDiNiLL=false;
 
 // --- Settings ---
-themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';localStorage.setItem('levelingTheme',isHC?'':'high-contrast');});
-fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);localStorage.setItem('levelingFontSize',e.target.value);});
-decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);localStorage.setItem('levelingDecimals',e.target.value);renderTable();});
+themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';ftSetSetting('levelingTheme',isHC?'':'high-contrast');});
+fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);ftSetSetting('levelingFontSize',e.target.value);});
+decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);ftSetSetting('levelingDecimals',e.target.value);renderTable();});
 
 // View mode
-viewModeSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingViewMode',e.target.value);applyViewMode();});
-actionPinSelect.addEventListener('change',(e)=>{localStorage.setItem('levelingActionPin',e.target.value);applyActionPin();});
+viewModeSelect.addEventListener('change',(e)=>{ftSetSetting('levelingViewMode',e.target.value);applyViewMode();});
+actionPinSelect.addEventListener('change',(e)=>{ftSetSetting('levelingActionPin',e.target.value);applyActionPin();});
 
 function applyViewMode(){
     const mode=viewModeSelect.value;
@@ -516,13 +485,14 @@ function applyActionPin(){
     }
 }
 
-(function loadSettings(){
-    const t=localStorage.getItem('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
-    const f=localStorage.getItem('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
-    const d=localStorage.getItem('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
-    const vm=localStorage.getItem('levelingViewMode');if(vm){viewModeSelect.value=vm;}
-    const ap=localStorage.getItem('levelingActionPin');if(ap){actionPinSelect.value=ap;}
+(async function loadSettings(){
+    const t=await ftGetSetting('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
+    const f=await ftGetSetting('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
+    const d=await ftGetSetting('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
+    const vm=await ftGetSetting('levelingViewMode');if(vm){viewModeSelect.value=vm;}
+    const ap=await ftGetSetting('levelingActionPin');if(ap){actionPinSelect.value=ap;}
     applyViewMode();applyActionPin();
+    await loadStateFromLocalStorage();
 })();
 
 // Dropdown toggles
@@ -581,12 +551,7 @@ function showModal(title,fieldsConfig,submitHandler,onModalCreateCallback){
     fieldsConfig.forEach(f=>modalFieldsContainer.appendChild(createFieldElement(f)));
     if(onModalCreateCallback)onModalCreateCallback(modalFieldsContainer);
     modalForm.onsubmit=(e)=>{e.preventDefault();const fd=new FormData(modalForm);const data=Object.fromEntries(fd.entries());
-        // Coerce types for declared fieldsConfig fields
         fieldsConfig.forEach(f=>{if(f.type==='info')return;if(f.type==='number'&&data[f.name]!==undefined&&data[f.name]!=='')data[f.name]=parseFloat(data[f.name]);if(f.type==='checkbox')data[f.name]=fd.has(f.name);if(f.dependentFields&&data[f.name])f.dependentFields.forEach(df=>{if(df.type==='number'&&data[df.name]!==undefined&&data[df.name]!=='')data[df.name]=parseFloat(data[df.name]);});});
-        // Also coerce ALL number inputs in the form (catches dynamically unlocked fields)
-        modalForm.querySelectorAll('input[type="number"]').forEach(inp=>{if(inp.name&&data[inp.name]!==undefined&&data[inp.name]!=='')data[inp.name]=parseFloat(data[inp.name]);});
-        // Also collect any checkboxes not in fieldsConfig (e.g. dynamically added isDiNiLineLeveling)
-        modalForm.querySelectorAll('input[type="checkbox"]').forEach(inp=>{if(inp.name)data[inp.name]=inp.checked;});
         if(submitHandler(data))inputModal.classList.add('hidden');
     };
     inputModal.classList.remove('hidden');
@@ -599,18 +564,97 @@ function updateUnitLabels(){const u=projectDetails.units||'ft';document.querySel
 unitsSelect.addEventListener('change',(e)=>{projectDetails.units=e.target.value;updateUnitLabels();saveStateToLocalStorage();renderTable();});
 rodTypeSelect.addEventListener('change',(e)=>{if(e.target.value==='Other'){rodTypeOtherInput.classList.remove('hidden');rodTypeOtherInput.focus();}else rodTypeOtherInput.classList.add('hidden');updateProjectDetails();});
 
-// LocalStorage
-function saveStateToLocalStorage(){let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;try{localStorage.setItem('levelingAppData_singleLoop',JSON.stringify({projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent}));}catch(e){}}
-function loadStateFromLocalStorage(){
-    const ss=localStorage.getItem('levelingAppData_singleLoop');if(ss){try{const a=JSON.parse(ss);projectDetails=a.projectDetails||{units:'ft'};levelRows=a.levelRows||[];tpCounter=a.tpCounter||0;
+// IDB State persistence — active loop ID and project ID resolved from ACTIVE_LOOP_KEY setting
+let _activeLoopId = null;
+let _activeProjectId = null;
+let _cpNames = []; // [{name, elevation}] for current project's control points
+
+async function saveStateToLocalStorage(){
+    let rt=rodTypeSelect.value;if(rt==='Other')rt=rodTypeOtherInput.value||'Other';projectDetails.rodType=rt;
+    const state={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent};
+    try{
+        const loopId = _activeLoopId || 'legacy';
+        await ftSaveLevelLoop({...state, id: loopId, projectId: _activeProjectId || null});
+        await ftSaveLevelLoop({...state, id: 'legacy', projectId: _activeProjectId || null});
+    }catch(e){}
+}
+async function refreshCPNames() {
+    if (!_activeProjectId) { _cpNames = []; return; }
+    try {
+        const pts = await ftGetControlPointsByProject(_activeProjectId);
+        _cpNames = pts.filter(p => p.name && p.name.trim()).map(p => ({ name: p.name.trim(), elevation: p.elevation ?? null }));
+    } catch (e) { _cpNames = []; }
+}
+// Inline preference resolver (mirrors controlpoints.html applyPreferences but self-contained)
+function _lvResolveField(cp, field) {
+    const obs = cp.observations || [];
+    const key = 'prefer' + field.charAt(0).toUpperCase() + field.slice(1);
+    if (cp[key]) { const m = obs.find(o => o.id === cp[key]); if (m && m[field] != null) return m[field]; }
+    const first = obs.find(o => o[field] != null);
+    return first ? first[field] : (cp[field] ?? null);
+}
+async function syncCPFromLeveling(name, elevation, type) {
+    if (!_activeProjectId) return;
+    try {
+        const pts = await ftGetControlPointsByProject(_activeProjectId);
+        const today = new Date().toISOString().split('T')[0];
+        const loopName = projectDetails.description || _activeLoopId || 'Level loop';
+        const obs = {
+            id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
+            source: 'leveling', date: today,
+            label: loopName + ' — ' + today,
+            northing: null, easting: null, elevation,
+            loopId: _activeLoopId || null, loopName,
+            levelType: type,
+        };
+        const existing = pts.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+        if (existing) {
+            existing.observations = [...(existing.observations || []), obs];
+            if (type === 'IP' || type === 'TP') {
+                existing.preferElevation = obs.id;
+                existing.elevation = _lvResolveField(existing, 'elevation');
+            }
+            await ftSaveControlPoint(existing);
+        } else {
+            await ftSaveControlPoint({
+                id: obs.id, projectId: _activeProjectId, name: name.trim(),
+                northing: null, easting: null, elevation,
+                preferNorthing: null, preferEasting: null, preferElevation: obs.id,
+                oldStation: '', equation: '', distanceOld: null,
+                newStation: '', distanceNew: null, note: '',
+                status: 'uncategorized', statusNote: '', statusDate: '',
+                created: today, observations: [obs],
+            });
+        }
+        refreshCPNames();
+    } catch (e) { console.warn('[syncCP]', e); }
+}
+function injectCPDatalist(container, inputId) {
+    if (!_cpNames.length) return;
+    const listId = 'cpDatalistLevel';
+    let dl = document.getElementById(listId);
+    if (!dl) { dl = document.createElement('datalist'); dl.id = listId; document.body.appendChild(dl); }
+    dl.innerHTML = _cpNames.map(p => `<option value="${p.name.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}"></option>`).join('');
+    const inp = container.querySelector(`#${inputId}`);
+    if (inp) inp.setAttribute('list', listId);
+}
+async function loadStateFromLocalStorage(){
+    // Resolve active loop from settings
+    const activeCtx = await ftGetSetting('levelingActiveLoop', null);
+    if (activeCtx && activeCtx.loopId) {
+        _activeLoopId = activeCtx.loopId;
+        _activeProjectId = activeCtx.projectId || null;
+    }
+    const ss = await ftGetLevelLoop(_activeLoopId || 'legacy');
+    if(ss){try{const a=ss;projectDetails=a.projectDetails||{units:'ft'};levelRows=a.levelRows||[];tpCounter=a.tpCounter||0;
     lastCalculatedElevation=a.lastCalculatedElevation===undefined?null:a.lastCalculatedElevation;lastPointNameForBS=a.lastPointNameForBS===undefined?null:a.lastPointNameForBS;
     document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';
     const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}
     unitsSelect.value=projectDetails.units||'ft';if(a.misclosureText){misclosureValue.textContent=a.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');
     levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});
-    // Recalculate diNiRodReading for DiNi LL IPs where it wasn't saved (older data or pre-fix)
-    levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){localStorage.removeItem('levelingAppData_singleLoop');}}
+    levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){}}
     if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
+    refreshCPNames();
 }
 // Core calcs
 function calculatePointStadia(row){if(row.isVoid)return null;if(row.type==='TP_FS'||row.type==='CLOSING_FS'){const b=row.bsDistForM5,f=row.fsDist;if(b!=null&&f!=null){const bn=parseFloat(b),fn=parseFloat(f);if(!isNaN(bn)&&!isNaN(fn))return bn-fn;}}return null;}
@@ -914,21 +958,21 @@ function handleEditRow(event){
             const mfc=document.getElementById('modalFieldsContainer');
             const editFields=[];
             if(rte.type==='BM'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName,required:false});
-                editFields.push({id:'editElevation',name:'elevation',label:`Known Elevation (${u}):`,type:'number',step:'0.001',value:rte.elevation,required:false});
+                editFields.push({id:'editPointName',name:'pointName',label:'Benchmark Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editElevation',name:'elevation',label:`Known Elevation (${u}):`,type:'number',step:'0.001',value:rte.elevation});
             } else if(rte.type==='SETUP_BS'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
-                editFields.push({id:'editBs',name:'bs',label:`BS Reading (${u}):`,type:'number',step:'0.001',value:rte.bs,required:false});
-                editFields.push({id:'editBsDist',name:'bsDist',label:`BS Distance (${u}):`,type:'number',step:'0.001',value:rte.bsDist,required:false});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editBs',name:'bs',label:`BS Reading (${u}):`,type:'number',step:'0.001',value:rte.bs});
+                editFields.push({id:'editBsDist',name:'bsDist',label:`BS Distance (${u}):`,type:'number',step:'0.001',value:rte.bsDist});
             } else if(rte.type==='IP'){
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
                 editFields.push({id:'editDiNiLL',name:'isDiNiLineLeveling',label:'',type:'checkbox',checkboxLabel:'DiNi Line Leveling (reading = delta from BS point elev)',checked:!!rte.isDiNiLineLeveling});
-                editFields.push({id:'editIfs',name:'ifs',label:rte.isDiNiLineLeveling?`Delta Reading (${u}):`:`IFS Reading (${u}):`,type:'number',step:'0.001',value:rte.ifs,required:false});
-                editFields.push({id:'editIfsDist',name:'ifsDist',label:`IFS Distance (${u}):`,type:'number',step:'0.001',value:rte.ifsDist,required:false});
+                editFields.push({id:'editIfs',name:'ifs',label:rte.isDiNiLineLeveling?`Delta Reading (${u}):`:`IFS Reading (${u}):`,type:'number',step:'0.001',value:rte.ifs});
+                editFields.push({id:'editIfsDist',name:'ifsDist',label:`IFS Distance (${u}):`,type:'number',step:'0.001',value:rte.ifsDist});
             } else {
-                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName,required:false});
-                editFields.push({id:'editFs',name:'fs',label:`FS Reading (${u}):`,type:'number',step:'0.001',value:rte.fs,required:false});
-                editFields.push({id:'editFsDist',name:'fsDist',label:`FS Distance (${u}):`,type:'number',step:'0.001',value:rte.fsDist,required:false});
+                editFields.push({id:'editPointName',name:'pointName',label:'Point Name:',type:'text',value:rte.pointName});
+                editFields.push({id:'editFs',name:'fs',label:`FS Reading (${u}):`,type:'number',step:'0.001',value:rte.fs});
+                editFields.push({id:'editFsDist',name:'fsDist',label:`FS Distance (${u}):`,type:'number',step:'0.001',value:rte.fsDist});
             }
             editFields.forEach(f=>{const el=createFieldElement(f);el.style.marginTop='8px';mfc.appendChild(el);});
             // Focus first new input
@@ -971,7 +1015,7 @@ function handleEditSubmit(data){
         // Update DiNi rod reading annotation
         const bsRow=[...levelRows].slice(0,ri).reverse().find(r=>!r.isVoid&&r.type==='SETUP_BS');
         if(bsRow){
-            const bsPtName=(bsRow.remarks.match(/BS on ([^\[]+)/)||[])[1]?.trim();
+            const bsPtName=(bsRow.remarks.match(/BS on (.*)/)||[])[1];
             const bsPt=levelRows.find(r=>!r.isVoid&&r.pointName===bsPtName&&(r.type==='BM'||r.type==='TP_FS'));
             if(er.isDiNiLineLeveling&&bsPt){er.elevation=bsPt.elevation+parseFloat(er.ifs);er.diNiRodReading=bsRow.hi-er.elevation;}
             else if(!er.isDiNiLineLeveling){er.elevation=bsRow.hi-parseFloat(er.ifs);er.diNiRodReading=null;}
@@ -993,35 +1037,20 @@ function handleEditSubmit(data){
         dataChanged=true;
     }
 
-    // --- Capture pre-recalc HI/elevation for log ---
-    const preHI=er.hi!=null?formatNumber(er.hi):null;
-    const preElev=er.elevation!=null?formatNumber(er.elevation):null;
+    // --- Log changes to editLog and append timestamp to remarks ---
+    if(dataChanged){
+        if(!er.editLog)er.editLog=[];
+        er.editLog.push({timestamp:editTimestamp().replace(/[\[\]]/g,''),changes:editChanges});
+    }
 
-    // --- Remarks: set base (timestamp appended AFTER recalc to avoid polluting 'BS on ...' parsing) ---
+    // --- Remarks: set base then append edit timestamp if data changed ---
     const baseRemarks=data.remarks||'';
     er.remarks=er.isDiNiLineLeveling&&er.diNiRodReading!=null
         ? baseRemarks.replace(/\s*\[Rod:[^\]]*\]/,'')+` [Rod: ${formatNumber(er.diNiRodReading)}]`
         : baseRemarks;
-
-    // --- Recalculate FIRST so log captures post-recalc HI/elevation ---
-    if(bmElevChanged||dataChanged) recalculateFullLoop();
-
-    // --- Now append edit timestamp AFTER recalc (so 'BS on TP14' isn't corrupted to 'BS on TP14 [Edited ...]') ---
     if(dataChanged) er.remarks=er.remarks.trimEnd()+' '+editTimestamp();
 
-    // --- Log changes to editLog AFTER recalc so we have new HI/elevation ---
-    if(dataChanged){
-        // Append resulting HI or elevation to the change log
-        if(er.type==='SETUP_BS'&&er.hi!=null){
-            const newHI=formatNumber(er.hi);
-            if(preHI!==newHI) editChanges.push({field:'HI (result)',oldValue:preHI||'—',newValue:newHI});
-        } else if((er.type==='IP'||er.type==='TP_FS'||er.type==='CLOSING_FS')&&er.elevation!=null){
-            const newElev=formatNumber(er.elevation);
-            if(preElev!==newElev) editChanges.push({field:'Elevation (result)',oldValue:preElev||'—',newValue:newElev});
-        }
-        if(!er.editLog)er.editLog=[];
-        er.editLog.push({timestamp:editTimestamp().replace(/[\[\]]/g,''),changes:editChanges});
-    }
+    if(bmElevChanged||dataChanged) recalculateFullLoop();
 
     if(vsc){er.isVoid=nvs;applyVoidChangeSideEffects(er);}
     renderTable();saveStateToLocalStorage();editingRowIdInput.value='';return true;
@@ -1030,12 +1059,12 @@ function handleEditSubmit(data){
 function recalculateChainFromRow(si){
     if(si<0||si>=levelRows.length||levelRows[si].type!=='BM'||levelRows[si].isVoid)return;let cve=levelRows[si].elevation,cvhi=null,lkgepn=levelRows[si].pointName;
     for(let i=si+1;i<levelRows.length;i++){const r=levelRows[i];if(r.isVoid)continue;
-        if(r.type==='SETUP_BS'){let ppe=null;const bsn=r.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim();if(bsn===lkgepn)ppe=cve;else{const ap=[...levelRows].slice(0,i).reverse().find(p=>!p.isVoid&&p.pointName===bsn&&(p.type==='BM'||p.type==='TP_FS'||p.type==='CLOSING_FS'));if(ap){ppe=ap.elevation;lkgepn=ap.pointName;cve=ap.elevation;}}
+        if(r.type==='SETUP_BS'){let ppe=null;const bsn=r.remarks.match(/BS on (.*)/)?.[1];if(bsn===lkgepn)ppe=cve;else{const ap=[...levelRows].slice(0,i).reverse().find(p=>!p.isVoid&&p.pointName===bsn&&(p.type==='BM'||p.type==='TP_FS'||p.type==='CLOSING_FS'));if(ap){ppe=ap.elevation;lkgepn=ap.pointName;cve=ap.elevation;}}
             if(ppe!==null&&r.bs!=null&&!isNaN(parseFloat(r.bs))){r.hi=ppe+parseFloat(r.bs);cvhi=r.hi;const cf=levelRows.find(f=>!f.isVoid&&(f.type==='TP_FS'||f.type==='CLOSING_FS')&&f.pointName===r.pointName&&f.prevPointNameForM5===bsn);if(cf){cf.hiFromBSForM5=r.hi;cf.bsOnPrevForM5=r.bs;}}else cvhi=null;
         }else if(r.type==='IP'&&cvhi!==null){
             if(r.isDiNiLineLeveling){
                 const bsn2=levelRows.slice(0,i).reverse().find(p=>!p.isVoid&&p.type==='SETUP_BS');
-                if(bsn2){const bsPtName=bsn2.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim();const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null){r.elevation=bsPt.elevation+parseFloat(r.ifs);r.diNiRodReading=cvhi-r.elevation;}}
+                if(bsn2){const bsPtName=bsn2.remarks.match(/BS on (.*)/)?.[1];const bsPt=levelRows.find(p=>!p.isVoid&&p.pointName===bsPtName&&(p.type==='BM'||p.type==='TP_FS'));if(bsPt&&r.ifs!=null){r.elevation=bsPt.elevation+parseFloat(r.ifs);r.diNiRodReading=cvhi-r.elevation;}}
             }else if(r.ifs!=null&&!isNaN(parseFloat(r.ifs))){r.elevation=cvhi-parseFloat(r.ifs);}
             r.hi=cvhi;
         }else if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&cvhi!==null){if(r.fs!=null&&!isNaN(parseFloat(r.fs))){r.elevation=cvhi-parseFloat(r.fs);r.hi=cvhi;cve=r.elevation;lkgepn=r.pointName;r.hiFromBSForM5=cvhi;r.elevOfThis=r.elevation;if(r.type==='CLOSING_FS'){cve=null;lkgepn=null;}cvhi=null;}}
@@ -1046,11 +1075,6 @@ function recalculateFullLoop(){
     const bmIdx=levelRows.findIndex(r=>r.type==='BM'&&!r.isVoid);
     if(bmIdx===-1)return;
     recalculateChainFromRow(bmIdx);
-    // Sync activeSetupData.hi if the active BS was recalculated
-    if(activeSetupData&&activeSetupData.bsRowId){
-        const bsr=levelRows.find(r=>r.id===activeSetupData.bsRowId&&!r.isVoid);
-        if(bsr&&bsr.hi!=null){activeSetupData.hi=bsr.hi;currentHI=bsr.hi;}
-    }
     // Update misclosure if loop is closed
     updateLastValidPointForLiveCalcs();
     const lv=levelRows.filter(r=>!r.isVoid).pop();
@@ -1068,7 +1092,14 @@ function toggleDistanceFields(mfc,method,prefix){
     else{if(ddg)ddg.style.display='none';if(ri){ri.disabled=true;ri.required=false;}if(ddi)ddi.required=false;if(uwg)uwg.style.display='block';if(mwg)mwg.style.display='block';if(lwg)lwg.style.display='block';if(uwi)uwi.required=true;if(mwi)mwi.required=true;if(lwi)lwi.required=true;}
 }
 // --- Event Handlers: BM, Setup, IP, FS ---
-function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();return true;});}
+function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{
+    injectCPDatalist(mfc,'bmName');
+    const nameInp=mfc.querySelector('#bmName'),elevInp=mfc.querySelector('#bmElevation');
+    const info=document.createElement('div');info.style.cssText='font-size:0.8em;margin-top:-6px;margin-bottom:6px;min-height:1.1em;';
+    nameInp.closest('div[id^="group-"]').after(info);
+    const updateDiff=()=>{const match=_cpNames.find(p=>p.name.toLowerCase()===nameInp.value.trim().toLowerCase());if(match&&match.elevation!=null){if(!elevInp.value)elevInp.value=match.elevation;const diff=parseFloat(elevInp.value||0)-match.elevation;info.style.color=Math.abs(diff)>0.01?'var(--accent-orange)':'var(--text-secondary)';info.textContent=`Known elev: ${match.elevation}`+(Math.abs(diff)>0.0001?`  |  Diff: ${diff>=0?'+':''}${diff.toFixed(4)}`:'');}else{info.style.color='var(--text-secondary)';info.textContent=nameInp.value.trim()&&!match?'(new — will be added to CP list)':'';}};
+    nameInp.addEventListener('input',updateDiff);elevInp.addEventListener('input',updateDiff);
+});}
 addBMButton.onclick=handleAddBM;addBMButtonMobile.onclick=handleAddBM;addBMButtonPinned.onclick=handleAddBM;
 
 function editTimestamp(){
@@ -1117,8 +1148,8 @@ function handleAddIP(){if(!activeSetupData)return;
     const baseRemarks=data.ipCode||`IP via ${activeSetupData.setupTPName}`;
     const ipRemarks=isDiNi?`${baseRemarks} [Rod: ${formatNumber(diNiRodReading)}]`:baseRemarks;
     const irid=`ip-${Date.now()}`;levelRows.push({id:irid,pointName:data.ipName,ifs:fir,hi:activeSetupData.hi,elevation:ie,ifsDist:fid,bsDist:null,fsDist:null,remarks:ipRemarks,pointCode:data.ipCode||'',type:'IP',pointStadia:null,isVoid:false,isDiNiLineLeveling:isDiNi,diNiRodReading:diNiRodReading});
-    activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();
-    setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');
+    activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();syncCPFromLeveling(data.ipName,ie,'IP');
+    setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');injectCPDatalist(mfc,'ipName');
     // Update label when DiNi checkbox changes
     const cb=mfc.querySelector('#isDiNiLL');const lbl=mfc.querySelector('label[for="ifsReading"]');
     if(cb&&lbl){cb.addEventListener('change',()=>{if(cb.checked)lbl.textContent=`Delta from ${activeSetupData.prevPointName} (Elev: ${formatNumber(activeSetupData.prevPointElevation)} ${projectDetails.units}):`;else lbl.textContent=`IFS from ${activeSetupData.setupTPName} (HI: ${formatNumber(activeSetupData.hi)}):`;});}
@@ -1136,8 +1167,11 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
     const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
     levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
     if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
-    activeSetupData=null;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
-    // Auto-fill closing BM from starting BM
+    activeSetupData=null;renderTable();saveStateToLocalStorage();
+    if(!data.isClosing && !/^TP\d+$/.test(tpn)){syncCPFromLeveling(tpn,fe,'TP');}
+    return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
+    injectCPDatalist(mfc,'tpName');
+    // Auto-fill closing BM from starting BM; also inject CP datalist and elevation auto-fill
     const cb=mfc.querySelector('#isClosing');
     if(cb){cb.addEventListener('change',()=>{
         if(cb.checked){
@@ -1147,6 +1181,10 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
                 if(cpn&&!cpn.value)cpn.value=startBM.pointName;
                 if(cpe&&!cpe.value)cpe.value=startBM.elevation;
             }
+            // Inject CP suggestions into closing point name field and wire elevation auto-fill
+            injectCPDatalist(mfc,'closingPointName');
+            const cpn=mfc.querySelector('#closingPointName'),cpe=mfc.querySelector('#closingPointKnownElev');
+            if(cpn&&cpe){cpn.addEventListener('input',()=>{const match=_cpNames.find(p=>p.name===cpn.value);if(match&&match.elevation!==null&&!cpe.value)cpe.value=match.elevation;});}
         }
     });}
     });}
@@ -1190,7 +1228,7 @@ exportLevelingDataCSVButton.onclick=()=>{
     const tpUniqueMap={};vr.forEach(r=>{if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.uniqueTPName)tpUniqueMap[r.pointName]=r.uniqueTPName;if(r.type==='BM')tpUniqueMap[r.pointName]=r.pointName;});
     const getTBCPid=(row)=>{
         if(row.type==='TP_FS'||row.type==='CLOSING_FS') return row.uniqueTPName||row.pointName;
-        if(row.type==='SETUP_BS'){const bsOn=row.remarks.match(/BS on ([^\[]+)/)?.[1]?.trim()||row.pointName;return tpUniqueMap[bsOn]||bsOn;}
+        if(row.type==='SETUP_BS'){const bsOn=row.remarks.match(/BS on (.*)/)?.[1]||row.pointName;return tpUniqueMap[bsOn]||bsOn;}
         return row.pointName||'';
     };
     vr.forEach((row,idx)=>{let cr=[],skip=false,pid=row.pointName||'',en='Y',meas='',mc='',el='',hd='',desc='',rc='';
@@ -1246,8 +1284,7 @@ exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccur
 
 importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null)r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();alert("Imported!");});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
 
-// Init
-loadStateFromLocalStorage();
+// Init is handled by the async loadSettings() IIFE above
 // Register Service Worker for PWA/offline support
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>
