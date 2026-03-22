@@ -314,6 +314,40 @@
         </div>
       </div>
 
+      <!-- Add Observation — shown when editing an existing point -->
+      <div id="addObsBtn" class="hidden" style="margin-top:10px;">
+        <button class="btn btn-secondary btn-small btn-full" onclick="toggleAddObsForm(true)">+ Add Observation</button>
+      </div>
+      <div id="addObsForm" class="hidden" style="margin-top:10px;background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:14px;">
+        <div class="obs-panel-title" style="margin-bottom:10px;">New Observation</div>
+        <div class="field-group">
+          <label class="label">Source / Label *</label>
+          <input class="input input-sm" id="obs_label" type="text" placeholder="e.g. RTK GPS, Total station, Hand level">
+        </div>
+        <div class="field-row-3">
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Northing</label>
+            <input class="input input-sm" id="obs_northing" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Easting</label>
+            <input class="input input-sm" id="obs_easting" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+          <div class="field-group" style="margin-bottom:0">
+            <label class="label">Elevation</label>
+            <input class="input input-sm" id="obs_elevation" type="number" step="0.001" placeholder="optional" inputmode="decimal">
+          </div>
+        </div>
+        <div class="field-group" style="margin-top:10px;">
+          <label class="label">Note</label>
+          <input class="input input-sm" id="obs_note" type="text" placeholder="optional">
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;">
+          <button class="btn btn-success" onclick="saveManualObservation()">Save Observation</button>
+          <button class="btn btn-secondary" onclick="toggleAddObsForm(false)">Cancel</button>
+        </div>
+      </div>
+
       <div class="section-divider">Field Status</div>
       <div class="field-row">
         <div class="field-group" style="margin-bottom:0">
@@ -819,7 +853,9 @@ function openNewPointEditor() {
   document.getElementById('editorTitle').textContent = 'New Point';
   document.getElementById('deletePointBtn').classList.add('hidden');
   clearEditorFields();
-  renderObsPanel(null); // hides the panel for new points
+  renderObsPanel(null);
+  document.getElementById('addObsBtn').classList.add('hidden');
+  toggleAddObsForm(false);
   showView('editorView');
 }
 function openEditor(pointId) {
@@ -830,6 +866,8 @@ function openEditor(pointId) {
   document.getElementById('deletePointBtn').classList.remove('hidden');
   fillEditorFields(pt);
   renderObsPanel(pt);
+  document.getElementById('addObsBtn').classList.remove('hidden');
+  toggleAddObsForm(false);
   showView('editorView');
 }
 function backToPoints() {
@@ -860,7 +898,8 @@ function fillEditorFields(pt) {
 }
 function renderObsPanel(cp) {
   const panel = document.getElementById('obsPanel');
-  const obs = cp ? (cp.observations || []) : [];
+  // Filter out BM/CLOSING level shots — those are reference shots, not new measurements
+  const obs = cp ? (cp.observations || []).filter(o => o.levelType !== 'BM' && o.levelType !== 'CLOSING') : [];
   if (!obs.length) { panel.classList.add('hidden'); return; }
   panel.classList.remove('hidden');
   const tbody = document.getElementById('obsTableBody');
@@ -900,6 +939,53 @@ async function onPrefChange(event) {
   document.getElementById('e_northing').value  = pt.northing  ?? '';
   document.getElementById('e_easting').value   = pt.easting   ?? '';
   document.getElementById('e_elevation').value = pt.elevation ?? '';
+}
+function toggleAddObsForm(show) {
+  document.getElementById('addObsForm').classList.toggle('hidden', !show);
+  document.getElementById('addObsBtn').classList.toggle('hidden', !!show);
+  if (show) {
+    ['obs_label','obs_northing','obs_easting','obs_elevation','obs_note'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+    document.getElementById('obs_label').focus();
+  }
+}
+async function saveManualObservation() {
+  const label = document.getElementById('obs_label').value.trim();
+  if (!label) { showToast('Source / Label required'); return; }
+  const fn = id => { const v = document.getElementById(id).value.trim(); return v === '' ? null : parseFloat(v); };
+  const north = fn('obs_northing');
+  const east  = fn('obs_easting');
+  const elev  = fn('obs_elevation');
+  if (north == null && east == null && elev == null) { showToast('Enter at least one coordinate value'); return; }
+
+  const pt = currentPoints.find(p => p.id === editingPointId);
+  if (!pt) return;
+
+  const obsId = uid();
+  const obs = {
+    id: obsId, source: 'manual', date: isoDate(), label,
+    northing: north, easting: east, elevation: elev,
+    note: document.getElementById('obs_note').value.trim() || null,
+  };
+  pt.observations = [...(pt.observations || []), obs];
+  // Offer the new observation as the new default for any non-null fields
+  if (north != null) pt.preferNorthing  = obsId;
+  if (east  != null) pt.preferEasting   = obsId;
+  if (elev  != null) pt.preferElevation = obsId;
+  applyPreferences(pt);
+  await ftSaveControlPoint(pt);
+  currentPoints = await ftGetControlPointsByProject(currentProjectId);
+  // Update the editor coordinate fields to reflect the new preferred values
+  const saved = currentPoints.find(p => p.id === editingPointId);
+  if (saved) {
+    document.getElementById('e_northing').value  = saved.northing  ?? '';
+    document.getElementById('e_easting').value   = saved.easting   ?? '';
+    document.getElementById('e_elevation').value = saved.elevation ?? '';
+    renderObsPanel(saved);
+  }
+  toggleAddObsForm(false);
+  showToast('Observation saved');
 }
 function readEditorFields() {
   const fv = id => document.getElementById(id).value.trim();
