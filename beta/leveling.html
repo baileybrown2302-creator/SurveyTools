@@ -585,6 +585,50 @@ async function refreshCPNames() {
         _cpNames = pts.filter(p => p.name && p.name.trim()).map(p => ({ name: p.name.trim(), elevation: p.elevation ?? null }));
     } catch (e) { _cpNames = []; }
 }
+// Inline preference resolver (mirrors controlpoints.html applyPreferences but self-contained)
+function _lvResolveField(cp, field) {
+    const obs = cp.observations || [];
+    const key = 'prefer' + field.charAt(0).toUpperCase() + field.slice(1);
+    if (cp[key]) { const m = obs.find(o => o.id === cp[key]); if (m && m[field] != null) return m[field]; }
+    const first = obs.find(o => o[field] != null);
+    return first ? first[field] : (cp[field] ?? null);
+}
+async function syncCPFromLeveling(name, elevation, type) {
+    if (!_activeProjectId) return;
+    try {
+        const pts = await ftGetControlPointsByProject(_activeProjectId);
+        const today = new Date().toISOString().split('T')[0];
+        const loopName = projectDetails.description || _activeLoopId || 'Level loop';
+        const obs = {
+            id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
+            source: 'leveling', date: today,
+            label: loopName + ' — ' + today,
+            northing: null, easting: null, elevation,
+            loopId: _activeLoopId || null, loopName,
+            levelType: type,
+        };
+        const existing = pts.find(p => p.name.toLowerCase() === name.trim().toLowerCase());
+        if (existing) {
+            existing.observations = [...(existing.observations || []), obs];
+            if (type === 'IP' || type === 'TP') {
+                existing.preferElevation = obs.id;
+                existing.elevation = _lvResolveField(existing, 'elevation');
+            }
+            await ftSaveControlPoint(existing);
+        } else {
+            await ftSaveControlPoint({
+                id: obs.id, projectId: _activeProjectId, name: name.trim(),
+                northing: null, easting: null, elevation,
+                preferNorthing: null, preferEasting: null, preferElevation: obs.id,
+                oldStation: '', equation: '', distanceOld: null,
+                newStation: '', distanceNew: null, note: '',
+                status: 'uncategorized', statusNote: '', statusDate: '',
+                created: today, observations: [obs],
+            });
+        }
+        refreshCPNames();
+    } catch (e) { console.warn('[syncCP]', e); }
+}
 function injectCPDatalist(container, inputId) {
     if (!_cpNames.length) return;
     const listId = 'cpDatalistLevel';
@@ -1048,7 +1092,14 @@ function toggleDistanceFields(mfc,method,prefix){
     else{if(ddg)ddg.style.display='none';if(ri){ri.disabled=true;ri.required=false;}if(ddi)ddi.required=false;if(uwg)uwg.style.display='block';if(mwg)mwg.style.display='block';if(lwg)lwg.style.display='block';if(uwi)uwi.required=true;if(mwi)mwi.required=true;if(lwi)lwi.required=true;}
 }
 // --- Event Handlers: BM, Setup, IP, FS ---
-function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();return true;});}
+function handleAddBM(){updateLastValidPointForLiveCalcs();showModal('Add Starting Benchmark',[{id:'bmName',name:'bmName',label:'Benchmark Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'bmElevation',name:'bmElevation',label:`Known Elevation (${projectDetails.units}):`,type:'number',step:'0.001',placeholder:'e.g., 100.000',required:true},{id:'bmCode',name:'bmCode',label:'BM Code (CSV):',type:'text',placeholder:'e.g., CONC MON',required:false}],(data)=>{if(isNaN(data.bmElevation)||!data.bmName){alert("Enter valid name and elevation.");return false;}levelRows.push({id:`bm-${Date.now()}`,pointName:data.bmName,elevation:data.bmElevation,type:'BM',remarks:data.bmCode||'Starting Benchmark',pointCode:data.bmCode||'',pointStadia:null,bsDist:null,fsDist:null,isVoid:false,isDiNiLineLeveling:false});lastCalculatedElevation=data.bmElevation;lastPointNameForBS=data.bmName;renderTable();saveStateToLocalStorage();syncCPFromLeveling(data.bmName,data.bmElevation,'BM');return true;},(mfc)=>{
+    injectCPDatalist(mfc,'bmName');
+    const nameInp=mfc.querySelector('#bmName'),elevInp=mfc.querySelector('#bmElevation');
+    const info=document.createElement('div');info.style.cssText='font-size:0.8em;margin-top:-6px;margin-bottom:6px;min-height:1.1em;';
+    nameInp.closest('div[id^="group-"]').after(info);
+    const updateDiff=()=>{const match=_cpNames.find(p=>p.name.toLowerCase()===nameInp.value.trim().toLowerCase());if(match&&match.elevation!=null){if(!elevInp.value)elevInp.value=match.elevation;const diff=parseFloat(elevInp.value||0)-match.elevation;info.style.color=Math.abs(diff)>0.01?'var(--accent-orange)':'var(--text-secondary)';info.textContent=`Known elev: ${match.elevation}`+(Math.abs(diff)>0.0001?`  |  Diff: ${diff>=0?'+':''}${diff.toFixed(4)}`:'');}else{info.style.color='var(--text-secondary)';info.textContent=nameInp.value.trim()&&!match?'(new — will be added to CP list)':'';}};
+    nameInp.addEventListener('input',updateDiff);elevInp.addEventListener('input',updateDiff);
+});}
 addBMButton.onclick=handleAddBM;addBMButtonMobile.onclick=handleAddBM;addBMButtonPinned.onclick=handleAddBM;
 
 function editTimestamp(){
@@ -1097,7 +1148,7 @@ function handleAddIP(){if(!activeSetupData)return;
     const baseRemarks=data.ipCode||`IP via ${activeSetupData.setupTPName}`;
     const ipRemarks=isDiNi?`${baseRemarks} [Rod: ${formatNumber(diNiRodReading)}]`:baseRemarks;
     const irid=`ip-${Date.now()}`;levelRows.push({id:irid,pointName:data.ipName,ifs:fir,hi:activeSetupData.hi,elevation:ie,ifsDist:fid,bsDist:null,fsDist:null,remarks:ipRemarks,pointCode:data.ipCode||'',type:'IP',pointStadia:null,isVoid:false,isDiNiLineLeveling:isDiNi,diNiRodReading:diNiRodReading});
-    activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();
+    activeSetupData.ips.push({id:irid,pointName:data.ipName,ifsReading:fir,elevation:ie,ifsDist:fid,pointCode:data.ipCode||'',isDiNiLineLeveling:isDiNi,note:`IP from ${activeSetupData.setupTPName} setup`});showIPToast(data.ipName);renderTable();saveStateToLocalStorage();syncCPFromLeveling(data.ipName,ie,'IP');
     setTimeout(()=>{if(activeSetupData)handleAddIP();},400);return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','ifs');injectCPDatalist(mfc,'ipName');
     // Update label when DiNi checkbox changes
     const cb=mfc.querySelector('#isDiNiLL');const lbl=mfc.querySelector('label[for="ifsReading"]');
@@ -1116,7 +1167,10 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
     const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
     levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
     if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
-    activeSetupData=null;renderTable();saveStateToLocalStorage();return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
+    activeSetupData=null;renderTable();saveStateToLocalStorage();
+    if(data.isClosing){syncCPFromLeveling(data.closingPointName,fe,'CLOSING');}
+    else if(!/^TP\d+$/.test(tpn)){syncCPFromLeveling(tpn,fe,'TP');}
+    return true;},(mfc)=>{toggleDistanceFields(mfc,'direct','fs');
     injectCPDatalist(mfc,'tpName');
     // Auto-fill closing BM from starting BM; also inject CP datalist and elevation auto-fill
     const cb=mfc.querySelector('#isClosing');

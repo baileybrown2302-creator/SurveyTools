@@ -173,6 +173,23 @@
 
     /* Import conflict banner */
     .conflict-banner{background:var(--warn-bg);border:1.5px solid var(--warn-border);border-radius:10px;padding:10px 14px;font-size:0.82em;color:var(--warn-text);margin-top:10px;}
+
+    /* Observation history panel (inside editor) */
+    .obs-panel{margin-top:14px;border-top:1.5px solid var(--border-primary);padding-top:10px;}
+    .obs-panel-title{font-size:0.78em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:4px;}
+    .obs-hint{font-size:0.78em;color:var(--text-muted);margin-bottom:8px;}
+    .obs-table{width:100%;font-size:0.78em;border-collapse:collapse;}
+    .obs-table th{text-align:left;color:var(--text-tertiary);font-weight:700;padding:3px 5px;border-bottom:1px solid var(--border-primary);}
+    .obs-table td{padding:4px 5px;border-top:1px solid var(--border-primary);font-variant-numeric:tabular-nums;}
+    .obs-radio-row td{border-top:none;padding-top:1px;text-align:center;}
+    .obs-table input[type=radio]{accent-color:var(--accent-blue);width:16px;height:16px;}
+
+    /* Import step toggles */
+    .import-toggles{display:flex;flex-wrap:wrap;gap:12px;margin:10px 0;}
+    .import-toggles label{display:flex;align-items:center;gap:6px;font-size:0.88em;font-weight:600;color:var(--text-secondary);cursor:pointer;}
+    .import-toggles input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent-blue);}
+    .lpn-checkbox-list{display:flex;flex-wrap:wrap;gap:8px;max-height:120px;overflow-y:auto;padding:4px 0;}
+    .lpn-checkbox-list label{display:flex;align-items:center;gap:5px;font-size:0.82em;background:var(--bg-tertiary);border:1px solid var(--border-secondary);border-radius:6px;padding:4px 8px;cursor:pointer;}
   </style>
 </head>
 <body>
@@ -277,6 +294,26 @@
         </div>
       </div>
 
+      <!-- Observation history panel — rendered dynamically by renderObsPanel() -->
+      <div id="obsPanel" class="obs-panel hidden">
+        <div class="obs-panel-title">Observation History</div>
+        <div class="obs-hint">Select which observation's value to show on the point card.</div>
+        <div style="overflow-x:auto;">
+          <table class="obs-table">
+            <thead>
+              <tr>
+                <th>Date</th><th>Source</th><th>Northing</th><th>Easting</th><th>Elevation</th>
+              </tr>
+              <tr>
+                <th></th><th style="color:var(--text-muted);font-weight:600;font-size:0.9em;">Use as →</th>
+                <th style="text-align:center">N</th><th style="text-align:center">E</th><th style="text-align:center">Elev</th>
+              </tr>
+            </thead>
+            <tbody id="obsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="section-divider">Field Status</div>
       <div class="field-row">
         <div class="field-group" style="margin-bottom:0">
@@ -365,12 +402,67 @@
       <button class="btn btn-primary btn-full" onclick="parsePdfPages()">Parse Pages</button>
     </div>
 
-    <!-- Step 2b: CSV parsed -->
+    <!-- Step 2b: Generic CSV -->
     <div id="importStep2csv" class="hidden">
       <div class="pdf-info-bar">
         <strong id="csvFileName"></strong> — CSV loaded
+        <div style="font-size:0.82em;margin-top:4px;color:var(--text-muted);">Expected columns: Name, Northing, Easting, Elevation, Code</div>
       </div>
-      <button class="btn btn-primary btn-full" style="margin-top:12px;" onclick="parseCsv()">Parse CSV</button>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="label">Import to Project</label>
+        <select id="csvProjectPick" class="select-input" style="font-size:0.88em;"></select>
+      </div>
+      <div class="field-group">
+        <label class="label">Fields to Import</label>
+        <div class="import-toggles">
+          <label><input type="checkbox" id="csvImportN"    checked> Northing</label>
+          <label><input type="checkbox" id="csvImportE"    checked> Easting</label>
+          <label><input type="checkbox" id="csvImportElev">          Elevation
+            <span style="font-size:0.78em;color:var(--text-muted)">(uncheck for GNSS)</span>
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="parseCsv()">Parse CSV</button>
+    </div>
+
+    <!-- Step 2c: LOIS CSV filter (shown when LOIS format detected) -->
+    <div id="importStep2lois" class="hidden">
+      <div class="pdf-info-bar" style="margin-bottom:12px;">
+        <strong id="loisFileName"></strong> — LOIS CSV detected
+      </div>
+      <div class="field-group">
+        <label class="label">Import to Project</label>
+        <select id="loisProjectPick" class="select-input" style="font-size:0.88em;"></select>
+      </div>
+      <div class="field-group">
+        <label class="label">Fields to Import</label>
+        <div class="import-toggles">
+          <label><input type="checkbox" id="loisImportN"    checked> Northing</label>
+          <label><input type="checkbox" id="loisImportE"    checked> Easting</label>
+          <label><input type="checkbox" id="loisImportElev" checked> Elevation</label>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="label">Filter by LPN <span style="font-weight:400;color:var(--text-muted)">(all selected by default)</span></label>
+        <div class="lpn-checkbox-list" id="lpnCheckboxList"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-secondary btn-small" onclick="selectAllLpns(true)">Select All</button>
+          <button class="btn btn-secondary btn-small" onclick="selectAllLpns(false)">Clear All</button>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="label">Scale Factor Range <span style="font-weight:400;color:var(--text-muted)">(optional — leave blank for any)</span></label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="sfMin" class="input input-sm" style="width:110px" placeholder="Min" step="0.000001" inputmode="decimal">
+          <span style="color:var(--text-muted)">–</span>
+          <input type="number" id="sfMax" class="input input-sm" style="width:110px" placeholder="Max" step="0.000001" inputmode="decimal">
+        </div>
+      </div>
+      <div id="loisFilterCount" style="font-size:0.82em;color:var(--text-muted);margin-bottom:10px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" onclick="applyLoisFilter()">Preview Points</button>
+        <button class="btn btn-secondary" onclick="resetImportModal()">Cancel</button>
+      </div>
     </div>
 
     <!-- Step 3: preview + import -->
@@ -431,6 +523,25 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
 }
+
+// ── Observation schema helpers ─────────────────────────────────────────────────
+function resolveObsField(cp, field) {
+  const obs = cp.observations || [];
+  const key = 'prefer' + field.charAt(0).toUpperCase() + field.slice(1);
+  if (cp[key]) {
+    const m = obs.find(o => o.id === cp[key]);
+    if (m && m[field] != null) return m[field];
+  }
+  const first = obs.find(o => o[field] != null);
+  if (first) return first[field];
+  return cp[field] ?? null; // legacy fallback (no observations array)
+}
+function applyPreferences(cp) {
+  if (!(cp.observations && cp.observations.length)) return;
+  cp.northing  = resolveObsField(cp, 'northing');
+  cp.easting   = resolveObsField(cp, 'easting');
+  cp.elevation = resolveObsField(cp, 'elevation');
+}
 function toggleTheme() {
   const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
   document.documentElement.setAttribute('data-theme', hc ? '' : 'high-contrast');
@@ -474,6 +585,19 @@ let _parsedPoints = [];
 let _csvRaw = null;
 let _csvFilename = '';
 let _confirmCb = null;
+let _loisRows = [];
+let _loisTargetProjectId = null;
+let _csvImportMode = 'generic'; // 'generic' | 'lois'
+
+// LOIS column aliases (mirrors csvconverter.html logic)
+const LOIS_COLS = {
+  pointName:   ['point name','name','pt name','pt','identifier','id'],
+  lpn:         ['lpn','local point number','local point'],
+  gridN:       ['grid north','grid n','northing','north','n','y'],
+  gridE:       ['grid east','grid e','easting','east','e','x'],
+  gridElev:    ['grid elev','grid elevation','elevation','elev','el','z'],
+  scaleFactor: ['scale factor','scale','sf','k'],
+};
 
 // Status config
 const STATUS_CONFIG = {
@@ -695,6 +819,7 @@ function openNewPointEditor() {
   document.getElementById('editorTitle').textContent = 'New Point';
   document.getElementById('deletePointBtn').classList.add('hidden');
   clearEditorFields();
+  renderObsPanel(null); // hides the panel for new points
   showView('editorView');
 }
 function openEditor(pointId) {
@@ -704,6 +829,7 @@ function openEditor(pointId) {
   document.getElementById('editorTitle').textContent = pt.name || 'Edit Point';
   document.getElementById('deletePointBtn').classList.remove('hidden');
   fillEditorFields(pt);
+  renderObsPanel(pt);
   showView('editorView');
 }
 function backToPoints() {
@@ -732,6 +858,49 @@ function fillEditorFields(pt) {
   document.getElementById('e_statusDate').value = pt.statusDate||'';
   document.getElementById('e_statusNote').value = pt.statusNote||'';
 }
+function renderObsPanel(cp) {
+  const panel = document.getElementById('obsPanel');
+  const obs = cp ? (cp.observations || []) : [];
+  if (!obs.length) { panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  const tbody = document.getElementById('obsTableBody');
+  tbody.innerHTML = obs.map(o => {
+    const fmt = v => (v != null ? Number(v).toFixed(4) : '—');
+    const chkN    = o.northing  != null ? '' : 'disabled';
+    const chkE    = o.easting   != null ? '' : 'disabled';
+    const chkElev = o.elevation != null ? '' : 'disabled';
+    const selN    = (cp.preferNorthing  || '') === o.id ? 'checked' : '';
+    const selE    = (cp.preferEasting   || '') === o.id ? 'checked' : '';
+    const selElev = (cp.preferElevation || '') === o.id ? 'checked' : '';
+    return `<tr>
+      <td>${escHtml(o.date||'')}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(o.label||o.source||'')}">${escHtml(o.label||o.source||'—')}</td>
+      <td style="text-align:right">${fmt(o.northing)}</td>
+      <td style="text-align:right">${fmt(o.easting)}</td>
+      <td style="text-align:right">${fmt(o.elevation)}</td>
+    </tr>
+    <tr class="obs-radio-row">
+      <td colspan="2"></td>
+      <td><input type="radio" name="prefN"    value="${escHtml(o.id)}" ${selN}    ${chkN}    onchange="onPrefChange(event)"></td>
+      <td><input type="radio" name="prefE"    value="${escHtml(o.id)}" ${selE}    ${chkE}    onchange="onPrefChange(event)"></td>
+      <td><input type="radio" name="prefElev" value="${escHtml(o.id)}" ${selElev} ${chkElev} onchange="onPrefChange(event)"></td>
+    </tr>`;
+  }).join('');
+}
+async function onPrefChange(event) {
+  const r = event.target;
+  const pt = currentPoints.find(p => p.id === editingPointId);
+  if (!pt) return;
+  if (r.name === 'prefN')    pt.preferNorthing  = r.value;
+  if (r.name === 'prefE')    pt.preferEasting   = r.value;
+  if (r.name === 'prefElev') pt.preferElevation = r.value;
+  applyPreferences(pt);
+  await ftSaveControlPoint(pt);
+  // Update coordinate inputs to reflect new preferred values
+  document.getElementById('e_northing').value  = pt.northing  ?? '';
+  document.getElementById('e_easting').value   = pt.easting   ?? '';
+  document.getElementById('e_elevation').value = pt.elevation ?? '';
+}
 function readEditorFields() {
   const fv = id => document.getElementById(id).value.trim();
   const fn = id => { const v = document.getElementById(id).value.trim(); return v===''?null:parseFloat(v); };
@@ -754,13 +923,27 @@ function readEditorFields() {
 async function saveEditorPoint() {
   const fields = readEditorFields();
   if (!fields.name) { showToast('Point name required'); return; }
-  const pt = editingPointId
-    ? { ...currentPoints.find(p => p.id === editingPointId) }
-    : { id: uid(), projectId: currentProjectId, created: isoDate() };
+  const isNew = !editingPointId;
+  const pt = isNew
+    ? { id: uid(), projectId: currentProjectId, created: isoDate() }
+    : { ...currentPoints.find(p => p.id === editingPointId) };
   Object.assign(pt, fields);
+  // For new points that have coordinate values, create an initial manual observation
+  if (isNew && (fields.northing != null || fields.easting != null || fields.elevation != null)) {
+    const obsId = uid();
+    const obs = {
+      id: obsId, source: 'manual', date: isoDate(), label: 'Manual entry',
+      northing: fields.northing ?? null, easting: fields.easting ?? null,
+      elevation: fields.elevation ?? null, note: fields.note || null,
+    };
+    pt.observations = [obs];
+    pt.preferNorthing  = fields.northing  != null ? obsId : null;
+    pt.preferEasting   = fields.easting   != null ? obsId : null;
+    pt.preferElevation = fields.elevation != null ? obsId : null;
+  }
   await ftSaveControlPoint(pt);
   currentPoints = await ftGetControlPointsByProject(currentProjectId);
-  showToast(editingPointId ? 'Point saved' : 'Point added');
+  showToast(isNew ? 'Point added' : 'Point saved');
   backToPoints();
 }
 function confirmDeletePoint() {
@@ -775,13 +958,16 @@ function confirmDeletePoint() {
 
 // ── Import Modal ──────────────────────────────────────────────────────────────
 function openImportModal() {
-  _pdfDoc = null; _parsedPoints = []; _csvRaw = null;
+  _pdfDoc = null; _parsedPoints = []; _csvRaw = null; _loisRows = []; _loisTargetProjectId = null;
   document.getElementById('fileInput').value = '';
-  ['importStep1','importStep2','importStep2csv','importStep3'].forEach(id => {
+  resetImportModal();
+  document.getElementById('importModal').classList.add('open');
+}
+function resetImportModal() {
+  ['importStep1','importStep2','importStep2csv','importStep2lois','importStep3'].forEach(id => {
     document.getElementById(id).classList.toggle('hidden', id !== 'importStep1');
   });
   document.getElementById('importConflictBanner').classList.add('hidden');
-  document.getElementById('importModal').classList.add('open');
 }
 function closeImportModal() {
   document.getElementById('importModal').classList.remove('open');
@@ -1122,22 +1308,153 @@ function clearPreview() {
 }
 
 // ─── CSV loading ───────────────────────────────────────────────────────────────
+function isLoisCsv(headerCells) {
+  const LOIS_DETECT = ['lpn','local point number','local point','scale factor','scale factor'];
+  const lc = headerCells.map(h => h.toLowerCase().trim()).join('|');
+  return LOIS_DETECT.some(a => lc.includes(a));
+}
+function mapLoisHeader(headerCells) {
+  const map = {};
+  headerCells.forEach((cell, i) => {
+    const norm = cell.toLowerCase().trim();
+    for (const [field, aliases] of Object.entries(LOIS_COLS)) {
+      if (!(field in map) && aliases.some(a => norm.includes(a))) { map[field] = i; }
+    }
+  });
+  return map;
+}
 function loadCsv(file) {
   _csvFilename = file.name;
   const reader = new FileReader();
   reader.onload = e => {
     _csvRaw = e.target.result;
-    document.getElementById('csvFileName').textContent = file.name;
+    const lines = _csvRaw.split(/\r?\n/).filter(l => l.trim());
+    if (!lines.length) { showToast('CSV is empty'); return; }
+    const firstRow = csvSplitLine(lines[0]);
+    const lois = isNaN(parseFloat(firstRow[0])) && isLoisCsv(firstRow);
     document.getElementById('importStep1').classList.add('hidden');
-    document.getElementById('importStep2csv').classList.remove('hidden');
+    if (lois) {
+      _csvImportMode = 'lois';
+      parseLoisCsvInit(lines, firstRow, file.name);
+    } else {
+      _csvImportMode = 'generic';
+      document.getElementById('csvFileName').textContent = file.name;
+      populateCsvProjectPicker();
+      document.getElementById('importStep2csv').classList.remove('hidden');
+    }
   };
   reader.readAsText(file);
 }
+async function parseLoisCsvInit(lines, headerCells, filename) {
+  const hMap = mapLoisHeader(headerCells);
+  const getCell = (cells, field) => {
+    const idx = hMap[field];
+    return (idx != null && cells[idx] != null) ? cells[idx].trim() : '';
+  };
+  _loisRows = [];
+  for (let r = 1; r < lines.length; r++) {
+    const cells = csvSplitLine(lines[r]);
+    const name = getCell(cells, 'pointName');
+    if (!name) continue;
+    const gridN = parseFloat(getCell(cells,'gridN')) || null;
+    const gridE = parseFloat(getCell(cells,'gridE')) || null;
+    _loisRows.push({
+      name,
+      lpn:         getCell(cells,'lpn') || '(none)',
+      gridN,
+      gridE,
+      gridElev:    parseFloat(getCell(cells,'gridElev')) || null,
+      scaleFactor: parseFloat(getCell(cells,'scaleFactor')) || null,
+    });
+  }
+  // Populate project picker
+  const projs = await ftGetAllProjects();
+  const pick = document.getElementById('loisProjectPick');
+  pick.innerHTML = `<option value="">— No project (preview only) —</option>` +
+    projs.sort((a,b)=>(b.created||'').localeCompare(a.created||'')).map(p =>
+      `<option value="${escHtml(p.id)}"${p.id===currentProjectId?' selected':''}>${escHtml(projectLabel(p))}</option>`
+    ).join('');
+  // Populate LPN checkboxes
+  const lpns = [...new Set(_loisRows.map(r => r.lpn))].sort();
+  const lpnList = document.getElementById('lpnCheckboxList');
+  lpnList.innerHTML = lpns.map(lpn =>
+    `<label><input type="checkbox" value="${escHtml(lpn)}" checked> ${escHtml(lpn)}</label>`
+  ).join('');
+  document.getElementById('loisFileName').textContent = filename;
+  document.getElementById('loisFilterCount').textContent = `${_loisRows.length} total points across ${lpns.length} LPN(s)`;
+  document.getElementById('importStep2lois').classList.remove('hidden');
+}
+async function populateCsvProjectPicker() {
+  const projs = await ftGetAllProjects();
+  const pick = document.getElementById('csvProjectPick');
+  pick.innerHTML = projs.sort((a,b)=>(b.created||'').localeCompare(a.created||'')).map(p =>
+    `<option value="${escHtml(p.id)}"${p.id===currentProjectId?' selected':''}>${escHtml(projectLabel(p))}</option>`
+  ).join('');
+}
+function selectAllLpns(checked) {
+  document.querySelectorAll('#lpnCheckboxList input[type=checkbox]').forEach(cb => cb.checked = checked);
+}
+function applyLoisFilter() {
+  const checkedLpns = new Set(
+    [...document.querySelectorAll('#lpnCheckboxList input[type=checkbox]:checked')].map(cb => cb.value)
+  );
+  const sfMin = parseFloat(document.getElementById('sfMin').value) || null;
+  const sfMax = parseFloat(document.getElementById('sfMax').value) || null;
+  const importN    = document.getElementById('loisImportN').checked;
+  const importE    = document.getElementById('loisImportE').checked;
+  const importElev = document.getElementById('loisImportElev').checked;
+  _loisTargetProjectId = document.getElementById('loisProjectPick').value || currentProjectId;
 
-function parseCsv() {
+  const filtered = _loisRows.filter(r => {
+    if (!checkedLpns.has(r.lpn)) return false;
+    if (r.scaleFactor != null) {
+      if (sfMin != null && r.scaleFactor < sfMin) return false;
+      if (sfMax != null && r.scaleFactor > sfMax) return false;
+    }
+    return true;
+  });
+
+  const today = isoDate();
+  _parsedPoints = filtered.map(r => {
+    const obsId = uid();
+    const north = importN    ? r.gridN    : null;
+    const east  = importE    ? r.gridE    : null;
+    const elev  = importElev ? r.gridElev : null;
+    const obs = {
+      id: obsId, source: 'lois', date: today,
+      label: `LOIS LPN ${r.lpn}`,
+      northing: north, easting: east, elevation: elev,
+      lpn: r.lpn, scaleFactor: r.scaleFactor,
+    };
+    return {
+      id: uid(), projectId: _loisTargetProjectId,
+      name: r.name,
+      northing: north, easting: east, elevation: elev,
+      oldStation:'', equation:'', distanceOld:null, newStation:'', distanceNew:null,
+      note: `LOIS LPN ${r.lpn}`, status:'uncategorized', statusNote:'', statusDate:'',
+      created: today,
+      observations: [obs],
+      preferNorthing:  north != null ? obsId : null,
+      preferEasting:   east  != null ? obsId : null,
+      preferElevation: elev  != null ? obsId : null,
+      _loisObs: obs, // marker for merge logic
+    };
+  });
+
+  document.getElementById('importStep2lois').classList.add('hidden');
+  showPreview(_parsedPoints);
+}
+
+async function parseCsv() {
   if (!_csvRaw) return;
   const lines = _csvRaw.split(/\r?\n/).filter(l => l.trim());
   if (lines.length < 2) { showToast('CSV is empty'); return; }
+
+  const importN    = document.getElementById('csvImportN').checked;
+  const importE    = document.getElementById('csvImportE').checked;
+  const importElev = document.getElementById('csvImportElev').checked;
+  const targetId   = document.getElementById('csvProjectPick').value || currentProjectId;
+  _loisTargetProjectId = targetId;
 
   // Detect header
   const firstRow = csvSplitLine(lines[0]);
@@ -1151,7 +1468,7 @@ function parseCsv() {
     EQUATION: ['equation','eq'],
     'DISTANCE': ['distance(\')', 'distance', "dist(')", 'dist', 'offset'],
     'NEW STATION': ['new station','new sta'],
-    NOTE: ['note','notes','description','desc','monument type'],
+    NOTE: ['note','notes','description','desc','monument type','code'],
   };
   const isHeader = isNaN(parseFloat(firstRow[0]));
   const dataStart = isHeader ? 1 : 0;
@@ -1160,15 +1477,15 @@ function parseCsv() {
     firstRow.forEach((cell, i) => {
       const norm = cell.trim().toLowerCase();
       for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
-        if (aliases.some(a => norm.includes(a))) { headerMap[field] = i; break; }
+        if (!(field in headerMap) && aliases.some(a => norm.includes(a))) { headerMap[field] = i; }
       }
     });
   } else {
-    // Assume fixed column order: NAME, NORTHING, EASTING, ELEVATION, OLD STATION, EQUATION, DISTANCE, NEW STATION, DISTANCE, NOTE
-    const fixedOrder = ['NAME','NORTHING','EASTING','ELEVATION','OLD STATION','EQUATION','DISTANCE','NEW STATION','DISTANCE2','NOTE'];
-    fixedOrder.forEach((f,i) => { headerMap[f] = i; });
+    // Fixed column order: Name, Northing, Easting, Elevation, Code
+    ['NAME','NORTHING','EASTING','ELEVATION','NOTE'].forEach((f,i) => { headerMap[f] = i; });
   }
 
+  const today = isoDate();
   const points = [];
   for (let r = dataStart; r < lines.length; r++) {
     const cells = csvSplitLine(lines[r]);
@@ -1178,23 +1495,33 @@ function parseCsv() {
     };
     const name = get('NAME');
     if (!name) continue;
+    const north = importN    ? parseCoord(get('NORTHING'))  : null;
+    const east  = importE    ? parseCoord(get('EASTING'))   : null;
+    const elev  = importElev ? parseCoord(get('ELEVATION')) : null;
+    const obsId = uid();
+    const obs = {
+      id: obsId, source: 'csv', date: today,
+      label: `CSV — ${_csvFilename}`,
+      northing: north, easting: east, elevation: elev,
+      note: get('NOTE') || null,
+    };
     points.push({
       id: uid(),
-      projectId: currentProjectId,
+      projectId: targetId,
       name,
-      northing: parseCoord(get('NORTHING')),
-      easting: parseCoord(get('EASTING')),
-      elevation: parseCoord(get('ELEVATION')),
+      northing: north, easting: east, elevation: elev,
       oldStation: get('OLD STATION'),
       equation: get('EQUATION'),
       distanceOld: parseCoord(get('DISTANCE')),
       newStation: get('NEW STATION'),
-      distanceNew: parseCoord(get('DISTANCE2')),
+      distanceNew: null,
       note: get('NOTE'),
-      status: 'uncategorized',
-      statusNote: '',
-      statusDate: '',
-      created: isoDate(),
+      status: 'uncategorized', statusNote: '', statusDate: '',
+      created: today,
+      observations: [obs],
+      preferNorthing:  north != null ? obsId : null,
+      preferEasting:   east  != null ? obsId : null,
+      preferElevation: elev  != null ? obsId : null,
     });
   }
   _parsedPoints = points;
@@ -1221,11 +1548,18 @@ function showPreview(points) {
   document.getElementById('importCountLabel').textContent = points.length;
 
   // Check for duplicates
-  const existingNames = new Set(currentPoints.map(p => p.name.toLowerCase()));
+  const targetId = _loisTargetProjectId || currentProjectId;
+  const targetPoints = targetId === currentProjectId ? currentPoints : [];
+  const existingNames = new Set(targetPoints.map(p => p.name.toLowerCase()));
   const dupes = points.filter(p => existingNames.has(p.name.toLowerCase()));
   const banner = document.getElementById('importConflictBanner');
   if (dupes.length) {
-    banner.textContent = `⚠ ${dupes.length} point(s) already exist in this project and will be skipped: ${dupes.map(p=>p.name).slice(0,5).join(', ')}${dupes.length>5?'…':''}`;
+    const isMerge = _csvImportMode === 'lois' || points.some(p => p.observations && p.observations.length);
+    const action = isMerge ? 'will be merged (new observation added)' : 'will be skipped';
+    banner.textContent = `ℹ ${dupes.length} point(s) already exist and ${action}: ${dupes.map(p=>p.name).slice(0,5).join(', ')}${dupes.length>5?'…':''}`;
+    banner.style.background = isMerge ? 'var(--pass-bg)' : '';
+    banner.style.borderColor = isMerge ? 'var(--pass-border)' : '';
+    banner.style.color = isMerge ? 'var(--pass-text)' : '';
     banner.classList.remove('hidden');
   } else {
     banner.classList.add('hidden');
@@ -1254,14 +1588,43 @@ function showPreview(points) {
 }
 
 async function importPoints() {
-  const existingNames = new Set(currentPoints.map(p => p.name.toLowerCase()));
-  const toImport = _parsedPoints.filter(p => !existingNames.has(p.name.toLowerCase()));
-  for (const pt of toImport) await ftSaveControlPoint(pt);
+  const targetId = _loisTargetProjectId || currentProjectId;
+  // Load current points for the target project (may differ from open project)
+  const targetPoints = targetId === currentProjectId
+    ? currentPoints
+    : await ftGetControlPointsByProject(targetId);
+  const byName = new Map(targetPoints.map(p => [p.name.toLowerCase(), p]));
+
+  let created = 0, merged = 0;
+  for (const pt of _parsedPoints) {
+    const existing = byName.get(pt.name.toLowerCase());
+    if (existing && pt.observations && pt.observations.length) {
+      // Merge: append the new observation to existing point
+      const newObs = pt.observations[0];
+      existing.observations = [...(existing.observations || []), newObs];
+      // Update prefer* for any fields that were imported (non-null in new obs)
+      if (newObs.northing  != null) existing.preferNorthing  = newObs.id;
+      if (newObs.easting   != null) existing.preferEasting   = newObs.id;
+      if (newObs.elevation != null) existing.preferElevation = newObs.id;
+      applyPreferences(existing);
+      await ftSaveControlPoint(existing);
+      merged++;
+    } else if (!existing) {
+      // Strip internal marker before saving
+      const { _loisObs: _l, ...clean } = pt;
+      clean.projectId = targetId;
+      await ftSaveControlPoint(clean);
+      created++;
+    }
+  }
   currentPoints = await ftGetControlPointsByProject(currentProjectId);
   closeImportModal();
   renderFilterBar();
   renderPointList();
-  showToast(`Imported ${toImport.length} point${toImport.length!==1?'s':''}`);
+  const parts = [];
+  if (created) parts.push(`${created} added`);
+  if (merged)  parts.push(`${merged} merged`);
+  showToast(parts.length ? parts.join(', ') : 'Nothing new to import');
 }
 
 // ── Confirm Dialog ────────────────────────────────────────────────────────────
