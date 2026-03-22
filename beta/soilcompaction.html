@@ -780,7 +780,7 @@
         const cur = sel.value;
         const projs = await ftGetAllProjects().catch(()=>[]);
         sel.innerHTML = '<option value="">All Projects</option>' +
-            projs.map(p=>`<option value="${escHtml(p.id)}">${escHtml((p.contractNumber || p.projectNumber || p.id) + (p.name ? ': ' + p.name : ''))}</option>`).join('');
+            projs.map(p=>`<option value="${escHtml(p.id)}">${escHtml(ftProjectTitle(p))}</option>`).join('');
         sel.value = cur;
     }
 

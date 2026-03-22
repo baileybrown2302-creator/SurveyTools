@@ -1729,7 +1729,7 @@ async function loadRecordList() {
         const cur = sel.value;
         sel.innerHTML = '<option value="">— All Tests (no project filter) —</option>' +
             _allProjects.filter(p => !p.archived).map(p =>
-                `<option value="${escHtml(p.id)}">${escHtml((p.contractNumber || p.projectNumber || p.id) + (p.name ? ': ' + p.name : ''))}</option>`
+                `<option value="${escHtml(p.id)}">${escHtml(ftProjectTitle(p))}</option>`
             ).join('');
         if (_selectedProjectId) sel.value = _selectedProjectId;
     }
@@ -1780,13 +1780,8 @@ function onListProjectChange() {
     const meta = document.getElementById('listProjectMeta');
     if (_selectedProjectId) {
         const proj = _allProjects.find(p => p.id === _selectedProjectId);
-        heading.textContent = proj ? (proj.projectNumber || 'Project') : 'Project Tests';
-        if (proj && proj.contractNumber) {
-            meta.textContent = 'Contract: ' + proj.contractNumber;
-            meta.style.display = 'block';
-        } else {
-            meta.style.display = 'none';
-        }
+        heading.textContent = proj ? ftProjectTitle(proj) : 'Project Tests';
+        meta.style.display = 'none';
     } else {
         heading.textContent = 'Saved Tests';
         meta.style.display = 'none';

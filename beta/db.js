@@ -2,7 +2,7 @@
 'use strict';
 
 const FT_DB_NAME = 'FieldToolsDB';
-const FT_DB_VERSION = 5;
+const FT_DB_VERSION = 6;
 let _dbPromise = null;
 
 function ftOpenDB() {
@@ -86,6 +86,11 @@ function ftOpenDB() {
         const s = db.createObjectStore('controlPoints', { keyPath: 'id' });
         s.createIndex('projectId', 'projectId');
         s.createIndex('status', 'status');
+      }
+      // Bid Estimate contracts (Agreement Estimate PDF imports)
+      if (!db.objectStoreNames.contains('bidContracts')) {
+        const s = db.createObjectStore('bidContracts', { keyPath: 'id' });
+        s.createIndex('created', 'created');
       }
     };
     req.onsuccess = e => {
@@ -180,6 +185,17 @@ async function ftGetAllProjects() { return ftGetAll('projects'); }
 async function ftSaveProject(proj) { return ftPut('projects', proj); }
 async function ftDeleteProject(id) { return ftDelete('projects', id); }
 
+// --- Project title helper (shared across all tools) ---
+// Hierarchy: contractNumber → projectId → projectNumber
+// Format: "identifier : name" or just "identifier" if no name
+function ftProjectTitle(p) {
+  if (!p) return 'Unnamed Project';
+  const id = p.contractNumber || p.projectId || p.projectNumber || '';
+  const name = p.name || '';
+  if (id && name) return id + ' : ' + name;
+  return id || name || 'Unnamed Project';
+}
+
 // --- LevelProject (metadata only, no loop data) ---
 async function ftGetLevelProject(id) { return ftGet('levelProjects', id); }
 async function ftGetAllLevelProjects() { return ftGetAll('levelProjects'); }
@@ -259,6 +275,12 @@ async function ftGetControlPoint(id) { return ftGet('controlPoints', id); }
 async function ftSaveControlPoint(pt) { return ftPut('controlPoints', pt); }
 async function ftDeleteControlPoint(id) { return ftDelete('controlPoints', id); }
 async function ftDeleteControlPointsForProject(projectId) { return ftDeleteByIndex('controlPoints', 'projectId', projectId); }
+
+// --- Bid Estimate Contracts ---
+async function ftGetAllBidContracts() { return ftGetAll('bidContracts'); }
+async function ftGetBidContract(id) { return ftGet('bidContracts', id); }
+async function ftSaveBidContract(c) { return ftPut('bidContracts', c); }
+async function ftDeleteBidContract(id) { return ftDelete('bidContracts', id); }
 
 // --- Stake session context (navigation) ---
 async function ftGetStakeContext() { return ftGet('stakeContext', 'active'); }

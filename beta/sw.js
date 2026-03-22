@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v8';
+const CACHE_NAME = 'survey-tool-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -8,7 +8,8 @@ const ASSETS = [
   './manifest.json',
   './icon.png',
   './controlpoints.html',
-  './csvconverter.html'
+  './csvconverter.html',
+  './bidestimate.html'
 ];
 
 // Install: cache all assets

@@ -170,9 +170,25 @@
                     <div class="info-field-value" id="detailRoute">—</div>
                 </div>
                 <div class="info-field">
+                    <div class="info-field-label">County</div>
+                    <div class="info-field-value" id="detailCounty">—</div>
+                </div>
+                <div class="info-field">
+                    <div class="info-field-label">Project ID</div>
+                    <div class="info-field-value" id="detailProjectId">—</div>
+                </div>
+                <div class="info-field">
+                    <div class="info-field-label">Designer</div>
+                    <div class="info-field-value" id="detailDesigner">—</div>
+                </div>
+                <div class="info-field">
                     <div class="info-field-label">Created</div>
                     <div class="info-field-value" id="detailCreated">—</div>
                 </div>
+            </div>
+            <div class="info-field" id="detailLocationWrap" style="display:none;">
+                <div class="info-field-label">Location</div>
+                <div class="info-field-value" id="detailLocation">—</div>
             </div>
             <div class="info-field">
                 <div class="info-field-label">Description / Notes</div>
@@ -243,6 +259,24 @@
         <div class="field-group">
             <label class="label" for="projRoute">Route</label>
             <input type="text" class="input" id="projRoute" placeholder="e.g. US-395, SR-28" autocomplete="off">
+        </div>
+        <div class="field-group">
+            <label class="label" for="projLocation">Location Description</label>
+            <input type="text" class="input" id="projLocation" placeholder="e.g. I 580, Washoe County, from Mt Rose…" autocomplete="off">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="field-group">
+                <label class="label" for="projProjectId">Project ID (Numeric)</label>
+                <input type="text" class="input" id="projProjectId" placeholder="e.g. 69975" autocomplete="off">
+            </div>
+            <div class="field-group">
+                <label class="label" for="projCounty">County</label>
+                <input type="text" class="input" id="projCounty" placeholder="e.g. WASHOE" autocomplete="off">
+            </div>
+        </div>
+        <div class="field-group">
+            <label class="label" for="projDesigner">Designer</label>
+            <input type="text" class="input" id="projDesigner" placeholder="Designer name" autocomplete="off">
         </div>
         <div class="field-group">
             <label class="label" for="projDesc">Description / Notes</label>
@@ -363,7 +397,7 @@ async function renderProjectList() {
     let projects = allProjects.filter(p => {
         if (!showArchived && p.archived) return false;
         if (searchVal) {
-            const haystack = [p.projectNumber, p.name, p.contractNumber, p.contractor, p.route, p.description].join(' ').toLowerCase();
+            const haystack = [p.projectNumber, p.name, p.contractNumber, p.contractor, p.route, p.location, p.county, p.designer, p.projectId, p.description].join(' ').toLowerCase();
             return haystack.includes(searchVal);
         }
         return true;
@@ -403,8 +437,7 @@ async function renderProjectList() {
 
         return `<div class="project-card" style="${p.archived ? 'opacity:0.65;' : ''}">
             <div class="project-card-body" onclick="openDetailView('${escHtml(p.id)}')">
-                <div class="project-number">${escHtml(p.projectNumber || '(No Project Number)')}${p.name ? ' — ' + escHtml(p.name) : ''}</div>
-                ${p.contractNumber ? `<div class="project-contract">Contract: ${escHtml(p.contractNumber)}</div>` : ''}
+                <div class="project-number">${escHtml(ftProjectTitle(p))}</div>
                 <div class="project-row2">
                     ${p.route ? `<span class="route-label">${escHtml(p.route)}</span>` : ''}
                     ${fundingChip}
@@ -432,12 +465,19 @@ async function openDetailView(projectId) {
     const proj = allProjects.find(p => p.id === projectId);
     if (!proj) return;
 
-    document.getElementById('detailTitle').textContent = proj.projectNumber || 'Project';
-    document.getElementById('detailProjectNumber').textContent = (proj.projectNumber || '(No Project Number)') + (proj.name ? ' — ' + proj.name : '');
-    document.getElementById('detailContractNumber').textContent = proj.contractNumber ? 'Contract: ' + proj.contractNumber : '';
+    document.getElementById('detailTitle').textContent = proj.contractNumber || proj.projectId || proj.projectNumber || 'Project';
+    document.getElementById('detailProjectNumber').textContent = ftProjectTitle(proj);
+    // Sub-heading: show project number when it isn't already the primary identifier
+    document.getElementById('detailContractNumber').textContent = proj.projectNumber && (proj.contractNumber || proj.projectId) ? proj.projectNumber : '';
     document.getElementById('detailFunding').textContent = proj.fundingSource || '—';
     document.getElementById('detailContractor').textContent = proj.contractor || '—';
     document.getElementById('detailRoute').textContent = proj.route || '—';
+    document.getElementById('detailCounty').textContent = proj.county || '—';
+    document.getElementById('detailProjectId').textContent = proj.projectId || '—';
+    document.getElementById('detailDesigner').textContent = proj.designer || '—';
+    const locWrap = document.getElementById('detailLocationWrap');
+    document.getElementById('detailLocation').textContent = proj.location || '';
+    locWrap.style.display = proj.location ? '' : 'none';
     document.getElementById('detailCreated').textContent = proj.created ? new Date(proj.created).toLocaleDateString() : '—';
     document.getElementById('detailDescription').textContent = proj.description || '—';
 
@@ -600,11 +640,15 @@ async function openProjectModal(projectId) {
         document.getElementById('projFunding').value = p ? (p.fundingSource || '') : '';
         document.getElementById('projContractor').value = p ? (p.contractor || '') : '';
         document.getElementById('projRoute').value = p ? (p.route || '') : '';
+        document.getElementById('projLocation').value = p ? (p.location || '') : '';
+        document.getElementById('projProjectId').value = p ? (p.projectId || '') : '';
+        document.getElementById('projCounty').value = p ? (p.county || '') : '';
+        document.getElementById('projDesigner').value = p ? (p.designer || '') : '';
         document.getElementById('projDesc').value = p ? (p.description || '') : '';
         existingCreated = p ? p.created : null;
     } else {
         document.getElementById('projectModalTitle').textContent = 'New Project';
-        ['projNumber','projName','projContract','projContractor','projRoute','projDesc'].forEach(id => document.getElementById(id).value = '');
+        ['projNumber','projName','projContract','projContractor','projRoute','projLocation','projProjectId','projCounty','projDesigner','projDesc'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('projFunding').value = '';
         existingCreated = null;
     }
@@ -624,6 +668,10 @@ async function saveProject() {
         fundingSource: document.getElementById('projFunding').value,
         contractor: document.getElementById('projContractor').value.trim(),
         route: document.getElementById('projRoute').value.trim(),
+        location: document.getElementById('projLocation').value.trim(),
+        projectId: document.getElementById('projProjectId').value.trim(),
+        county: document.getElementById('projCounty').value.trim(),
+        designer: document.getElementById('projDesigner').value.trim(),
         description: document.getElementById('projDesc').value.trim(),
         archived: false,
         created: existingCreated || new Date().toISOString()

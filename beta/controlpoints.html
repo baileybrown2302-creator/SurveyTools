@@ -601,12 +601,7 @@ function parsePageRanges(str) {
   return [...pages].sort((a,b) => a-b);
 }
 
-function projectLabel(p) {
-  const prefix = p.contractNumber || p.projectNumber || '';
-  const suffix = p.name || '';
-  if (prefix && suffix) return prefix + ': ' + suffix;
-  return prefix || suffix || 'Unnamed Project';
-}
+function projectLabel(p) { return ftProjectTitle(p); }
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let allProjects = [];

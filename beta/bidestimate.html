@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Tools">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="../beta/icon.png">
+<link rel="apple-touch-icon" href="../beta/icon.png">
+<script src="db.js"></script>
+<title>Bid Estimate — Field Tools</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-primary: #f3f4f6; --bg-secondary: #ffffff; --bg-tertiary: #f9fafb;
+  --text-primary: #111827; --text-secondary: #374151; --text-muted: #9ca3af;
+  --border-primary: #e5e7eb; --border-secondary: #d1d5db;
+  --accent-blue: #3b82f6; --accent-green: #22c55e; --accent-orange: #f97316;
+  --accent-red: #ef4444; --accent-purple: #a855f7;
+  --shadow: 0 1px 3px rgba(0,0,0,0.1); --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+}
+[data-theme="high-contrast"] {
+  --bg-primary: #000000; --bg-secondary: #0a0a0a; --bg-tertiary: #111111;
+  --text-primary: #ffffff; --text-secondary: #f0f0f0; --text-muted: #999999;
+  --border-primary: #333333; --border-secondary: #444444;
+  --accent-blue: #60a5fa; --accent-green: #4ade80; --accent-orange: #fb923c;
+  --accent-red: #f87171; --accent-purple: #c084fc;
+  --shadow: 0 1px 3px rgba(0,0,0,0.5); --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+  background: var(--bg-primary); color: var(--text-primary);
+  min-height: 100vh; -webkit-tap-highlight-color: transparent; overflow-x: hidden;
+}
+.hidden { display: none !important; }
+
+/* ── Top Nav ── */
+.top-nav {
+  background: var(--bg-secondary); border-bottom: 1.5px solid var(--border-primary);
+  padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow);
+}
+.nav-back {
+  color: var(--accent-blue); font-weight: 700; font-size: 0.9em;
+  background: none; border: none; cursor: pointer; padding: 4px 0; white-space: nowrap;
+  text-decoration: none;
+}
+.nav-title { font-weight: 800; font-size: 1em; color: var(--text-primary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.nav-btn {
+  background: none; border: 1.5px solid var(--border-secondary);
+  border-radius: 8px; padding: 5px 10px; font-size: 0.75em; font-weight: 700;
+  color: var(--text-secondary); cursor: pointer;
+}
+.nav-btn:active { opacity: 0.7; }
+
+/* ── Buttons ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 18px; border-radius: 10px; font-size: 0.9em; font-weight: 700; border: none; cursor: pointer; transition: opacity 0.15s; }
+.btn:active { opacity: 0.75; }
+.btn-primary { background: var(--accent-blue); color: #fff; }
+.btn-secondary { background: var(--bg-secondary); color: var(--text-secondary); border: 1.5px solid var(--border-secondary); }
+.btn-danger { background: var(--accent-red); color: #fff; }
+.btn-full { width: 100%; }
+.btn-small { padding: 6px 12px; font-size: 0.8em; border-radius: 8px; }
+
+/* ── Contract List ── */
+#contractListView { min-height: 100vh; }
+.list-header { padding: 16px; display: flex; gap: 10px; }
+.contract-card {
+  margin: 0 16px 10px; background: var(--bg-secondary);
+  border: 1.5px solid var(--border-primary); border-radius: 14px;
+  padding: 16px; cursor: pointer; box-shadow: var(--shadow);
+  transition: border-color 0.15s;
+}
+.contract-card:active { opacity: 0.85; }
+.contract-card:hover { border-color: var(--accent-blue); }
+.contract-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.contract-no { font-size: 1em; font-weight: 800; color: var(--text-primary); }
+.contract-delete { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1em; padding: 2px 4px; }
+.contract-delete:active { color: var(--accent-red); }
+.contract-name { font-size: 0.82em; color: var(--text-secondary); margin-top: 2px; }
+.contract-meta { font-size: 0.78em; color: var(--text-muted); margin-top: 6px; }
+.contract-pills { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.pill { font-size: 0.72em; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
+.pill-blue { background: rgba(59,130,246,0.12); color: var(--accent-blue); }
+.pill-green { background: rgba(34,197,94,0.12); color: var(--accent-green); }
+.empty-state { text-align: center; padding: 60px 24px; color: var(--text-muted); }
+.empty-icon { font-size: 3em; margin-bottom: 12px; }
+.empty-title { font-size: 1.05em; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; }
+.empty-sub { font-size: 0.85em; line-height: 1.5; }
+
+/* ── Contract Detail ── */
+#contractDetailView { min-height: 100vh; }
+.search-bar-wrap {
+  padding: 10px 16px; background: var(--bg-secondary);
+  border-bottom: 1.5px solid var(--border-primary);
+  display: flex; align-items: center; gap: 8px;
+}
+.search-input {
+  flex: 1; background: var(--bg-tertiary); border: 1.5px solid var(--border-primary);
+  border-radius: 10px; padding: 8px 12px; font-size: 0.9em; color: var(--text-primary);
+  outline: none;
+}
+.search-input:focus { border-color: var(--accent-blue); }
+.search-clear { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 1.1em; padding: 4px; }
+.search-count { font-size: 0.75em; font-weight: 700; color: var(--accent-blue); white-space: nowrap; }
+
+.breakout-list { padding: 12px 16px 80px; display: flex; flex-direction: column; gap: 10px; }
+
+/* ── Breakout Accordion ── */
+.breakout-card {
+  background: var(--bg-secondary); border: 1.5px solid var(--border-primary);
+  border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+}
+.breakout-header {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+  cursor: pointer; user-select: none;
+}
+.breakout-badge {
+  font-size: 0.72em; font-weight: 800; padding: 3px 8px; border-radius: 20px;
+  flex-shrink: 0; letter-spacing: 0.3px;
+}
+.badge-0 { background: rgba(59,130,246,0.15); color: var(--accent-blue); }
+.badge-1 { background: rgba(34,197,94,0.15); color: var(--accent-green); }
+.badge-2 { background: rgba(249,115,22,0.15); color: var(--accent-orange); }
+.badge-3 { background: rgba(168,85,247,0.15); color: var(--accent-purple); }
+.breakout-header-info { flex: 1; min-width: 0; }
+.breakout-title { font-size: 0.88em; font-weight: 700; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.breakout-stations { font-size: 0.73em; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.breakout-header-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.breakout-note-btn {
+  background: none; border: none; cursor: pointer; padding: 4px;
+  font-size: 1em; color: var(--text-muted); position: relative;
+}
+.breakout-note-btn:active { color: var(--accent-blue); }
+.note-dot {
+  position: absolute; top: 2px; right: 2px; width: 7px; height: 7px;
+  background: var(--accent-blue); border-radius: 50%;
+}
+.breakout-chevron {
+  color: var(--text-muted); font-size: 0.85em; transition: transform 0.2s; flex-shrink: 0;
+}
+.breakout-card.open .breakout-chevron { transform: rotate(180deg); }
+.breakout-body {
+  max-height: 0; overflow: hidden; transition: max-height 0.25s ease;
+  border-top: 0px solid var(--border-primary);
+}
+.breakout-card.open .breakout-body {
+  max-height: 9999px; border-top-width: 1px;
+}
+.breakout-item-count { font-size: 0.7em; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
+
+/* ── Item Rows ── */
+.item-row {
+  display: flex; align-items: baseline; gap: 10px; padding: 10px 14px;
+  border-bottom: 1px solid var(--border-primary); cursor: pointer;
+  transition: background 0.1s;
+}
+.item-row:last-of-type { border-bottom: none; }
+.item-row:active { background: var(--bg-tertiary); }
+.item-bid { font-size: 0.78em; font-weight: 800; color: var(--accent-blue); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.item-desc { flex: 1; font-size: 0.82em; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.item-qty { font-size: 0.78em; color: var(--text-secondary); font-weight: 600; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-note-dot { width: 7px; height: 7px; background: var(--accent-blue); border-radius: 50%; flex-shrink: 0; margin-left: 2px; align-self: center; }
+.add-item-row {
+  padding: 10px 14px; display: flex; justify-content: flex-end;
+  border-top: 1px solid var(--border-primary);
+}
+.add-breakout-wrap { padding: 0 0 16px; }
+
+/* ── Modals / Sheets ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.4); align-items: flex-end; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal-sheet {
+  background: var(--bg-secondary); border-radius: 20px 20px 0 0;
+  width: 100%; max-width: 600px; max-height: 90vh;
+  overflow-y: auto; padding: 0 0 env(safe-area-inset-bottom);
+  box-shadow: var(--shadow-lg);
+}
+.modal-handle {
+  width: 36px; height: 4px; background: var(--border-secondary);
+  border-radius: 2px; margin: 10px auto 0;
+}
+.modal-title { font-size: 1.05em; font-weight: 800; color: var(--text-primary); padding: 14px 20px 0; }
+.modal-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 14px; }
+.modal-actions { display: flex; gap: 10px; padding: 0 20px 20px; }
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+.field-group label { font-size: 0.78em; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.4px; }
+.field-input {
+  background: var(--bg-tertiary); border: 1.5px solid var(--border-primary);
+  border-radius: 10px; padding: 10px 12px; font-size: 0.9em; color: var(--text-primary);
+  outline: none; width: 100%;
+}
+.field-input:focus { border-color: var(--accent-blue); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit; line-height: 1.5; }
+
+/* ── Item Detail Sheet ── */
+.item-detail-bid { font-size: 1.2em; font-weight: 800; color: var(--accent-blue); padding: 14px 20px 2px; }
+.item-detail-desc { font-size: 1em; font-weight: 700; color: var(--text-primary); padding: 0 20px 14px; line-height: 1.3; }
+.item-detail-divider { height: 1px; background: var(--border-primary); margin: 0 20px; }
+.item-detail-qty { font-size: 1.4em; font-weight: 800; color: var(--text-primary); padding: 14px 20px; font-variant-numeric: tabular-nums; }
+.item-detail-prices { display: flex; gap: 0; padding: 0 20px 14px; }
+.item-price-block { flex: 1; }
+.item-price-label { font-size: 0.72em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 2px; }
+.item-price-value { font-size: 1em; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.item-detail-notes-label { font-size: 0.78em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; padding: 0 20px; margin-top: 4px; }
+.item-note-area { margin: 8px 20px 0; background: var(--bg-tertiary); border: 1.5px solid var(--border-primary); border-radius: 10px; padding: 10px 12px; font-size: 0.88em; color: var(--text-primary); outline: none; width: calc(100% - 40px); resize: vertical; min-height: 80px; font-family: inherit; line-height: 1.5; }
+.item-note-area:focus { border-color: var(--accent-blue); }
+.item-detail-actions { display: flex; gap: 10px; padding: 12px 20px 20px; }
+
+/* ── Confirm Dialog ── */
+.confirm-overlay {
+  display: none; position: fixed; inset: 0; z-index: 200;
+  background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 20px;
+}
+.confirm-overlay.open { display: flex; }
+.confirm-box {
+  background: var(--bg-secondary); border-radius: 16px; padding: 24px 20px 20px;
+  max-width: 320px; width: 100%; box-shadow: var(--shadow-lg);
+}
+.confirm-title { font-size: 1em; font-weight: 800; color: var(--text-primary); margin-bottom: 8px; }
+.confirm-msg { font-size: 0.88em; color: var(--text-secondary); line-height: 1.5; margin-bottom: 20px; }
+.confirm-actions { display: flex; gap: 10px; }
+
+/* ── Loading overlay ── */
+.loading-overlay {
+  display: none; position: fixed; inset: 0; z-index: 300;
+  background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+.loading-overlay.open { display: flex; }
+.spinner {
+  width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.2);
+  border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { color: #fff; font-size: 0.95em; font-weight: 700; }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: #1f2937; color: #fff; padding: 10px 20px; border-radius: 20px;
+  font-size: 0.85em; font-weight: 600; z-index: 400; white-space: nowrap;
+  transition: transform 0.3s ease; pointer-events: none; box-shadow: var(--shadow-lg);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── PM sync sheet ── */
+.sync-field-row {
+  display: flex; align-items: flex-start; gap: 10px; padding: 8px 0;
+  border-bottom: 1px solid var(--border-primary); cursor: pointer;
+}
+.sync-field-row:last-child { border-bottom: none; }
+.sync-field-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; width: 16px; height: 16px; accent-color: var(--accent-blue); cursor: pointer; }
+.sync-field-label { font-size: 0.75em; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+.sync-field-value { font-size: 0.88em; color: var(--text-primary); font-weight: 600; margin-top: 1px; }
+.sync-existing { font-size: 0.75em; color: var(--text-muted); margin-top: 1px; }
+.sync-notice { font-size: 0.82em; color: var(--text-secondary); background: var(--bg-tertiary); border-radius: 8px; padding: 10px; margin-bottom: 4px; line-height: 1.5; }
+
+/* ── Import review sheet ── */
+.import-review-info { background: var(--bg-tertiary); border-radius: 10px; padding: 12px; margin: 0 20px; }
+.import-review-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.85em; }
+.import-review-label { color: var(--text-muted); font-weight: 600; }
+.import-review-val { color: var(--text-primary); font-weight: 700; }
+.import-stats { display: flex; gap: 10px; padding: 0 20px; margin-bottom: 4px; }
+.import-stat { flex: 1; background: var(--bg-tertiary); border-radius: 10px; padding: 12px; text-align: center; }
+.import-stat-num { font-size: 1.6em; font-weight: 800; color: var(--accent-blue); }
+.import-stat-label { font-size: 0.72em; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     VIEW 1 — Contract List
+     ══════════════════════════════════════════ -->
+<div id="contractListView">
+  <nav class="top-nav">
+    <a href="index.html" class="nav-back">&#8249; Home</a>
+    <span class="nav-title">Bid Estimate</span>
+    <div class="nav-actions">
+      <button class="nav-btn" id="themeBtn">Dark</button>
+    </div>
+  </nav>
+
+  <div class="list-header">
+    <button class="btn btn-primary" style="flex:1;" onclick="triggerPdfImport()">&#8679; Import PDF</button>
+    <button class="btn btn-secondary" onclick="openNewContractModal()">+ Manual</button>
+  </div>
+
+  <div id="contractList"></div>
+
+  <!-- hidden file input -->
+  <input type="file" id="pdfFileInput" accept=".pdf" style="display:none" onchange="handlePdfFile(this)">
+</div>
+
+<!-- ══════════════════════════════════════════
+     VIEW 2 — Contract Detail
+     ══════════════════════════════════════════ -->
+<div id="contractDetailView" class="hidden">
+  <nav class="top-nav">
+    <button class="nav-back" onclick="showContractList()">&#8249; Contracts</button>
+    <span class="nav-title" id="detailNavTitle"></span>
+    <div class="nav-actions">
+      <button class="nav-btn" onclick="openEditContractModal()">Edit</button>
+    </div>
+  </nav>
+
+  <div class="search-bar-wrap">
+    <input class="search-input" id="searchInput" type="search" placeholder="Search bid item or description…" oninput="applySearch(this.value)">
+    <span class="search-count hidden" id="searchCount"></span>
+    <button class="search-clear hidden" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+
+  <div class="breakout-list" id="breakoutList"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL — New / Edit Contract
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="contractModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="contractModalTitle">New Contract</div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field-group">
+          <label>Contract No *</label>
+          <input class="field-input" id="cm_contractNo" placeholder="e.g. 3973">
+        </div>
+        <div class="field-group">
+          <label>Project Number</label>
+          <input class="field-input" id="cm_projectNo" placeholder="e.g. NHP-580-1(035)">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Project ID</label>
+          <input class="field-input" id="cm_projectId" placeholder="e.g. 69975">
+        </div>
+        <div class="field-group">
+          <label>County</label>
+          <input class="field-input" id="cm_county" placeholder="e.g. WASHOE">
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Location</label>
+        <input class="field-input" id="cm_location" placeholder="Route / description">
+      </div>
+      <div class="field-group">
+        <label>Contractor</label>
+        <input class="field-input" id="cm_contractor" placeholder="Contractor name">
+      </div>
+      <div class="field-group">
+        <label>Designer</label>
+        <input class="field-input" id="cm_designer" placeholder="Designer name">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeContractModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="saveContractModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL — Add / Edit Breakout
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="breakoutModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="breakoutModalTitle">Add Breakout</div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field-group">
+          <label>Breakout No *</label>
+          <input class="field-input" id="bm_no" placeholder="e.g. 01" maxlength="4">
+        </div>
+        <div class="field-group">
+          <label>Construction Type</label>
+          <input class="field-input" id="bm_type" placeholder="e.g. I000 ROADWAY">
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Description *</label>
+        <input class="field-input" id="bm_desc" placeholder="e.g. ROADWAY 20% NEW 80% EXISTING">
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>From Station</label>
+          <input class="field-input" id="bm_from" placeholder='e.g. "P2A" 449+76.00'>
+        </div>
+        <div class="field-group">
+          <label>To Station</label>
+          <input class="field-input" id="bm_to" placeholder='e.g. "X" 158+23.29'>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeBreakoutModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="saveBreakoutModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     MODAL — Add / Edit Item
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="itemModal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="itemModalTitle">Add Item</div>
+    <div class="modal-body">
+      <div class="field-row">
+        <div class="field-group">
+          <label>Bid Item # *</label>
+          <input class="field-input" id="im_bidItem" placeholder="e.g. 2000100">
+        </div>
+        <div class="field-group">
+          <label>Unit of Measure</label>
+          <input class="field-input" id="im_unit" placeholder="e.g. HOUR">
+        </div>
+      </div>
+      <div class="field-group">
+        <label>Description *</label>
+        <input class="field-input" id="im_desc" placeholder="e.g. SURVEY CREW">
+      </div>
+      <div class="field-row-3">
+        <div class="field-group">
+          <label>Quantity</label>
+          <input class="field-input" id="im_qty" type="number" step="any" placeholder="0">
+        </div>
+        <div class="field-group">
+          <label>Unit Price</label>
+          <input class="field-input" id="im_price" type="number" step="any" placeholder="0.00">
+        </div>
+        <div class="field-group">
+          <label>Item Cost</label>
+          <input class="field-input" id="im_cost" type="number" step="any" placeholder="0.00">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeItemModal()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="saveItemModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SHEET — Item Detail
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="itemDetailSheet">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="item-detail-bid" id="ids_bidItem"></div>
+    <div class="item-detail-desc" id="ids_desc"></div>
+    <div class="item-detail-divider"></div>
+    <div class="item-detail-qty" id="ids_qty"></div>
+    <div class="item-detail-divider"></div>
+    <div class="item-detail-prices">
+      <div class="item-price-block">
+        <div class="item-price-label">Unit Price</div>
+        <div class="item-price-value" id="ids_price"></div>
+      </div>
+      <div class="item-price-block">
+        <div class="item-price-label">Item Cost</div>
+        <div class="item-price-value" id="ids_cost"></div>
+      </div>
+    </div>
+    <div class="item-detail-divider"></div>
+    <div class="item-detail-notes-label">Notes</div>
+    <textarea class="item-note-area" id="ids_note" placeholder="No notes yet. Tap to add…"></textarea>
+    <div class="item-detail-actions">
+      <button class="btn btn-secondary btn-small" onclick="closeItemDetail()">Close</button>
+      <button class="btn btn-primary btn-small" style="flex:1;" onclick="saveItemNote()">Save Note</button>
+      <button class="btn btn-secondary btn-small" onclick="openEditItemModal()">Edit</button>
+      <button class="btn btn-danger btn-small" onclick="confirmDeleteItem()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SHEET — Breakout Note
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="breakoutNoteSheet">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="bns_title">Breakout Note</div>
+    <div class="modal-body">
+      <textarea class="field-input" id="bns_note" placeholder="Add a note for this breakout…" style="min-height:120px;"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeBreakoutNoteSheet()">Close</button>
+      <button class="btn btn-secondary btn-small" onclick="clearBreakoutNote()">Clear</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="saveBreakoutNote()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SHEET — Import Review
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="importReviewSheet">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Review Import</div>
+    <div class="modal-body">
+      <div class="import-stats">
+        <div class="import-stat">
+          <div class="import-stat-num" id="ir_breakoutCount">0</div>
+          <div class="import-stat-label">Breakouts</div>
+        </div>
+        <div class="import-stat">
+          <div class="import-stat-num" id="ir_itemCount">0</div>
+          <div class="import-stat-label">Items</div>
+        </div>
+      </div>
+      <div class="import-review-info" id="ir_info"></div>
+      <p style="font-size:0.8em;color:var(--text-muted);padding:0 0 4px;">You can edit contract details after import.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="cancelImport()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="confirmImport()">Confirm Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     SHEET — Project Manager Sync
+     ══════════════════════════════════════════ -->
+<div class="modal-overlay" id="pmSyncSheet">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="pmSyncTitle">Project Manager</div>
+    <div class="modal-body" id="pmSyncBody"></div>
+    <div class="modal-actions" id="pmSyncActions"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     Confirm Dialog
+     ══════════════════════════════════════════ -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">Are you sure?</div>
+    <div class="confirm-msg" id="confirmMsg"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" style="flex:1;" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" style="flex:1;" id="confirmOkBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loadingText">Parsing PDF…</div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── PDF.js ──────────────────────────────────────────────────────────────────
+const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let pdfjsLib = null;
+
+function loadPdfJs() {
+  if (pdfjsLib) return Promise.resolve(pdfjsLib);
+  if (window.pdfjsLib) { pdfjsLib = window.pdfjsLib; pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return Promise.resolve(pdfjsLib); }
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = PDFJS_CDN;
+    s.onload = () => {
+      pdfjsLib = window.pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
+      resolve(pdfjsLib);
+    };
+    s.onerror = () => reject(new Error('Could not load PDF.js. Check your connection.'));
+    document.head.appendChild(s);
+  });
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let contracts = [];          // all loaded contracts
+let currentContract = null;  // contract being viewed
+let editingContractId = null;
+let editingBreakoutIdx = null;
+let editingItemId = null;
+let editingItemBreakoutIdx = null;
+let pendingImport = null;    // parsed data waiting for confirmation
+let confirmCallback = null;
+let activeBreakoutNoteIdx = null;
+
+// ── Utility ──────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtQty(q) { if (q == null || q === '') return '—'; const n = parseFloat(q); return isNaN(n) ? String(q) : n.toLocaleString('en-US', {minimumFractionDigits:3, maximumFractionDigits:3}); }
+function fmtMoney(v) { if (v == null || v === '') return '—'; const n = parseFloat(v); return isNaN(n) ? String(v) : '$' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function parseNum(s) { if (!s) return null; const n = parseFloat(String(s).replace(/,/g,'')); return isNaN(n) ? null : n; }
+function badgeClass(idx) { return 'badge-' + (idx % 4); }
+
+function showToast(msg, ms=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function openConfirm(title, msg, okLabel, cb) {
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmMsg').textContent = msg;
+  document.getElementById('confirmOkBtn').textContent = okLabel;
+  confirmCallback = cb;
+  document.getElementById('confirmOverlay').classList.add('open');
+}
+function closeConfirm() {
+  document.getElementById('confirmOverlay').classList.remove('open');
+  confirmCallback = null;
+}
+document.getElementById('confirmOkBtn').addEventListener('click', () => {
+  if (confirmCallback) confirmCallback();
+  closeConfirm();
+});
+
+// ── Theme ────────────────────────────────────────────────────────────────────
+const themeBtn = document.getElementById('themeBtn');
+themeBtn.addEventListener('click', () => {
+  const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+  themeBtn.textContent = isHC ? 'Dark' : 'Light';
+  localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
+  ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+});
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const saved = await ftGetSetting('surveyTheme');
+  if (saved === 'high-contrast') {
+    document.documentElement.setAttribute('data-theme', 'high-contrast');
+    themeBtn.textContent = 'Light';
+  }
+  contracts = await ftGetAllBidContracts();
+  contracts.sort((a,b) => (b.created||0) - (a.created||0));
+  renderContractList();
+}
+init();
+
+// ── Contract List ─────────────────────────────────────────────────────────────
+function renderContractList() {
+  const el = document.getElementById('contractList');
+  if (!contracts.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No contracts yet</div>
+      <div class="empty-sub">Import an Agreement Estimate PDF<br>or add a contract manually.</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = contracts.map(c => {
+    const bCount = (c.breakouts||[]).length;
+    const iCount = (c.breakouts||[]).reduce((sum,b)=>sum+(b.items||[]).length,0);
+    return `<div class="contract-card" onclick="openContract('${c.id}')">
+      <div class="contract-card-top">
+        <div>
+          <div class="contract-no">Contract ${esc(c.contractNo||'—')}</div>
+          <div class="contract-name">${esc(c.projectNo||c.projectId||'')}</div>
+        </div>
+        <button class="contract-delete" onclick="event.stopPropagation();deleteContract('${c.id}')" title="Delete">🗑</button>
+      </div>
+      <div class="contract-meta">${esc(c.contractor||'')}${c.county ? ' · ' + esc(c.county) : ''}</div>
+      <div class="contract-pills">
+        <span class="pill pill-blue">${bCount} breakout${bCount!==1?'s':''}</span>
+        <span class="pill pill-green">${iCount} item${iCount!==1?'s':''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function showContractList() {
+  document.getElementById('contractDetailView').classList.add('hidden');
+  document.getElementById('contractListView').classList.remove('hidden');
+  clearSearch();
+}
+
+function openContract(id) {
+  currentContract = contracts.find(c => c.id === id);
+  if (!currentContract) return;
+  document.getElementById('detailNavTitle').textContent = 'Contract ' + (currentContract.contractNo||'');
+  document.getElementById('contractListView').classList.add('hidden');
+  document.getElementById('contractDetailView').classList.remove('hidden');
+  renderBreakouts();
+  window.scrollTo(0,0);
+}
+
+async function deleteContract(id) {
+  const c = contracts.find(x => x.id === id);
+  openConfirm('Delete Contract?', `Delete Contract ${c?.contractNo||id}? This cannot be undone.`, 'Delete', async () => {
+    await ftDeleteBidContract(id);
+    contracts = contracts.filter(x => x.id !== id);
+    renderContractList();
+    showToast('Contract deleted');
+  });
+}
+
+// ── Contract Modal ────────────────────────────────────────────────────────────
+function openNewContractModal() {
+  editingContractId = null;
+  document.getElementById('contractModalTitle').textContent = 'New Contract';
+  ['contractNo','projectNo','projectId','county','location','contractor','designer'].forEach(f => {
+    document.getElementById('cm_'+f).value = '';
+  });
+  document.getElementById('contractModal').classList.add('open');
+}
+function openEditContractModal() {
+  if (!currentContract) return;
+  editingContractId = currentContract.id;
+  document.getElementById('contractModalTitle').textContent = 'Edit Contract';
+  document.getElementById('cm_contractNo').value = currentContract.contractNo||'';
+  document.getElementById('cm_projectNo').value = currentContract.projectNo||'';
+  document.getElementById('cm_projectId').value = currentContract.projectId||'';
+  document.getElementById('cm_county').value = currentContract.county||'';
+  document.getElementById('cm_location').value = currentContract.location||'';
+  document.getElementById('cm_contractor').value = currentContract.contractor||'';
+  document.getElementById('cm_designer').value = currentContract.designer||'';
+  document.getElementById('contractModal').classList.add('open');
+}
+function closeContractModal() { document.getElementById('contractModal').classList.remove('open'); }
+async function saveContractModal() {
+  const no = document.getElementById('cm_contractNo').value.trim();
+  if (!no) { document.getElementById('cm_contractNo').focus(); return; }
+  if (editingContractId) {
+    const c = contracts.find(x => x.id === editingContractId);
+    if (c) {
+      c.contractNo = no;
+      c.projectNo = document.getElementById('cm_projectNo').value.trim();
+      c.projectId = document.getElementById('cm_projectId').value.trim();
+      c.county = document.getElementById('cm_county').value.trim();
+      c.location = document.getElementById('cm_location').value.trim();
+      c.contractor = document.getElementById('cm_contractor').value.trim();
+      c.designer = document.getElementById('cm_designer').value.trim();
+      await ftSaveBidContract(c);
+      if (currentContract?.id === c.id) {
+        currentContract = c;
+        document.getElementById('detailNavTitle').textContent = 'Contract ' + c.contractNo;
+      }
+    }
+  } else {
+    const c = {
+      id: uid(), created: Date.now(),
+      contractNo: no,
+      projectNo: document.getElementById('cm_projectNo').value.trim(),
+      projectId: document.getElementById('cm_projectId').value.trim(),
+      county: document.getElementById('cm_county').value.trim(),
+      location: document.getElementById('cm_location').value.trim(),
+      contractor: document.getElementById('cm_contractor').value.trim(),
+      designer: document.getElementById('cm_designer').value.trim(),
+      note: '', breakouts: []
+    };
+    await ftSaveBidContract(c);
+    contracts.unshift(c);
+  }
+  closeContractModal();
+  renderContractList();
+  showToast('Saved');
+}
+
+// ── Breakout Rendering ────────────────────────────────────────────────────────
+function renderBreakouts(searchQuery) {
+  const q = (searchQuery||'').trim().toLowerCase();
+  const list = document.getElementById('breakoutList');
+  const breakouts = currentContract?.breakouts || [];
+
+  if (!breakouts.length) {
+    list.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">📂</div>
+      <div class="empty-title">No breakouts yet</div>
+      <div class="empty-sub">Add breakouts and items manually,<br>or import an Agreement Estimate PDF.</div>
+    </div>
+    <div class="add-breakout-wrap" style="padding:0 16px;">
+      <button class="btn btn-secondary btn-full" onclick="openAddBreakoutModal()">+ Add Breakout</button>
+    </div>`;
+    return;
+  }
+
+  let totalMatches = 0;
+  const cards = breakouts.map((b, bIdx) => {
+    const items = b.items || [];
+    const matchItems = q ? items.filter(i =>
+      i.bidItem.includes(q) || i.description.toLowerCase().includes(q)
+    ) : items;
+    const show = !q || matchItems.length > 0;
+    if (q) totalMatches += matchItems.length;
+    const displayItems = q ? matchItems : items;
+    const isOpen = q && matchItems.length > 0;
+
+    const itemRows = displayItems.map(item => `
+      <div class="item-row" onclick="openItemDetail('${esc(b.no)}',${bIdx},'${esc(item.id)}')">
+        <span class="item-bid">${esc(item.bidItem)}</span>
+        <span class="item-desc">${esc(item.description)}</span>
+        <span class="item-qty">${fmtQty(item.quantity)} ${esc(item.unitMeas)}</span>
+        ${item.note ? '<span class="item-note-dot"></span>' : ''}
+      </div>`).join('');
+
+    return `<div class="breakout-card${isOpen?' open':''}" id="bcard-${bIdx}" ${!show?'style="display:none"':''}>
+      <div class="breakout-header" onclick="toggleBreakout(${bIdx})">
+        <span class="breakout-badge ${badgeClass(bIdx)}">Breakout ${esc(b.no)}</span>
+        <div class="breakout-header-info">
+          <div class="breakout-title">${esc(b.description)}</div>
+          ${(b.fromStation||b.toStation)?`<div class="breakout-stations">Sta. ${esc(b.fromStation||'?')} → ${esc(b.toStation||'?')}</div>`:''}
+        </div>
+        <div class="breakout-header-actions">
+          <span class="breakout-item-count">${items.length}</span>
+          <button class="breakout-note-btn" onclick="event.stopPropagation();openBreakoutNoteSheet(${bIdx})" title="Breakout note">
+            ✏️${b.note?'<span class="note-dot"></span>':''}
+          </button>
+          <span class="breakout-chevron">▾</span>
+        </div>
+      </div>
+      <div class="breakout-body" id="bbody-${bIdx}" ${isOpen?'style="max-height:9999px"':''}>
+        ${itemRows}
+        <div class="add-item-row">
+          <button class="btn btn-secondary btn-small" onclick="openAddItemModal(${bIdx})">+ Add Item</button>
+          <button class="btn btn-secondary btn-small" style="margin-left:6px;" onclick="openEditBreakoutModal(${bIdx})">Edit</button>
+          <button class="btn btn-danger btn-small" style="margin-left:6px;" onclick="confirmDeleteBreakout(${bIdx})">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  const countHtml = q && totalMatches > 0 ? `<p style="font-size:0.8em;color:var(--accent-blue);font-weight:700;padding:0 4px 8px;">${totalMatches} match${totalMatches!==1?'es':''}</p>` : '';
+
+  list.innerHTML = countHtml + cards.join('') + `
+    <div class="add-breakout-wrap">
+      <button class="btn btn-secondary btn-full" onclick="openAddBreakoutModal()">+ Add Breakout</button>
+    </div>`;
+}
+
+function toggleBreakout(idx) {
+  const card = document.getElementById('bcard-'+idx);
+  const body = document.getElementById('bbody-'+idx);
+  const isOpen = card.classList.toggle('open');
+  if (isOpen) body.style.maxHeight = '9999px';
+  else body.style.maxHeight = '0';
+}
+
+// ── Search ────────────────────────────────────────────────────────────────────
+function applySearch(val) {
+  const q = val.trim();
+  const clearBtn = document.getElementById('searchClear');
+  const countEl = document.getElementById('searchCount');
+  clearBtn.classList.toggle('hidden', !q);
+  if (!q) {
+    countEl.classList.add('hidden');
+    renderBreakouts();
+    return;
+  }
+  renderBreakouts(q);
+  // count display is inside renderBreakouts
+}
+function clearSearch() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('searchClear').classList.add('hidden');
+  document.getElementById('searchCount').classList.add('hidden');
+  renderBreakouts();
+}
+
+// ── Breakout Modal ────────────────────────────────────────────────────────────
+function openAddBreakoutModal() {
+  editingBreakoutIdx = null;
+  document.getElementById('breakoutModalTitle').textContent = 'Add Breakout';
+  ['no','type','desc','from','to'].forEach(f => document.getElementById('bm_'+f).value='');
+  document.getElementById('breakoutModal').classList.add('open');
+}
+function openEditBreakoutModal(idx) {
+  editingBreakoutIdx = idx;
+  const b = currentContract.breakouts[idx];
+  document.getElementById('breakoutModalTitle').textContent = 'Edit Breakout';
+  document.getElementById('bm_no').value = b.no||'';
+  document.getElementById('bm_type').value = b.constructionType||'';
+  document.getElementById('bm_desc').value = b.description||'';
+  document.getElementById('bm_from').value = b.fromStation||'';
+  document.getElementById('bm_to').value = b.toStation||'';
+  document.getElementById('breakoutModal').classList.add('open');
+}
+function closeBreakoutModal() { document.getElementById('breakoutModal').classList.remove('open'); }
+async function saveBreakoutModal() {
+  const no = document.getElementById('bm_no').value.trim();
+  const desc = document.getElementById('bm_desc').value.trim();
+  if (!no||!desc) { if(!no) document.getElementById('bm_no').focus(); else document.getElementById('bm_desc').focus(); return; }
+  if (editingBreakoutIdx !== null) {
+    const b = currentContract.breakouts[editingBreakoutIdx];
+    b.no = no; b.constructionType = document.getElementById('bm_type').value.trim();
+    b.description = desc; b.fromStation = document.getElementById('bm_from').value.trim();
+    b.toStation = document.getElementById('bm_to').value.trim();
+  } else {
+    currentContract.breakouts.push({
+      no, description: desc,
+      constructionType: document.getElementById('bm_type').value.trim(),
+      fromStation: document.getElementById('bm_from').value.trim(),
+      toStation: document.getElementById('bm_to').value.trim(),
+      note: '', items: []
+    });
+  }
+  await ftSaveBidContract(currentContract);
+  closeBreakoutModal();
+  renderBreakouts();
+}
+function confirmDeleteBreakout(idx) {
+  const b = currentContract.breakouts[idx];
+  openConfirm('Delete Breakout?', `Delete Breakout ${b.no} — "${b.description}"? All items will be removed.`, 'Delete', async () => {
+    currentContract.breakouts.splice(idx, 1);
+    await ftSaveBidContract(currentContract);
+    renderBreakouts();
+    showToast('Breakout deleted');
+  });
+}
+
+// ── Item Modal ────────────────────────────────────────────────────────────────
+function openAddItemModal(bIdx) {
+  editingItemBreakoutIdx = bIdx;
+  editingItemId = null;
+  document.getElementById('itemModalTitle').textContent = 'Add Item';
+  ['bidItem','unit','desc','qty','price','cost'].forEach(f => document.getElementById('im_'+f).value='');
+  document.getElementById('itemModal').classList.add('open');
+}
+function openEditItemModal() {
+  // called from item detail sheet
+  const b = currentContract.breakouts[editingItemBreakoutIdx];
+  const item = b.items.find(i=>i.id===editingItemId);
+  if(!item) return;
+  document.getElementById('itemModalTitle').textContent = 'Edit Item';
+  document.getElementById('im_bidItem').value = item.bidItem||'';
+  document.getElementById('im_unit').value = item.unitMeas||'';
+  document.getElementById('im_desc').value = item.description||'';
+  document.getElementById('im_qty').value = item.quantity??'';
+  document.getElementById('im_price').value = item.unitPrice??'';
+  document.getElementById('im_cost').value = item.itemCost??'';
+  closeItemDetail();
+  document.getElementById('itemModal').classList.add('open');
+}
+function closeItemModal() { document.getElementById('itemModal').classList.remove('open'); }
+async function saveItemModal() {
+  const bidItem = document.getElementById('im_bidItem').value.trim();
+  const desc = document.getElementById('im_desc').value.trim();
+  if (!bidItem||!desc) { if(!bidItem) document.getElementById('im_bidItem').focus(); else document.getElementById('im_desc').focus(); return; }
+  const b = currentContract.breakouts[editingItemBreakoutIdx];
+  if (editingItemId) {
+    const item = b.items.find(i=>i.id===editingItemId);
+    if (item) {
+      item.bidItem = bidItem; item.unitMeas = document.getElementById('im_unit').value.trim();
+      item.description = desc;
+      item.quantity = parseNum(document.getElementById('im_qty').value);
+      item.unitPrice = parseNum(document.getElementById('im_price').value);
+      item.itemCost = parseNum(document.getElementById('im_cost').value);
+    }
+  } else {
+    b.items.push({
+      id: uid(), bidItem, unitMeas: document.getElementById('im_unit').value.trim(),
+      description: desc,
+      quantity: parseNum(document.getElementById('im_qty').value),
+      unitPrice: parseNum(document.getElementById('im_price').value),
+      itemCost: parseNum(document.getElementById('im_cost').value),
+      note: ''
+    });
+  }
+  await ftSaveBidContract(currentContract);
+  closeItemModal();
+  renderBreakouts(document.getElementById('searchInput').value);
+}
+
+// ── Item Detail Sheet ─────────────────────────────────────────────────────────
+function openItemDetail(breakoutNo, bIdx, itemId) {
+  const b = currentContract.breakouts[bIdx];
+  const item = b?.items.find(i=>i.id===itemId);
+  if (!item) return;
+  editingItemBreakoutIdx = bIdx;
+  editingItemId = itemId;
+  document.getElementById('ids_bidItem').textContent = item.bidItem;
+  document.getElementById('ids_desc').textContent = item.description;
+  document.getElementById('ids_qty').textContent = fmtQty(item.quantity) + '  ' + (item.unitMeas||'');
+  document.getElementById('ids_price').textContent = fmtMoney(item.unitPrice);
+  document.getElementById('ids_cost').textContent = fmtMoney(item.itemCost);
+  document.getElementById('ids_note').value = item.note||'';
+  document.getElementById('itemDetailSheet').classList.add('open');
+}
+function closeItemDetail() { document.getElementById('itemDetailSheet').classList.remove('open'); }
+async function saveItemNote() {
+  const b = currentContract.breakouts[editingItemBreakoutIdx];
+  const item = b?.items.find(i=>i.id===editingItemId);
+  if (!item) return;
+  item.note = document.getElementById('ids_note').value.trim();
+  await ftSaveBidContract(currentContract);
+  closeItemDetail();
+  renderBreakouts(document.getElementById('searchInput').value);
+  showToast('Note saved');
+}
+function confirmDeleteItem() {
+  const b = currentContract.breakouts[editingItemBreakoutIdx];
+  const item = b?.items.find(i=>i.id===editingItemId);
+  openConfirm('Delete Item?', `Delete "${item?.description||'this item'}"?`, 'Delete', async () => {
+    b.items = b.items.filter(i=>i.id!==editingItemId);
+    await ftSaveBidContract(currentContract);
+    closeItemDetail();
+    renderBreakouts(document.getElementById('searchInput').value);
+    showToast('Item deleted');
+  });
+}
+
+// ── Breakout Note Sheet ───────────────────────────────────────────────────────
+function openBreakoutNoteSheet(idx) {
+  activeBreakoutNoteIdx = idx;
+  const b = currentContract.breakouts[idx];
+  document.getElementById('bns_title').textContent = `Breakout ${b.no} — Notes`;
+  document.getElementById('bns_note').value = b.note||'';
+  document.getElementById('breakoutNoteSheet').classList.add('open');
+}
+function closeBreakoutNoteSheet() { document.getElementById('breakoutNoteSheet').classList.remove('open'); }
+async function saveBreakoutNote() {
+  const b = currentContract.breakouts[activeBreakoutNoteIdx];
+  b.note = document.getElementById('bns_note').value.trim();
+  await ftSaveBidContract(currentContract);
+  closeBreakoutNoteSheet();
+  renderBreakouts(document.getElementById('searchInput').value);
+  showToast('Note saved');
+}
+async function clearBreakoutNote() {
+  const b = currentContract.breakouts[activeBreakoutNoteIdx];
+  b.note = '';
+  await ftSaveBidContract(currentContract);
+  closeBreakoutNoteSheet();
+  renderBreakouts(document.getElementById('searchInput').value);
+}
+
+// ── PDF Import ────────────────────────────────────────────────────────────────
+function triggerPdfImport() {
+  document.getElementById('pdfFileInput').value = '';
+  document.getElementById('pdfFileInput').click();
+}
+
+async function handlePdfFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const overlay = document.getElementById('loadingOverlay');
+  const loadText = document.getElementById('loadingText');
+  overlay.classList.add('open');
+  loadText.textContent = 'Loading PDF.js…';
+  try {
+    const lib = await loadPdfJs();
+    loadText.textContent = 'Parsing PDF…';
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
+    loadText.textContent = `Reading ${pdf.numPages} pages…`;
+    const allItems = await extractAllTextItems(pdf);
+    const parsed = parseAgreementEstimate(allItems);
+    overlay.classList.remove('open');
+    pendingImport = parsed;
+    showImportReview(parsed);
+  } catch(err) {
+    overlay.classList.remove('open');
+    showToast('Error: ' + err.message, 4000);
+    console.error(err);
+  }
+}
+
+async function extractAllTextItems(pdf) {
+  const allItems = [];
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const vp = page.getViewport({ scale: 1 });
+    const pageH = vp.height;
+    const tc = await page.getTextContent();
+    for (const item of tc.items) {
+      if (!item.str || !item.str.trim()) continue;
+      // PDF transform: [scaleX, skewX, skewY, scaleY, tx, ty]
+      const x = item.transform[4];
+      const y = pageH - item.transform[5]; // flip y so top=0
+      allItems.push({ str: item.str.trim(), x, y, page: p });
+    }
+  }
+  return allItems;
+}
+
+function parseAgreementEstimate(items) {
+  // Group into lines by y-position (per page)
+  const byPage = {};
+  for (const item of items) {
+    if (!byPage[item.page]) byPage[item.page] = [];
+    byPage[item.page].push(item);
+  }
+
+  const lines = []; // array of { page, y, tokens: [{str, x}] }
+  for (const [page, pageItems] of Object.entries(byPage)) {
+    pageItems.sort((a,b) => a.y - b.y);
+    const grouped = [];
+    for (const item of pageItems) {
+      const last = grouped[grouped.length-1];
+      if (last && Math.abs(item.y - last.y) < 8) {
+        last.tokens.push({ str: item.str, x: item.x });
+      } else {
+        grouped.push({ page: Number(page), y: item.y, tokens: [{ str: item.str, x: item.x }] });
+      }
+    }
+    for (const g of grouped) {
+      g.tokens.sort((a,b) => a.x - b.x);
+      lines.push(g);
+    }
+  }
+
+  // Parse document
+  const contract = {
+    contractNo: '', projectNo: '', projectId: '',
+    location: '', county: '', contractor: '', designer: '',
+    breakouts: []
+  };
+  let currentBreakout = null;
+  let headerParsed = false;
+  // Buffer description/type that appear BEFORE BREAKOUT NO: in the PDF
+  let pendingDescription = '';
+  let pendingConstructionType = '';
+
+  for (let li = 0; li < lines.length; li++) {
+    const line = lines[li];
+    const full = line.tokens.map(t=>t.str).join(' ');
+    const fullNorm = full.replace(/\s+/g,' ').trim();
+
+    // ── Project header fields (first page) ──
+    if (!headerParsed) {
+      const mCN = fullNorm.match(/CONTRACT NO[:\s]+(\S+)/i);
+      if (mCN) { contract.contractNo = mCN[1]; }
+      const mPID = fullNorm.match(/PROJECT ID[:\s]+(\S+)/i);
+      if (mPID) { contract.projectId = mPID[1]; }
+      const mPN = fullNorm.match(/PROJECT NUMBER[:\s]+(\S+)/i);
+      if (mPN) { contract.projectNo = mPN[1]; }
+      const mCON = fullNorm.match(/CONTRACTOR[:\s]+(.+)/i);
+      if (mCON) { contract.contractor = mCON[1].trim(); }
+      const mDES = fullNorm.match(/DESIGNER[:\s]+([^P]+)/i);
+      if (mDES) { contract.designer = mDES[1].trim(); }
+      const mCNTY = fullNorm.match(/^COUNTY[:\s]+(.+)/i);
+      if (mCNTY) { contract.county = mCNTY[1].trim(); }
+      const mLOC = fullNorm.match(/LOCATION[:\s]+(.+)/i);
+      if (mLOC) { contract.location = mLOC[1].trim(); }
+    }
+
+    // ── Construction type (appears BEFORE BREAKOUT NO in PDF) ──
+    const mCT = fullNorm.match(/CONSTRUCTION TYPE CODE[:\s]+(.+)/i);
+    if (mCT) {
+      pendingConstructionType = mCT[1].trim();
+      continue;
+    }
+
+    // ── Breakout description (appears BEFORE BREAKOUT NO in PDF) ──
+    const mBD = fullNorm.match(/BREAKOUT DESCRIPTION[:\s]+(.+)/i);
+    if (mBD) {
+      pendingDescription = mBD[1].trim();
+      continue;
+    }
+
+    // ── Breakout start ──
+    const mBK = fullNorm.match(/BREAKOUT NO[:\s]+(\d+)/i);
+    if (mBK) {
+      headerParsed = true;
+      if (currentBreakout) contract.breakouts.push(currentBreakout);
+      const no = mBK[1].padStart(2,'0');
+      // Look for FROM/TO on same line
+      let fromSta = '', toSta = '';
+      const mFrom = fullNorm.match(/FROM STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
+      const mTo   = fullNorm.match(/TO STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
+      if (mFrom) fromSta = mFrom[1].trim();
+      if (mTo)   toSta   = mTo[1].trim();
+      currentBreakout = {
+        no,
+        description: pendingDescription,
+        constructionType: pendingConstructionType,
+        fromStation: fromSta, toStation: toSta,
+        note: '', items: []
+      };
+      pendingDescription = '';
+      pendingConstructionType = '';
+      continue;
+    }
+
+    // ── From/To stations (if on separate lines) ──
+    if (currentBreakout) {
+      const mF = fullNorm.match(/FROM STATION[:\s]+(.+?)(?:\s+TO STATION|$)/i);
+      if (mF && !currentBreakout.fromStation) currentBreakout.fromStation = mF[1].trim();
+      const mT = fullNorm.match(/TO STATION[:\s]+(.+)/i);
+      if (mT && !currentBreakout.toStation) currentBreakout.toStation = mT[1].trim();
+    }
+
+    // ── End of breakout ──
+    if (/^SUBTOTAL[:\s]/i.test(fullNorm)) {
+      // do not push yet — wait for next BREAKOUT NO or end
+      continue;
+    }
+
+    // ── Bid item row — first token is 7-digit number ──
+    if (currentBreakout) {
+      const firstStr = line.tokens[0]?.str || '';
+      if (/^\d{6,7}$/.test(firstStr)) {
+        const item = parseBidItemLine(line.tokens, firstStr);
+        if (item) {
+          item.id = uid();
+          item.note = '';
+          currentBreakout.items.push(item);
+        }
+      }
+    }
+  }
+  if (currentBreakout) contract.breakouts.push(currentBreakout);
+
+  return contract;
+}
+
+function parseBidItemLine(tokens, bidItem) {
+  // Sequential left-to-right parsing — no x-range assumptions needed.
+  // Order: [BidItem] [Quantity] [UnitMeas] [Description words...] [UnitPrice] [ItemCost]
+  const rest = tokens
+    .filter(t => t.str.trim() !== bidItem)
+    .sort((a, b) => a.x - b.x);
+  if (!rest.length) return null;
+
+  let i = 0;
+
+  // 1. Quantity: first token that is a plain number (digits + optional decimal)
+  let quantity = null;
+  while (i < rest.length) {
+    const s = rest[i].str.trim();
+    if (/^[\d,]+(\.\d+)?$/.test(s)) { quantity = parseNum(s); i++; break; }
+    i++;
+  }
+
+  // 2. Unit Meas: next token that is purely uppercase letters (HOUR, SQYD, LINFT, EACH, LS, FA…)
+  let unitMeas = '';
+  if (i < rest.length && /^[A-Z]{1,10}$/.test(rest[i].str.trim())) {
+    unitMeas = rest[i].str.trim();
+    i++;
+  }
+
+  // 3. From the RIGHT find unit price then item cost.
+  //    Cost values look like: 175.00  1,750.00  1,394,798.44  (exactly 2 decimal places)
+  const after = rest.slice(i);
+  let unitPrice = null, itemCost = null, descEnd = after.length;
+  let costFound = 0;
+
+  for (let j = after.length - 1; j >= 0 && costFound < 2; j--) {
+    const s = after[j].str.trim();
+    if (/^[\d,]+\.\d{2}$/.test(s)) {
+      const n = parseNum(s);
+      if (costFound === 0) { itemCost = n; }
+      else { unitPrice = n; }
+      costFound++;
+      descEnd = j;
+    } else {
+      break; // stop scanning right-to-left at first non-cost token
+    }
+  }
+
+  const description = after.slice(0, descEnd).map(t => t.str).join(' ').trim();
+  if (!description) return null;
+  return { bidItem, quantity, unitMeas, description, unitPrice, itemCost };
+}
+
+function showImportReview(parsed) {
+  const bCount = parsed.breakouts.length;
+  const iCount = parsed.breakouts.reduce((s,b)=>s+(b.items||[]).length,0);
+  document.getElementById('ir_breakoutCount').textContent = bCount;
+  document.getElementById('ir_itemCount').textContent = iCount;
+  const infoEl = document.getElementById('ir_info');
+  const rows = [
+    ['Contract No', parsed.contractNo||'—'],
+    ['Project No', parsed.projectNo||'—'],
+    ['Project ID', parsed.projectId||'—'],
+    ['County', parsed.county||'—'],
+    ['Contractor', parsed.contractor||'—'],
+    ['Designer', parsed.designer||'—'],
+  ];
+  infoEl.innerHTML = rows.map(([l,v])=>`
+    <div class="import-review-row">
+      <span class="import-review-label">${l}</span>
+      <span class="import-review-val">${esc(v)}</span>
+    </div>`).join('');
+  document.getElementById('importReviewSheet').classList.add('open');
+}
+
+function cancelImport() {
+  pendingImport = null;
+  document.getElementById('importReviewSheet').classList.remove('open');
+}
+
+async function confirmImport() {
+  if (!pendingImport) return;
+  const c = {
+    id: uid(), created: Date.now(),
+    contractNo: pendingImport.contractNo,
+    projectNo: pendingImport.projectNo,
+    projectId: pendingImport.projectId,
+    county: pendingImport.county,
+    location: pendingImport.location,
+    contractor: pendingImport.contractor,
+    designer: pendingImport.designer,
+    note: '',
+    breakouts: pendingImport.breakouts
+  };
+  await ftSaveBidContract(c);
+  contracts.unshift(c);
+  pendingImport = null;
+  document.getElementById('importReviewSheet').classList.remove('open');
+  renderContractList();
+  openContract(c.id);
+  const bCount = c.breakouts.length;
+  const iCount = c.breakouts.reduce((s,b)=>s+(b.items||[]).length,0);
+  showToast(`Imported ${bCount} breakout${bCount!==1?'s':''}, ${iCount} item${iCount!==1?'s':''}`);
+  // Offer PM sync after a brief delay so the detail view is visible first
+  if (c.contractNo) setTimeout(() => checkProjectSync(c), 600);
+}
+
+// ── Project Manager Sync ──────────────────────────────────────────────────────
+
+// Fields that map from bid contract → project manager
+const PM_SYNC_FIELDS = [
+  { key: 'contractNo',  pmKey: 'contractNumber', label: 'Contract No' },
+  { key: 'projectNo',   pmKey: 'projectNumber',  label: 'Project Number' },
+  { key: 'projectId',   pmKey: 'projectId',      label: 'Project ID' },
+  { key: 'county',      pmKey: 'county',         label: 'County' },
+  { key: 'contractor',  pmKey: 'contractor',     label: 'Contractor' },
+  { key: 'designer',    pmKey: 'designer',       label: 'Designer' },
+  { key: 'location',    pmKey: 'location',       label: 'Location' },
+];
+
+let pmSyncTargetId = null; // id of existing PM project to update, or null for new
+
+async function checkProjectSync(bidContract) {
+  if (!bidContract.contractNo) return;
+  const allProjects = await ftGetAllProjects();
+  const match = allProjects.find(p =>
+    p.contractNumber && p.contractNumber.trim() === bidContract.contractNo.trim()
+  );
+  openPmSyncSheet(bidContract, match || null);
+}
+
+function openPmSyncSheet(bidContract, existingProject) {
+  pmSyncTargetId = existingProject ? existingProject.id : null;
+  const body = document.getElementById('pmSyncBody');
+  const actions = document.getElementById('pmSyncActions');
+  const title = document.getElementById('pmSyncTitle');
+
+  // Only show fields that have a value in the parsed contract
+  const fields = PM_SYNC_FIELDS.filter(f => bidContract[f.key]);
+
+  if (!existingProject) {
+    // ── CREATE path ──
+    title.textContent = 'Create Project?';
+    body.innerHTML = `
+      <div class="sync-notice">No Project Manager project found for Contract <strong>${esc(bidContract.contractNo)}</strong>. Would you like to create one with the detected info?</div>
+      ${fields.map(f => `
+        <div class="sync-field-row" onclick="this.querySelector('input').click()">
+          <input type="checkbox" id="pmsync_${f.key}" checked>
+          <div>
+            <div class="sync-field-label">${esc(f.label)}</div>
+            <div class="sync-field-value">${esc(bidContract[f.key])}</div>
+          </div>
+        </div>`).join('')}`;
+    actions.innerHTML = `
+      <button class="btn btn-secondary" style="flex:1;" onclick="closePmSyncSheet()">Skip</button>
+      <button class="btn btn-primary" style="flex:2;" onclick="applyPmSync(${JSON.stringify(bidContract).replace(/"/g,'&quot;')}, null)">Create Project</button>`;
+  } else {
+    // ── UPDATE path ──
+    title.textContent = 'Sync to Project?';
+    // Show only fields where the detected value differs from existing
+    const diffFields = fields.filter(f => {
+      const existing = (existingProject[f.pmKey] || '').trim();
+      const incoming = (bidContract[f.key] || '').trim();
+      return incoming && incoming !== existing;
+    });
+    const sameFields = fields.filter(f => {
+      const existing = (existingProject[f.pmKey] || '').trim();
+      const incoming = (bidContract[f.key] || '').trim();
+      return incoming && incoming === existing;
+    });
+
+    body.innerHTML = `
+      <div class="sync-notice">Project <strong>${esc(ftProjectTitle(existingProject))}</strong> found. Select fields to update:</div>
+      ${diffFields.length ? diffFields.map(f => `
+        <div class="sync-field-row" onclick="this.querySelector('input').click()">
+          <input type="checkbox" id="pmsync_${f.key}" checked>
+          <div style="flex:1;min-width:0;">
+            <div class="sync-field-label">${esc(f.label)}</div>
+            <div class="sync-field-value">${esc(bidContract[f.key])}</div>
+            ${existingProject[f.pmKey] ? `<div class="sync-existing">Current: ${esc(existingProject[f.pmKey])}</div>` : ''}
+          </div>
+        </div>`).join('') : ''}
+      ${sameFields.length ? `<p style="font-size:0.78em;color:var(--text-muted);padding:8px 0 0;">${sameFields.map(f=>esc(f.label)).join(', ')} already match.</p>` : ''}
+      ${!diffFields.length ? '<p style="font-size:0.85em;color:var(--accent-green);padding:4px 0;">All detected fields already match this project.</p>' : ''}`;
+
+    const encodedBid = JSON.stringify(bidContract).replace(/"/g,'&quot;');
+    const encodedProj = JSON.stringify(existingProject).replace(/"/g,'&quot;');
+    actions.innerHTML = `
+      <button class="btn btn-secondary" style="flex:1;" onclick="closePmSyncSheet()">Skip</button>
+      ${diffFields.length ? `<button class="btn btn-primary" style="flex:2;" onclick="applyPmSync(${encodedBid}, ${encodedProj})">Apply Selected</button>` : ''}`;
+  }
+
+  document.getElementById('pmSyncSheet').classList.add('open');
+}
+
+function closePmSyncSheet() {
+  document.getElementById('pmSyncSheet').classList.remove('open');
+}
+
+async function applyPmSync(bidContract, existingProject) {
+  // Collect checked fields
+  const selected = PM_SYNC_FIELDS.filter(f => {
+    const cb = document.getElementById('pmsync_' + f.key);
+    return cb && cb.checked && bidContract[f.key];
+  });
+  if (!selected.length) { closePmSyncSheet(); return; }
+
+  if (!existingProject) {
+    // Create new project
+    const id = 'proj_' + Date.now() + Math.random().toString(36).slice(2,6);
+    const proj = {
+      id,
+      projectNumber: bidContract.projectNo || bidContract.contractNo || '',
+      name: '',
+      contractNumber: bidContract.contractNo || '',
+      fundingSource: '',
+      contractor: bidContract.contractor || '',
+      route: '',
+      location: bidContract.location || '',
+      projectId: bidContract.projectId || '',
+      county: bidContract.county || '',
+      designer: bidContract.designer || '',
+      description: '',
+      archived: false,
+      created: new Date().toISOString()
+    };
+    // Apply only checked fields
+    selected.forEach(f => { proj[f.pmKey] = bidContract[f.key]; });
+    await ftSaveProject(proj);
+    // Create stub materials entry so project appears in other tools
+    await ftSaveMaterials({ id, number: proj.projectNumber, description: '', archived: false, created: proj.created, materials: [] });
+    closePmSyncSheet();
+    showToast('Project created in Project Manager');
+  } else {
+    // Update existing project
+    const updated = { ...existingProject };
+    selected.forEach(f => { updated[f.pmKey] = bidContract[f.key]; });
+    await ftSaveProject(updated);
+    closePmSyncSheet();
+    showToast('Project updated in Project Manager');
+  }
+}
+
+// Close modals on overlay click
+['contractModal','breakoutModal','itemModal','itemDetailSheet','breakoutNoteSheet','importReviewSheet','pmSyncSheet'].forEach(id => {
+  document.getElementById(id).addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+  });
+});
+</script>
+</body>
+</html>

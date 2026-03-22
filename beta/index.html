@@ -166,7 +166,7 @@
                 <span class="section-icon">🔍</span>
                 <div class="section-info">
                     <div class="section-name">Inspection Tools</div>
-                    <div class="section-count">Area &amp; Volume · HMA Tool</div>
+                    <div class="section-count">Area &amp; Volume · HMA Tool · Bid Estimate</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -187,6 +187,18 @@
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 22, 2026</div>
+                    <div class="cl-title">Bid Estimate — Agreement Estimate PDF import</div>
+                    <ul class="cl-items">
+                        <li>Upload any NDOT Agreement Estimate PDF — breakouts and bid items parsed automatically</li>
+                        <li>Collapsible breakouts with From/To station info and item counts</li>
+                        <li>Live search by bid item number or description across all breakouts</li>
+                        <li>Per-breakout and per-item field notes</li>
+                        <li>Manual entry fallback for adding or editing breakouts and items</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 22, 2026</div>
@@ -333,6 +345,7 @@
                 tools: [
                     { icon: '📐', name: 'Area & Volume', desc: 'Rectangle, triangle, trapezoid, trapezium, circle & spandrel', href: 'area.html' },
                     { icon: '🛣️', name: 'HMA Tool', desc: 'Tonnage, yield check & RICE density', href: 'hma.html' },
+                    { icon: '📋', name: 'Bid Estimate', desc: 'Agreement Estimate — searchable bid items by breakout', href: 'bidestimate.html' },
                 ]
             },
             testing: {
