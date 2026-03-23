@@ -262,7 +262,7 @@ async function init() {
         document.getElementById('themeBtn').textContent = '☀️ Light';
     }
     const allProjects = await loadProjectsFromIDB();
-    projects = allProjects.map(p => ({ id: p.id, name: p.projectNumber || p.name || p.id, description: p.description || '', created: p.created, archived: p.archived }));
+    projects = allProjects.map(p => ({ id: p.id, name: p.contractNumber || p.projectId || p.id, description: p.description || '', created: p.created, archived: p.archived }));
     await syncExternalData();
     await renderProjects();
 }

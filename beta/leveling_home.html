@@ -313,6 +313,13 @@
     async function loadProjects() {
         const allLevelProjs = await ftGetAllLevelProjects();
         projects = allLevelProjs;
+        try {
+            const reg = await ftGetAllProjects();
+            for (const p of projects) {
+                const r = reg.find(r => r.id === p.id);
+                if (r) { p.contractNumber = r.contractNumber || ''; p.projectId = r.projectId || ''; }
+            }
+        } catch(e) {}
     }
     async function saveProjects() {
         for (const p of projects) {
@@ -630,7 +637,7 @@
         try { rowCount = loopData?.levelRows?.filter(r => !r.isVoid)?.length || 0; } catch(e) {}
         if (rowCount === 0) { banner.style.display = 'none'; return; }
         banner.style.display = 'flex';
-        document.getElementById('activeBannerName').textContent = `${proj.number} — ${loop.name}`;
+        document.getElementById('activeBannerName').textContent = `${proj.contractNumber || proj.projectId || proj.id} — ${loop.name}`;
         document.getElementById('activeBannerSub').textContent  =
             `${rowCount} station${rowCount!==1?'s':''} · ${loop.date||'No date'}${loop.closed?' · ✓ Closed':' · In progress'}`;
     }
@@ -681,7 +688,7 @@
             <div class="project-header">
                 <div class="project-header-left">
                     <div class="project-number">
-                        ${escHtml(p.number)}
+                        ${escHtml(p.contractNumber || p.projectId || p.id)}
                         <span class="status-badge ${p.archived?'badge-archived':'badge-active'}">${p.archived?'Archived':'Active'}</span>
                     </div>
                     ${p.desc?`<div class="project-desc">${escHtml(p.desc)}</div>`:''}
@@ -806,7 +813,7 @@
         const sel = document.getElementById('lmProject');
         sel.innerHTML = '<option value="">— No project —</option>' +
             projects.filter(p => !p.archived && p.id !== UNASSIGNED_ID)
-                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.number)}</option>`)
+                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.contractNumber || p.projectId || p.id)}</option>`)
                 .join('');
         sel.value = preSelectedPid || '';
         const p = preSelectedPid ? projects.find(x => x.id === preSelectedPid) : null;

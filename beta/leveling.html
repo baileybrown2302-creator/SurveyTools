@@ -653,6 +653,15 @@ async function loadStateFromLocalStorage(){
     unitsSelect.value=projectDetails.units||'ft';if(a.misclosureText){misclosureValue.textContent=a.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');
     levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;});
     levelRows.forEach(r=>{if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null){r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);}});}catch(e){}}
+    if (_activeProjectId) {
+        try {
+            const regProj = (await ftGetAllProjects()).find(p => p.id === _activeProjectId);
+            if (regProj) {
+                const display = regProj.contractNumber || regProj.projectId || '';
+                if (display) document.getElementById('projectNumber').value = display;
+            }
+        } catch(e) {}
+    }
     if(!document.getElementById('date').value)document.getElementById('date').valueAsDate=new Date();updateUnitLabels();renderTable();
     refreshCPNames();
 }
