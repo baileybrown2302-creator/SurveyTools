@@ -560,10 +560,59 @@
         document.getElementById('importModal').classList.remove('hidden');
     }
 
+    // ─── CP sync helper (mirrors leveling.html _lvResolveField) ──────────
+    function _lvResolveField(cp, field) {
+        const obs = cp.observations || [];
+        const key = 'prefer' + field.charAt(0).toUpperCase() + field.slice(1);
+        if (cp[key]) { const m = obs.find(o => o.id === cp[key]); if (m && m[field] != null) return m[field]; }
+        const first = obs.find(o => o[field] != null);
+        return first ? first[field] : (cp[field] ?? null);
+    }
+
+    async function _syncCPsFromLoop(projectId, loopId, loopName, levelRows) {
+        const today = new Date().toISOString().split('T')[0];
+        const toSync = levelRows.filter(r => !r.isVoid && r.pointName && r.elevation != null && (
+            r.type === 'IP' || (r.type === 'TP_FS' && !/^TP\d+$/.test(r.pointName))
+        ));
+        for (const r of toSync) {
+            try {
+                const pts = await ftGetControlPointsByProject(projectId);
+                const obs = {
+                    id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
+                    source: 'leveling', date: today,
+                    label: loopName + ' — ' + today,
+                    northing: null, easting: null, elevation: r.elevation,
+                    loopId, loopName,
+                    levelType: r.type === 'IP' ? 'IP' : 'TP',
+                };
+                const existing = pts.find(p => p.name.toLowerCase() === r.pointName.trim().toLowerCase());
+                if (existing) {
+                    existing.observations = [...(existing.observations || []), obs];
+                    existing.preferElevation = obs.id;
+                    existing.elevation = _lvResolveField(existing, 'elevation');
+                    await ftSaveControlPoint(existing);
+                } else {
+                    await ftSaveControlPoint({
+                        id: obs.id, projectId, name: r.pointName.trim(),
+                        northing: null, easting: null, elevation: r.elevation,
+                        preferNorthing: null, preferEasting: null, preferElevation: obs.id,
+                        oldStation: '', equation: '', distanceOld: null,
+                        newStation: '', distanceNew: null, note: '',
+                        status: 'uncategorized', statusNote: '', statusDate: '',
+                        created: today, observations: [obs],
+                    });
+                }
+            } catch (e) { console.warn('[syncCP]', e); }
+        }
+        return toSync.length;
+    }
+
     // ─── Commit import ────────────────────────────────────────────────────
     async function commitImport(showToastMsg = true) {
         const toImport = pendingImportBatch.filter(b => !b.alreadyExists && !b.error);
         if (toImport.length === 0) return;
+
+        let totalSynced = 0;
 
         // Group by normalized project number, maintain sort
         const byProject = {};
@@ -601,6 +650,7 @@
                 };
                 proj.loops.push(loopMeta);
                 await ftSaveLevelLoop({ ...b.data, id: lId, projectId: proj.id });
+                totalSynced += await _syncCPsFromLoop(proj.id, lId, b.loopName, b.data.levelRows || []);
             }
         }
 
@@ -614,7 +664,8 @@
 
         if (showToastMsg) {
             const pCount = Object.keys(byProject).length;
-            showToast(`Imported ${toImport.length} loop${toImport.length>1?'s':''} into ${pCount} project${pCount>1?'s':''}`);
+            const cpMsg = totalSynced > 0 ? `, ${totalSynced} point${totalSynced>1?'s':''} synced to control points` : '';
+            showToast(`Imported ${toImport.length} loop${toImport.length>1?'s':''} into ${pCount} project${pCount>1?'s':''}${cpMsg}`);
         }
     }
 
