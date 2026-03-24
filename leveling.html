@@ -513,7 +513,7 @@ document.getElementById('changelogClose').addEventListener('click',()=>document.
 document.getElementById('changelogModal').addEventListener('click',(e)=>{if(e.target===document.getElementById('changelogModal'))document.getElementById('changelogModal').classList.add('hidden');});
 
 // Modals
-function showConfirmModal(title,message,onConfirm){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.textContent='Confirm';confirmModalCancel.textContent='Cancel';confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>confirmModal.classList.add('hidden');confirmModal.classList.remove('hidden');}
+function showConfirmModal(title,message,onConfirm,onCancel){confirmModalTitle.textContent=title;confirmModalMessage.textContent=message;confirmModalConfirm.textContent='Confirm';confirmModalCancel.textContent='Cancel';confirmModalConfirm.onclick=()=>{onConfirm();confirmModal.classList.add('hidden');};confirmModalCancel.onclick=()=>{confirmModal.classList.add('hidden');if(onCancel)onCancel();};confirmModal.classList.remove('hidden');}
 
 function createFieldElement(field){
     const fg=document.createElement('div');fg.id=`group-${field.id||Math.random().toString(36).slice(2)}`;
@@ -1292,13 +1292,32 @@ printViewButton.onclick=()=>{
 exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccuracy();const a={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent,accuracy:acc?{misclosureMM:acc.misclosureMM,misclosureFt:acc.misclosureFt,totalDistFt:acc.totalDistFt,totalDistKm:acc.totalDistKm,sqrtK:acc.sqrtK,standards:acc.specs.map(s=>({name:s.name,factor:s.factor,allowableMM:s.allowable,pass:s.pass}))}:null};const j=JSON.stringify(a,null,2);const blob=new Blob([j],{type:"application/json"});const now=new Date();const dts=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'LEVELING').replace(/[^a-zA-Z0-9_-]/g,'_');const sd=(projectDetails.description||'DATA').substring(0,5).replace(/[^a-zA-Z0-9_-]/g,'_');const link=document.createElement('a');link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${sd}_${dts}.json`);document.body.appendChild(link);link.click();};
 
 importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null)r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();
-// Identify named points and TPs following the same rules as live entry
+// Identify named points and TPs — supports both current format (IP rows in levelRows)
+// and older format (IPs stored in ipsForM5 on TP_FS rows)
 (async()=>{
-  const toSync=levelRows.filter(r=>!r.isVoid&&r.pointName&&r.elevation!=null&&(
-    r.type==='IP'||(r.type==='TP_FS'&&!/^TP\d+$/.test(r.pointName))
-  ));
-  for(const r of toSync){await syncCPFromLeveling(r.pointName,r.elevation,r.type==='IP'?'IP':'TP');}
-  alert("Imported! "+toSync.length+" named point"+(toSync.length===1?'':'s')+" synced to control points.");
+  const candidates=[];
+  for(const r of levelRows){
+    if(r.isVoid)continue;
+    if(r.type==='IP'&&r.pointName&&r.elevation!=null){candidates.push({name:r.pointName,elevation:r.elevation,t:'IP'});}
+    else if(r.type==='TP_FS'||r.type==='CLOSING_FS'){
+      for(const ip of(r.ipsForM5||[])){if(ip.pointName&&ip.elevation!=null)candidates.push({name:ip.pointName,elevation:ip.elevation,t:'IP'});}
+      if(r.type==='TP_FS'&&r.pointName&&r.elevation!=null&&!/^TP\d+$/.test(r.pointName))candidates.push({name:r.pointName,elevation:r.elevation,t:'TP'});
+    }
+  }
+  const seen=new Map();for(const c of candidates)seen.set(c.name.trim().toLowerCase(),c);
+  const toSync=[...seen.values()];
+  if(!toSync.length||!_activeProjectId){alert('Imported!');return;}
+  // Look up project label for confirmation
+  let projLabel='';
+  try{const rp=(await ftGetAllProjects()).find(p=>p.id===_activeProjectId);projLabel=rp?.contractNumber||rp?.projectNumber||'';}catch(e){}
+  if(!projLabel)projLabel=document.getElementById('projectNumber').value.trim()||'current project';
+  const n=toSync.length;
+  showConfirmModal(
+    'Sync to Control Points',
+    `Add ${n} named point${n===1?'':'s'} to ${projLabel}?`,
+    async()=>{for(const c of toSync){await syncCPFromLeveling(c.name,c.elevation,c.t);}alert(`Imported! ${n} point${n===1?'':'s'} synced to ${projLabel}.`);},
+    ()=>{alert('Imported!');}
+  );
 })();});}else alert("Invalid format.");}catch(err){alert("Error: "+err.message);}finally{importJSONInput.value='';}};reader.readAsText(file);}});
 
 // Init is handled by the async loadSettings() IIFE above

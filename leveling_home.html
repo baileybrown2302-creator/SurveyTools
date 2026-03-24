@@ -569,23 +569,41 @@
         return first ? first[field] : (cp[field] ?? null);
     }
 
+    function _collectCPCandidates(levelRows) {
+        const candidates = [];
+        for (const r of levelRows) {
+            if (r.isVoid) continue;
+            if (r.type === 'IP' && r.pointName && r.elevation != null) {
+                candidates.push({ name: r.pointName, elevation: r.elevation, levelType: 'IP' });
+            } else if (r.type === 'TP_FS' || r.type === 'CLOSING_FS') {
+                for (const ip of (r.ipsForM5 || [])) {
+                    if (ip.pointName && ip.elevation != null)
+                        candidates.push({ name: ip.pointName, elevation: ip.elevation, levelType: 'IP' });
+                }
+                if (r.type === 'TP_FS' && r.pointName && r.elevation != null && !/^TP\d+$/.test(r.pointName))
+                    candidates.push({ name: r.pointName, elevation: r.elevation, levelType: 'TP' });
+            }
+        }
+        const seen = new Map();
+        for (const c of candidates) seen.set(c.name.trim().toLowerCase(), c);
+        return [...seen.values()];
+    }
+
     async function _syncCPsFromLoop(projectId, loopId, loopName, levelRows) {
         const today = new Date().toISOString().split('T')[0];
-        const toSync = levelRows.filter(r => !r.isVoid && r.pointName && r.elevation != null && (
-            r.type === 'IP' || (r.type === 'TP_FS' && !/^TP\d+$/.test(r.pointName))
-        ));
-        for (const r of toSync) {
+        const toSync = _collectCPCandidates(levelRows);
+        for (const c of toSync) {
             try {
                 const pts = await ftGetControlPointsByProject(projectId);
                 const obs = {
                     id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
                     source: 'leveling', date: today,
                     label: loopName + ' — ' + today,
-                    northing: null, easting: null, elevation: r.elevation,
+                    northing: null, easting: null, elevation: c.elevation,
                     loopId, loopName,
-                    levelType: r.type === 'IP' ? 'IP' : 'TP',
+                    levelType: c.levelType,
                 };
-                const existing = pts.find(p => p.name.toLowerCase() === r.pointName.trim().toLowerCase());
+                const existing = pts.find(p => p.name.toLowerCase() === c.name.trim().toLowerCase());
                 if (existing) {
                     existing.observations = [...(existing.observations || []), obs];
                     existing.preferElevation = obs.id;
@@ -593,8 +611,8 @@
                     await ftSaveControlPoint(existing);
                 } else {
                     await ftSaveControlPoint({
-                        id: obs.id, projectId, name: r.pointName.trim(),
-                        northing: null, easting: null, elevation: r.elevation,
+                        id: obs.id, projectId, name: c.name.trim(),
+                        northing: null, easting: null, elevation: c.elevation,
                         preferNorthing: null, preferEasting: null, preferElevation: obs.id,
                         oldStation: '', equation: '', distanceOld: null,
                         newStation: '', distanceNew: null, note: '',
@@ -612,7 +630,7 @@
         const toImport = pendingImportBatch.filter(b => !b.alreadyExists && !b.error);
         if (toImport.length === 0) return;
 
-        let totalSynced = 0;
+        const pendingSyncItems = [];
 
         // Group by normalized project number, maintain sort
         const byProject = {};
@@ -650,7 +668,15 @@
                 };
                 proj.loops.push(loopMeta);
                 await ftSaveLevelLoop({ ...b.data, id: lId, projectId: proj.id });
-                totalSynced += await _syncCPsFromLoop(proj.id, lId, b.loopName, b.data.levelRows || []);
+                const candidates = _collectCPCandidates(b.data.levelRows || []);
+                if (candidates.length > 0) {
+                    pendingSyncItems.push({
+                        projectId: proj.id,
+                        projLabel: proj.contractNumber || proj.number,
+                        loopId: lId, loopName: b.loopName,
+                        rows: b.data.levelRows || [], count: candidates.length
+                    });
+                }
             }
         }
 
@@ -664,8 +690,32 @@
 
         if (showToastMsg) {
             const pCount = Object.keys(byProject).length;
-            const cpMsg = totalSynced > 0 ? `, ${totalSynced} point${totalSynced>1?'s':''} synced to control points` : '';
-            showToast(`Imported ${toImport.length} loop${toImport.length>1?'s':''} into ${pCount} project${pCount>1?'s':''}${cpMsg}`);
+            showToast(`Imported ${toImport.length} loop${toImport.length>1?'s':''} into ${pCount} project${pCount>1?'s':''}`);
+        }
+
+        // Prompt to sync named points to control points
+        if (pendingSyncItems.length > 0) {
+            // Group by project label for summary
+            const byProjLabel = new Map();
+            for (const s of pendingSyncItems) {
+                byProjLabel.set(s.projLabel, (byProjLabel.get(s.projLabel) || 0) + s.count);
+            }
+            const lines = [...byProjLabel.entries()].map(([lbl, n]) =>
+                `${lbl}: ${n} named point${n===1?'':'s'}`
+            );
+            showConfirm(
+                'Sync to Control Points',
+                lines.join('\n'),
+                async () => {
+                    let synced = 0;
+                    for (const s of pendingSyncItems) {
+                        synced += await _syncCPsFromLoop(s.projectId, s.loopId, s.loopName, s.rows);
+                    }
+                    if (synced > 0) showToast(`${synced} point${synced>1?'s':''} synced to control points`);
+                },
+                'Sync Points',
+                'btn-success'
+            );
         }
     }
 
@@ -968,9 +1018,13 @@
     }
 
     // ─── Confirm ──────────────────────────────────────────────────────────
-    function showConfirm(title, message, onOk) {
+    function showConfirm(title, message, onOk, okLabel, okStyle) {
         document.getElementById('confirmTitle').textContent   = title;
         document.getElementById('confirmMessage').textContent = message;
+        const okBtn = document.getElementById('confirmOk');
+        okBtn.textContent = okLabel || 'Confirm';
+        okBtn.className = 'btn ' + (okStyle || 'btn-danger');
+        okBtn.style.flex = '1';
         pendingConfirmFn = onOk;
         document.getElementById('confirmModal').classList.remove('hidden');
     }
