@@ -430,7 +430,15 @@ let _editCorrelations=[]; // in-modal gauge correlations state
 async function loadData(){
     const contracts=await ftGetAllMaterials();
     data={contracts:Array.isArray(contracts)?contracts:[]};
+    try {
+        const reg=await ftGetAllProjects();
+        for(const c of data.contracts){
+            const r=reg.find(r=>r.id===c.id);
+            if(r){c.contractNumber=r.contractNumber||'';c.projectId=r.projectId||'';}
+        }
+    }catch(e){}
 }
+function cTitle(c){return c.contractNumber||c.projectId||c.number||c.id;}
 async function saveData(){
     // Save each contract individually keyed by its id
     for(const c of (data.contracts||[])){
@@ -489,8 +497,8 @@ function showContractView(id){
     document.getElementById('contractsView').classList.add('hidden');
     document.getElementById('contractView').classList.remove('hidden');
     const c=getContract(id);
-    document.getElementById('breadcrumbContract').textContent=c.number;
-    document.getElementById('contractViewTitle').textContent=c.number;
+    document.getElementById('breadcrumbContract').textContent=cTitle(c);
+    document.getElementById('contractViewTitle').textContent=cTitle(c);
     document.getElementById('contractViewDesc').textContent=c.description||'';
     document.getElementById('archiveToggleBtn').textContent=c.archived?'Restore':'Archive';
     setCat('all');
@@ -539,7 +547,7 @@ async function renderContracts(){
         const div=document.createElement('div');
         div.className='contract-card'+(c.archived?' archived':'');
         div.innerHTML=`<div class="contract-header" onclick="showContractView('${c.id}')">
-            <div><div class="contract-number">${escHtml(c.number)}</div>${c.description?`<div class="contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <div><div class="contract-number">${escHtml(cTitle(c))}</div>${c.description?`<div class="contract-desc">${escHtml(c.description)}</div>`:''}</div>
             <span class="status-badge ${c.archived?'badge-archived':'badge-active'}">${c.archived?'Archived':'Active'}</span>
         </div>${mats.length>0?`<div class="contract-meta">${chips}<span class="meta-chip">${mats.length} material${mats.length!==1?'s':''}</span></div>`:''}<div class="contract-meta" style="padding-top:0;"><button class="btn btn-secondary btn-small" onclick="event.stopPropagation();exportContractData('${c.id}')">⬇ Export All</button></div>`;
         list.appendChild(div);
@@ -846,7 +854,7 @@ function openExportChooser(){
         const contractCheckId='exp_c_'+c.id;
         group.innerHTML=`<div class="sel-contract-header">
             <input type="checkbox" id="${contractCheckId}" checked onchange="onExportContractCheck('${c.id}')">
-            <div><div class="sel-contract-name">${escHtml(c.number)}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <div><div class="sel-contract-name">${escHtml(cTitle(c))}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
             <span class="sel-contract-toggle">${mats.length} material${mats.length!==1?'s':''}</span>
         </div>
         <div class="sel-materials-list" id="exp_mats_${c.id}">
@@ -949,7 +957,7 @@ function openImportChooser(){
 
         group.innerHTML=`<div class="sel-contract-header">
             <input type="checkbox" id="${contractCheckId}" checked onchange="onImportContractCheck('${c.id}')">
-            <div><div class="sel-contract-name">${escHtml(c.number)} ${contractStatus}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
+            <div><div class="sel-contract-name">${escHtml(cTitle(c))} ${contractStatus}</div>${c.description?`<div class="sel-contract-desc">${escHtml(c.description)}</div>`:''}</div>
             <span class="sel-contract-toggle">${mats.length} mat.</span>
         </div>
         <div class="sel-materials-list" id="imp_mats_${c.id}">

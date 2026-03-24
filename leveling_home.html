@@ -688,7 +688,7 @@
             <div class="project-header">
                 <div class="project-header-left">
                     <div class="project-number">
-                        ${escHtml(p.contractNumber || p.projectId || p.id)}
+                        ${escHtml(p.contractNumber || p.projectId || p.number || p.id)}
                         <span class="status-badge ${p.archived?'badge-archived':'badge-active'}">${p.archived?'Archived':'Active'}</span>
                     </div>
                     ${p.desc?`<div class="project-desc">${escHtml(p.desc)}</div>`:''}
@@ -813,7 +813,7 @@
         const sel = document.getElementById('lmProject');
         sel.innerHTML = '<option value="">— No project —</option>' +
             projects.filter(p => !p.archived && p.id !== UNASSIGNED_ID)
-                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.contractNumber || p.projectId || p.id)}</option>`)
+                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.contractNumber || p.projectId || p.number || p.id)}</option>`)
                 .join('');
         sel.value = preSelectedPid || '';
         const p = preSelectedPid ? projects.find(x => x.id === preSelectedPid) : null;

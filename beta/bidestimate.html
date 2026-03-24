@@ -591,6 +591,100 @@ function loadPdfJs() {
   });
 }
 
+// ── Tesseract OCR (fallback for Bluebeam-encoded PDFs) ───────────────────────
+const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+let tesseractLoaded = false;
+
+function loadTesseract() {
+  if (tesseractLoaded || window.Tesseract) { tesseractLoaded = true; return Promise.resolve(); }
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = TESSERACT_CDN;
+    s.onload = () => { tesseractLoaded = true; resolve(); };
+    s.onerror = () => reject(new Error('Could not load Tesseract OCR. Check your connection.'));
+    document.head.appendChild(s);
+  });
+}
+
+function isTextGarbled(items) {
+  if (!items.length) return true;
+  const combined = items.map(i => i.str).join('');
+  if (combined.length < 50) return true;
+  const printable = (combined.match(/[ -~]/g) || []).length;
+  if (printable / combined.length < 0.7) return true;
+  const lower = combined.toLowerCase();
+  return !lower.includes('breakout') && !lower.includes('contract') && !lower.includes('project');
+}
+
+// PDF.js clips each Type 3 glyph to its declared bounding box before drawing.
+// When the bbox is invalid (zero/negative dimensions — "Bad bounding box" warning),
+// clip() makes the glyph invisible.  For OCR we only need pixels on screen, so
+// we proxy the canvas context and silently drop every clip() call so every
+// glyph renders regardless of its declared bbox.
+function makeNoClipCtx(realCtx) {
+  return new Proxy(realCtx, {
+    get(target, prop) {
+      if (prop === 'clip') return () => {};
+      const val = target[prop];
+      return typeof val === 'function' ? val.bind(target) : val;
+    },
+    set(target, prop, value) { target[prop] = value; return true; }
+  });
+}
+
+async function extractTextViaOCR(pdf, updateStatus) {
+  updateStatus('Loading OCR engine\u2026 (first use downloads ~10\u202fMB)');
+  await loadTesseract();
+  updateStatus('Initializing OCR\u2026');
+  const worker = await Tesseract.createWorker('eng', 1, {
+    logger: m => {
+      if (m.status === 'loading tesseract core' || m.status === 'loading language traineddata') {
+        updateStatus(`Downloading OCR data\u2026 ${((m.progress||0)*100)|0}%`);
+      }
+    }
+  });
+  // PSM 11 = sparse text: find as much text as possible without structure assumptions.
+  // Default PSM 3 skips tabular/numeric content; PSM 11 scans the whole image for any text.
+  await worker.setParameters({ tessedit_pageseg_mode: '11' });
+  try {
+    const allItems = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      updateStatus(`OCR: rendering page ${p}\u202f/\u202f${pdf.numPages}\u2026`);
+      const page = await pdf.getPage(p);
+      const vp = page.getViewport({ scale: 2.0 });
+      const canvas = document.createElement('canvas');
+      canvas.width = vp.width;
+      canvas.height = vp.height;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Use no-clip proxy so Type 3 glyphs with bad bboxes still render
+      await page.render({ canvasContext: makeNoClipCtx(ctx), viewport: vp }).promise;
+      // Greyscale improves Tesseract accuracy
+      const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const px = id.data;
+      for (let i = 0; i < px.length; i += 4) {
+        const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+        px[i] = px[i + 1] = px[i + 2] = g;
+      }
+      ctx.putImageData(id, 0, 0);
+
+      updateStatus(`OCR: reading page ${p}\u202f/\u202f${pdf.numPages}\u2026`);
+      const { data } = await worker.recognize(canvas);
+      // Use actual word bounding-box pixel coordinates so multi-column rows
+      // stay in their correct vertical positions and don't bleed across columns.
+      for (const word of (data.words || [])) {
+        const t = word.text.trim();
+        if (!t) continue;
+        allItems.push({ str: t, x: word.bbox.x0, y: word.bbox.y0, page: p });
+      }
+    }
+    return allItems;
+  } finally {
+    await worker.terminate();
+  }
+}
+
 // ── State ────────────────────────────────────────────────────────────────────
 let contracts = [];          // all loaded contracts
 let currentContract = null;  // contract being viewed
@@ -1053,15 +1147,20 @@ async function handlePdfFile(input) {
   if (!file) return;
   const overlay = document.getElementById('loadingOverlay');
   const loadText = document.getElementById('loadingText');
+  const setStatus = t => { loadText.textContent = t; };
   overlay.classList.add('open');
-  loadText.textContent = 'Loading PDF.js…';
+  setStatus('Loading PDF.js\u2026');
   try {
     const lib = await loadPdfJs();
-    loadText.textContent = 'Parsing PDF…';
+    setStatus('Parsing PDF\u2026');
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
-    loadText.textContent = `Reading ${pdf.numPages} pages…`;
-    const allItems = await extractAllTextItems(pdf);
+    setStatus(`Reading ${pdf.numPages} pages\u2026`);
+    let allItems = await extractAllTextItems(pdf);
+    if (isTextGarbled(allItems)) {
+      // PDF uses non-standard font encoding (e.g. Bluebeam-processed) — fall back to OCR
+      allItems = await extractTextViaOCR(pdf, setStatus);
+    }
     const parsed = parseAgreementEstimate(allItems);
     overlay.classList.remove('open');
     pendingImport = parsed;
@@ -1125,7 +1224,7 @@ function parseAgreementEstimate(items) {
   };
   let currentBreakout = null;
   let headerParsed = false;
-  // Buffer description/type that appear BEFORE BREAKOUT NO: in the PDF
+  // Buffer description/type that appear BEFORE BREAKOUT NO (old format)
   let pendingDescription = '';
   let pendingConstructionType = '';
 
@@ -1134,53 +1233,92 @@ function parseAgreementEstimate(items) {
     const full = line.tokens.map(t=>t.str).join(' ');
     const fullNorm = full.replace(/\s+/g,' ').trim();
 
-    // ── Project header fields (first page) ──
+    // ── Project header fields ──
     if (!headerParsed) {
-      const mCN = fullNorm.match(/CONTRACT NO[:\s]+(\S+)/i);
+      // Contract number: old "CONTRACT NO:" or new "CONTRACT#:"
+      const mCN = fullNorm.match(/CONTRACT(?:\s*NO|\s*#)[:\s]+(\S+)/i);
       if (mCN) { contract.contractNo = mCN[1]; }
-      const mPID = fullNorm.match(/PROJECT ID[:\s]+(\S+)/i);
+      // Project EA/ID: old "PROJECT ID:" or new "PROJECT EA:" (PSM 11 may merge to "PROJECTEA:")
+      const mPID = fullNorm.match(/PROJECT\s*(?:ID|EA)[:\s]+(\S+)/i);
       if (mPID) { contract.projectId = mPID[1]; }
       const mPN = fullNorm.match(/PROJECT NUMBER[:\s]+(\S+)/i);
       if (mPN) { contract.projectNo = mPN[1]; }
-      const mCON = fullNorm.match(/CONTRACTOR[:\s]+(.+)/i);
-      if (mCON) { contract.contractor = mCON[1].trim(); }
-      const mDES = fullNorm.match(/DESIGNER[:\s]+([^P]+)/i);
-      if (mDES) { contract.designer = mDES[1].trim(); }
-      const mCNTY = fullNorm.match(/^COUNTY[:\s]+(.+)/i);
+      // Contractor — require colon immediately after CONTRACTOR (prevents matching
+      // "Contractor" as a breakout-type value in page 2 header rows)
+      const mCON = fullNorm.match(/\bCONTRACTOR\s*:\s*(.+)/i);
+      if (mCON) {
+        let v = mCON[1];
+        // Strip at first ALL-CAPS label or BID VERSION (allow optional space before colon)
+        v = v.replace(/\s+(?:BID VERSION\b|[A-Z][A-Z\s]{3,}\s*:).*$/i, '');
+        contract.contractor = v.trim();
+      }
+      // Designer — stop at DESIGNER PHONE or any subsequent label
+      // Designer — require colon immediately after DESIGNER (not "DESIGNER PHONE:")
+      const mDES = fullNorm.match(/\bDESIGNER\s*:\s*(?!PHONE)(.+)/i);
+      if (mDES) {
+        let v = mDES[1];
+        // Strip at any subsequent ALL-CAPS label or PHONE sub-field
+        v = v.replace(/\s+(?:PHONE\b|[A-Z][A-Z\s]{3,}:).*$/i, '');
+        contract.designer = v.trim();
+      }
+      // County: require colon to avoid matching "COUNTY NAME" table header
+      const mCNTY = fullNorm.match(/^COUNTY\s*:\s*(.+)/i);
       if (mCNTY) { contract.county = mCNTY[1].trim(); }
-      const mLOC = fullNorm.match(/LOCATION[:\s]+(.+)/i);
-      if (mLOC) { contract.location = mLOC[1].trim(); }
+      // Location: new "PROJECT NAME:" or old "^LOCATION:"
+      const mPNAME = fullNorm.match(/PROJECT NAME\s*:\s*(.+)/i);
+      if (mPNAME && !contract.location) {
+        let loc = mPNAME[1];
+        const nf = loc.match(/\s+[A-Z][A-Z\s]*\s*:/);
+        if (nf) loc = loc.slice(0, nf.index);
+        contract.location = loc.trim();
+      }
+      const mLOC = fullNorm.match(/^LOCATION\s*:\s*(.+)/i);
+      if (mLOC && !contract.location) { contract.location = mLOC[1].trim(); }
     }
 
-    // ── Construction type (appears BEFORE BREAKOUT NO in PDF) ──
-    const mCT = fullNorm.match(/CONSTRUCTION TYPE CODE[:\s]+(.+)/i);
+    // ── Construction type / work type ──
+    // old: "CONSTRUCTION TYPE CODE:", new: "WORK TYPE:"
+    const mCT = fullNorm.match(/(?:CONSTRUCTION TYPE CODE|WORK TYPE)[:\s]+(.+)/i);
     if (mCT) {
-      pendingConstructionType = mCT[1].trim();
+      const ct = mCT[1].replace(/\s+AGREEMENT\b.*$/i,'').trim();
+      if (currentBreakout) currentBreakout.constructionType = ct;
+      else pendingConstructionType = ct;
       continue;
     }
 
-    // ── Breakout description (appears BEFORE BREAKOUT NO in PDF) ──
+    // ── Breakout description ──
+    // Old format: appears BEFORE breakout no → buffer in pendingDescription
+    // New format: appears AFTER breakout no → set directly on currentBreakout
     const mBD = fullNorm.match(/BREAKOUT DESCRIPTION[:\s]+(.+)/i);
     if (mBD) {
-      pendingDescription = mBD[1].trim();
-      continue;
+      let desc = mBD[1];
+      // Truncate at next field label (e.g. "BEGIN STATIONING :")
+      const nf = desc.match(/\s+[A-Z][A-Z\s]*\s*:/);
+      if (nf) desc = desc.slice(0, nf.index);
+      desc = desc.trim();
+      if (currentBreakout && !currentBreakout.description) {
+        currentBreakout.description = desc;
+      } else {
+        pendingDescription = desc;
+      }
+      // No continue — this line may also contain BEGIN STATIONING
     }
 
     // ── Breakout start ──
-    const mBK = fullNorm.match(/BREAKOUT NO[:\s]+(\d+)/i);
+    // Optional period handles new "BREAKOUT NO.:" format
+    // N[O0] handles OCR O→0 substitution; optional period for "BREAKOUT NO.:"
+    const mBK = fullNorm.match(/BREAKOUT\s+N[O0]\.?[:\s]+(\d+)/i);
     if (mBK) {
       headerParsed = true;
       if (currentBreakout) contract.breakouts.push(currentBreakout);
       const no = mBK[1].padStart(2,'0');
-      // Look for FROM/TO on same line
       let fromSta = '', toSta = '';
       const mFrom = fullNorm.match(/FROM STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
       const mTo   = fullNorm.match(/TO STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
       if (mFrom) fromSta = mFrom[1].trim();
       if (mTo)   toSta   = mTo[1].trim();
       currentBreakout = {
-        no,
-        description: pendingDescription,
+        no, description: pendingDescription,
         constructionType: pendingConstructionType,
         fromStation: fromSta, toStation: toSta,
         note: '', items: []
@@ -1190,26 +1328,34 @@ function parseAgreementEstimate(items) {
       continue;
     }
 
-    // ── From/To stations (if on separate lines) ──
+    // ── Station fields ──
     if (currentBreakout) {
+      // New format: BEGIN/END STATIONING (stop before adjacent fields)
+      const mBS = fullNorm.match(/BEGIN STATIONING[:\s]+(.+?)(?:\s+(?:MAINTENANCE|OTHER|CAPACITY)\b|$)/i);
+      if (mBS && !currentBreakout.fromStation) currentBreakout.fromStation = mBS[1].trim();
+      const mES = fullNorm.match(/END STATIONING[:\s]+(.+?)(?:\s+(?:MAINTENANCE|OTHER|CAPACITY)\b|$)/i);
+      if (mES && !currentBreakout.toStation) currentBreakout.toStation = mES[1].trim();
+      // Old format: FROM/TO STATION
       const mF = fullNorm.match(/FROM STATION[:\s]+(.+?)(?:\s+TO STATION|$)/i);
       if (mF && !currentBreakout.fromStation) currentBreakout.fromStation = mF[1].trim();
       const mT = fullNorm.match(/TO STATION[:\s]+(.+)/i);
       if (mT && !currentBreakout.toStation) currentBreakout.toStation = mT[1].trim();
     }
 
-    // ── End of breakout ──
-    if (/^SUBTOTAL[:\s]/i.test(fullNorm)) {
-      // do not push yet — wait for next BREAKOUT NO or end
+    // ── Skip totals ──
+    if (/^SUB\s*TOTAL/i.test(fullNorm) || /^BREAKOUT TOTAL/i.test(fullNorm)) {
       continue;
     }
 
-    // ── Bid item row — first token is 7-digit number ──
+    // ── Bid item row — first token is 6–7 digit pay item number ──
     if (currentBreakout) {
-      const firstStr = line.tokens[0]?.str || '';
+      const rawFirst = line.tokens[0]?.str || '';
+      // Normalize common OCR digit-look-alikes (O→0, I/l→1) before the numeric check
+      const firstStr = rawFirst.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
       if (/^\d{6,7}$/.test(firstStr)) {
-        const item = parseBidItemLine(line.tokens, firstStr);
+        const item = parseBidItemLine(line.tokens, rawFirst);
         if (item) {
+          item.bidItem = firstStr; // store normalized number
           item.id = uid();
           item.note = '';
           currentBreakout.items.push(item);
@@ -1223,51 +1369,47 @@ function parseAgreementEstimate(items) {
 }
 
 function parseBidItemLine(tokens, bidItem) {
-  // Sequential left-to-right parsing — no x-range assumptions needed.
-  // Order: [BidItem] [Quantity] [UnitMeas] [Description words...] [UnitPrice] [ItemCost]
-  const rest = tokens
-    .filter(t => t.str.trim() !== bidItem)
-    .sort((a, b) => a.x - b.x);
+  // Column x-boundaries for scale=2.0 on a standard NDOT letter-size page (1224px wide).
+  const COL_QTY_START  = 120;  // quantity + unit column (quantities start at x≈133)
+  const COL_DESC_START = 350;  // description column (desc starts at x≈370)
+  // Right-side boundary: unit price and amount are always well past the description.
+  // Using x > PRICE_REGION avoids the need to calibrate an exact UP vs AMT split line,
+  // since right-aligned numbers vary in left-edge position depending on digit count.
+  const PRICE_REGION = 800;
+
+  const rest = tokens.filter(t => t.str.trim() !== bidItem).sort((a, b) => a.x - b.x);
   if (!rest.length) return null;
 
-  let i = 0;
+  const qtyTokens  = rest.filter(t => t.x >= COL_QTY_START  && t.x < COL_DESC_START);
+  const descTokens = rest.filter(t => t.x >= COL_DESC_START && t.x < PRICE_REGION);
 
-  // 1. Quantity: first token that is a plain number (digits + optional decimal)
-  let quantity = null;
-  while (i < rest.length) {
-    const s = rest[i].str.trim();
-    if (/^[\d,]+(\.\d+)?$/.test(s)) { quantity = parseNum(s); i++; break; }
-    i++;
+  // All xx.xx numbers to the right of the description (sorted left→right).
+  // Second-rightmost = unit price, rightmost = amount (both columns are right-aligned).
+  const priceNums = rest
+    .filter(t => t.x >= PRICE_REGION && /^[\d,]+\.\d{2}$/.test(t.str.trim()))
+    .sort((a, b) => a.x - b.x);
+
+  // Quantity: first number in qty column; Unit: first all-caps alpha token in qty column
+  let quantity = null, unitMeas = '';
+  for (const t of qtyTokens) {
+    const s = t.str.trim();
+    if (!quantity && /^[\d,]+(\.\d+)?$/.test(s)) { quantity = parseNum(s); }
+    else if (!unitMeas && /^[A-Z]{1,10}$/.test(s)) { unitMeas = s; }
   }
 
-  // 2. Unit Meas: next token that is purely uppercase letters (HOUR, SQYD, LINFT, EACH, LS, FA…)
-  let unitMeas = '';
-  if (i < rest.length && /^[A-Z]{1,10}$/.test(rest[i].str.trim())) {
-    unitMeas = rest[i].str.trim();
-    i++;
-  }
-
-  // 3. From the RIGHT find unit price then item cost.
-  //    Cost values look like: 175.00  1,750.00  1,394,798.44  (exactly 2 decimal places)
-  const after = rest.slice(i);
-  let unitPrice = null, itemCost = null, descEnd = after.length;
-  let costFound = 0;
-
-  for (let j = after.length - 1; j >= 0 && costFound < 2; j--) {
-    const s = after[j].str.trim();
-    if (/^[\d,]+\.\d{2}$/.test(s)) {
-      const n = parseNum(s);
-      if (costFound === 0) { itemCost = n; }
-      else { unitPrice = n; }
-      costFound++;
-      descEnd = j;
-    } else {
-      break; // stop scanning right-to-left at first non-cost token
-    }
-  }
-
-  const description = after.slice(0, descEnd).map(t => t.str).join(' ').trim();
+  // Description: all tokens in the description column
+  const description = descTokens.map(t => t.str).join(' ').trim();
   if (!description) return null;
+
+  // Unit price = second-rightmost price; amount = rightmost price
+  let unitPrice = null, itemCost = null;
+  if (priceNums.length >= 2) {
+    unitPrice = parseNum(priceNums[priceNums.length - 2].str);
+    itemCost  = parseNum(priceNums[priceNums.length - 1].str);
+  } else if (priceNums.length === 1) {
+    itemCost = parseNum(priceNums[0].str);
+  }
+
   return { bidItem, quantity, unitMeas, description, unitPrice, itemCost };
 }
 
