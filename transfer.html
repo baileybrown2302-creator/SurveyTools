@@ -12,10 +12,10 @@
     <link rel="apple-touch-icon" href="./icon.png">
     <title>Transfer — Survey Tools</title>
     <script src="db.js"></script>
-    <script src="lib/qrcode.min.js"></script>
+    <script src="lib/peerjs.min.js"></script>
     <style>
-        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-red:#ef4444;--accent-red-hover:#dc2626;--accent-orange:#f97316;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--modal-overlay:rgba(0,0,0,0.65);}
-        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-red:#f87171;--accent-red-hover:#fca5a5;--accent-orange:#fb923c;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--modal-overlay:rgba(0,0,0,0.85);}
+        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-red:#ef4444;--accent-red-hover:#dc2626;--accent-orange:#f97316;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;}
+        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-red:#f87171;--accent-red-hover:#fca5a5;--accent-orange:#fb923c;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;}
         *{box-sizing:border-box;margin:0;padding:0;}
         body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding-bottom:60px;-webkit-tap-highlight-color:transparent;}
         .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
@@ -41,19 +41,25 @@
         .step{display:none;}
         .step.show{display:block;}
         .step-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
-        .step-title{font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:10px;}
         .step-heading{font-size:1em;font-weight:800;margin-bottom:6px;}
         .step-sub{font-size:0.82em;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;}
-        /* QR display */
-        .qr-box{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:12px;}
-        .qr-inner{background:#fff;padding:12px;border-radius:8px;display:inline-flex;}
-        .qr-label{font-size:0.78em;color:var(--text-muted);font-weight:600;}
-        /* Camera */
-        .camera-box{background:#000;border-radius:12px;overflow:hidden;position:relative;margin-bottom:8px;max-width:320px;width:100%;}
-        .camera-box video{width:100%;display:block;max-height:240px;object-fit:cover;}
-        .camera-box .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-        .scan-frame{width:160px;height:160px;border:2px solid var(--accent-blue);border-radius:8px;opacity:0.7;}
-        .cam-status{font-size:0.75em;color:var(--text-muted);text-align:center;margin-bottom:8px;}
+        /* Method cards */
+        .method-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+        .method-label{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px;}
+        .method-divider{display:flex;align-items:center;gap:10px;margin:4px 0 16px;color:var(--text-muted);font-size:0.78em;font-weight:700;}
+        .method-divider::before,.method-divider::after{content:'';flex:1;height:1.5px;background:var(--border-primary);}
+        /* Code PIN display */
+        .code-pin{font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:2.6em;font-weight:900;letter-spacing:0.3em;text-align:center;padding:16px 10px;background:var(--bg-tertiary);border:2.5px solid var(--accent-blue);border-radius:14px;color:var(--text-primary);margin:10px 0;cursor:pointer;-webkit-user-select:all;user-select:all;}
+        .code-pin.loading{color:var(--text-muted);border-color:var(--border-secondary);letter-spacing:0.4em;}
+        /* Code input */
+        .code-input{width:100%;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:2em;font-weight:900;letter-spacing:0.25em;text-align:center;padding:14px 10px;background:var(--input-bg);border:2px solid var(--input-border);border-radius:12px;color:var(--text-primary);outline:none;text-transform:uppercase;}
+        .code-input:focus{border-color:var(--accent-blue);}
+        /* Status pill */
+        .status-row{text-align:center;margin:6px 0 4px;}
+        .status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 14px;border-radius:20px;font-size:0.78em;font-weight:700;}
+        .status-waiting{background:rgba(249,115,22,0.12);color:var(--accent-orange);}
+        .status-ok{background:rgba(34,197,94,0.12);color:var(--accent-green);}
+        .status-error{background:rgba(239,68,68,0.12);color:var(--accent-red);}
         /* Progress */
         .progress-bar-wrap{background:var(--bg-tertiary);border-radius:20px;height:12px;overflow:hidden;margin:10px 0;}
         .progress-bar-fill{height:100%;background:var(--accent-blue);border-radius:20px;transition:width 0.2s;}
@@ -76,24 +82,16 @@
         .tree-empty{padding:8px 14px;font-size:0.8em;color:var(--text-muted);}
         input[type="checkbox"].tree-cb{width:15px;height:15px;accent-color:var(--accent-blue);flex-shrink:0;cursor:pointer;}
         .tree-actions{display:flex;gap:8px;margin-bottom:8px;}
-        /* Paste fallback */
-        .paste-wrap{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:10px;padding:12px;margin-bottom:8px;}
-        .paste-label{font-size:0.72em;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
-        .paste-ta{width:100%;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.7em;min-height:80px;background:var(--input-bg);color:var(--text-primary);border:1.5px solid var(--input-border);border-radius:8px;padding:8px;resize:none;outline:none;}
-        .paste-ta:focus{border-color:var(--accent-blue);}
-        .divider{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--text-muted);font-size:0.78em;font-weight:700;}
-        .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border-primary);}
         /* Done */
         .done-card{text-align:center;padding:32px 16px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:12px;}
         .done-icon{font-size:2.5em;margin-bottom:10px;}
         .done-title{font-size:1em;font-weight:800;margin-bottom:6px;}
         .done-sub{font-size:0.82em;color:var(--text-secondary);}
-        /* Code display (for large payload fallback) */
-        .code-display{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:10px;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.62em;word-break:break-all;max-height:100px;overflow-y:auto;margin-bottom:8px;color:var(--text-secondary);}
         .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:400;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
         .toast.show{opacity:1;}
         .hidden{display:none!important;}
-        .msg-area{font-size:0.82em;color:var(--accent-red);min-height:18px;margin-bottom:6px;}
+        .msg-area{font-size:0.82em;color:var(--accent-red);min-height:18px;margin-top:6px;}
+        .hint{font-size:0.75em;color:var(--text-muted);text-align:center;margin-top:4px;}
     </style>
 </head>
 <body>
@@ -116,58 +114,53 @@
     <div id="sendStep1" class="step show">
         <div class="step-card">
             <div class="step-heading">Choose what to send</div>
-            <div class="step-sub">Select the projects and individual records to transfer to another device on the same WiFi or hotspot.</div>
+            <div class="step-sub">Select the projects and individual records to transfer to another device.</div>
         </div>
         <div class="tree-actions">
-            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap', true)">Select All</button>
-            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap', false)">Deselect All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap',true)">Select All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap',false)">Deselect All</button>
         </div>
         <div class="tree-wrap" id="sendTreeWrap"><div class="tree-empty">Loading projects…</div></div>
         <div class="msg-area" id="sendStep1Msg"></div>
-        <button class="btn btn-primary" style="width:100%;" id="startSendBtn" onclick="startSend()">Generate Transfer Code &#8594;</button>
+        <button class="btn btn-primary" style="width:100%;" id="startSendBtn" onclick="startSend()">Next &#8594;</button>
     </div>
 
-    <!-- Step 2: Show offer QR, scan answer -->
+    <!-- Step 2: Connection options -->
     <div id="sendStep2" class="step">
-        <div class="step-card">
-            <div class="step-heading">Step 1 of 2 — Show this code to the receiver</div>
-            <div class="step-sub">Open Transfer on the other device, tap Receive, and scan this code.</div>
-        </div>
-        <div class="qr-box" id="sendQRBox">
-            <div class="qr-inner" id="sendQR"></div>
-            <div class="qr-label">Offer code — show to receiver</div>
-        </div>
-        <div id="sendOfferTextWrap">
-            <div class="paste-label" style="margin-top:8px;">Offer code — copy if QR won't scan:</div>
-            <textarea class="paste-ta" id="sendOfferText" readonly rows="3" placeholder="Generating…"></textarea>
-            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copyText('sendOfferText')">&#128203; Copy Code</button>
+
+        <!-- Online: short code -->
+        <div class="method-card">
+            <div class="method-label">&#128246; Quick Connect — needs internet</div>
+            <div class="step-sub" style="margin-bottom:4px;">Enter this code on the receiver's device.</div>
+            <div class="code-pin loading" id="sendCodeDisplay" title="Tap to copy">&#8230;</div>
+            <div class="status-row">
+                <span class="status-pill status-waiting" id="sendOnlinePill">Connecting to server&#8230;</span>
+            </div>
+            <div class="msg-area" id="sendStep2OnlineMsg"></div>
+            <div class="hint">Tap the code to copy it</div>
         </div>
 
-        <div class="step-card" style="margin-top:12px;">
-            <div class="step-heading">Step 2 of 2 — Scan the receiver's answer code</div>
-            <div class="step-sub">After the receiver scans your code, they will show an answer code for you to scan.</div>
-        </div>
-        <div id="sendCamWrap">
-            <div class="camera-box" id="sendCamBox">
-                <video id="sendVideo" autoplay muted playsinline></video>
-                <div class="cam-overlay"><div class="scan-frame"></div></div>
+        <div class="method-divider">or</div>
+
+        <!-- Offline: share/download file -->
+        <div class="method-card">
+            <div class="method-label">&#128196; Share File — no internet needed</div>
+            <div class="step-sub" style="margin-bottom:10px;">Send via AirDrop, Nearby Share, email, or any app. The receiver imports it on the Receive tab.</div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary" style="flex:1;" onclick="shareDataFile()">&#8679; Share / AirDrop</button>
+                <button class="btn btn-secondary" style="flex:1;" onclick="downloadDataFile()">&#8595; Download</button>
             </div>
-            <div class="cam-status" id="sendCamStatus">Starting camera…</div>
+            <div class="msg-area" id="sendStep2OfflineMsg"></div>
         </div>
-        <div class="divider">or paste answer code</div>
-        <div class="paste-wrap">
-            <div class="paste-label">Answer code from receiver</div>
-            <textarea class="paste-ta" id="sendAnswerPaste" placeholder='{"type":"answer","sdp":"..."}' rows="3"></textarea>
-        </div>
-        <div class="msg-area" id="sendStep2Msg"></div>
-        <button class="btn btn-primary" style="width:100%;" onclick="processSendAnswerPaste()">Connect with pasted code</button>
+
+        <button class="btn btn-secondary btn-sm" onclick="resetSend()" style="margin-top:4px;">&#8592; Back</button>
     </div>
 
-    <!-- Step 3: Transfer progress -->
+    <!-- Step 3: Sending progress (online) -->
     <div id="sendStep3" class="step">
         <div class="step-card">
-            <div class="step-heading">Sending data…</div>
-            <div class="step-sub" id="sendProgressLabel">Preparing…</div>
+            <div class="step-heading">Sending&#8230;</div>
+            <div id="sendProgressLabel" class="step-sub">Preparing&#8230;</div>
         </div>
         <div class="progress-bar-wrap"><div class="progress-bar-fill" id="sendProgressBar" style="width:0%"></div></div>
         <div class="progress-pct" id="sendProgressPct">0%</div>
@@ -177,8 +170,8 @@
     <div id="sendStep4" class="step">
         <div class="done-card">
             <div class="done-icon">&#10003;</div>
-            <div class="done-title">Transfer Complete</div>
-            <div class="done-sub" id="sendDoneMsg">Data sent successfully.</div>
+            <div class="done-title">Done</div>
+            <div class="done-sub" id="sendDoneMsg">Transfer complete.</div>
         </div>
         <button class="btn btn-secondary" style="width:100%;" onclick="resetSend()">Send Again</button>
     </div>
@@ -188,60 +181,55 @@
 <!-- ===== RECEIVE PANEL ===== -->
 <div id="receivePanel" class="page hidden">
 
-    <!-- Step 1: Scan offer -->
+    <!-- Step 1: Choose method -->
     <div id="recvStep1" class="step show">
-        <div class="step-card">
-            <div class="step-heading">Scan the sender's transfer code</div>
-            <div class="step-sub">Point your camera at the QR code on the sender's screen, or paste it below.</div>
+
+        <!-- Online: enter code -->
+        <div class="method-card">
+            <div class="method-label">&#128246; Enter Code — needs internet</div>
+            <div class="step-sub" style="margin-bottom:10px;">Type the 6-character code shown on the sender's screen.</div>
+            <input type="text" class="code-input" id="recvCodeInput"
+                   maxlength="6" placeholder="A3K7XP"
+                   autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+                   oninput="this.value=this.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase()"
+                   onkeydown="if(event.key==='Enter')startReceive()">
+            <div class="msg-area" id="recvStep1Msg"></div>
+            <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="startReceive()">Connect &#8594;</button>
         </div>
-        <div id="recvCamWrap">
-            <div class="camera-box" id="recvCamBox">
-                <video id="recvVideo" autoplay muted playsinline></video>
-                <div class="cam-overlay"><div class="scan-frame"></div></div>
-            </div>
-            <div class="cam-status" id="recvCamStatus">Starting camera…</div>
+
+        <div class="method-divider">or</div>
+
+        <!-- Offline: import file -->
+        <div class="method-card">
+            <div class="method-label">&#128196; Import File — no internet needed</div>
+            <div class="step-sub" style="margin-bottom:10px;">Open a file shared by the sender via AirDrop, Nearby Share, email, or download.</div>
+            <input type="file" id="recvFileInput" accept=".json" hidden onchange="handleRecvFile(this)">
+            <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('recvFileInput').click()">&#128193; Choose File&#8230;</button>
         </div>
-        <div class="divider">or paste offer code</div>
-        <div class="paste-wrap">
-            <div class="paste-label">Offer code from sender</div>
-            <textarea class="paste-ta" id="recvOfferPaste" placeholder='{"type":"offer","sdp":"..."}' rows="3"></textarea>
-        </div>
-        <div class="msg-area" id="recvStep1Msg"></div>
-        <button class="btn btn-primary" style="width:100%;" onclick="processRecvOfferPaste()">Connect with pasted code</button>
+
     </div>
 
-    <!-- Step 2: Show answer QR + wait for data -->
+    <!-- Step 2: Receiving (online) -->
     <div id="recvStep2" class="step">
         <div class="step-card">
-            <div class="step-heading">Show this answer code to the sender</div>
-            <div class="step-sub">The sender will scan this code, then data will begin transferring automatically.</div>
+            <div class="step-heading" id="recvWaitLabel">Connecting&#8230;</div>
+            <div class="step-sub" id="recvProgressLabel"></div>
         </div>
-        <div class="qr-box" id="recvQRBox">
-            <div class="qr-inner" id="recvQR"></div>
-            <div class="qr-label">Answer code — show to sender</div>
-        </div>
-        <div id="recvAnswerTextWrap">
-            <div class="paste-label" style="margin-top:8px;">Answer code — copy if QR won't scan:</div>
-            <textarea class="paste-ta" id="recvAnswerText" readonly rows="3" placeholder="Generating…"></textarea>
-            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copyText('recvAnswerText')">&#128203; Copy Code</button>
-        </div>
-        <div class="step-card" style="margin-top:12px;">
-            <div class="step-heading" id="recvWaitLabel">Waiting for sender to scan…</div>
-            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="recvProgressBar" style="width:0%"></div></div>
-            <div class="progress-pct" id="recvProgressPct"></div>
-        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="recvProgressBar" style="width:0%"></div></div>
+        <div class="progress-pct" id="recvProgressPct"></div>
         <div class="msg-area" id="recvStep2Msg"></div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="resetRecv()">Cancel</button>
     </div>
 
     <!-- Step 3: Import selection -->
     <div id="recvStep3" class="step">
         <div class="step-card">
-            <div class="step-heading">Data received — choose what to import</div>
-            <div class="step-sub">Uncheck any items you don't want to import.</div>
+            <div class="step-heading">Choose what to import</div>
+            <div class="step-sub">Uncheck any items you don't want. Existing records with the same ID will be skipped.</div>
         </div>
         <div class="tree-actions">
-            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap', true)">Select All</button>
-            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap', false)">Deselect All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap',true)">Select All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap',false)">Deselect All</button>
         </div>
         <div class="tree-wrap" id="recvTreeWrap"></div>
         <div class="msg-area" id="recvStep3Msg"></div>
@@ -291,25 +279,14 @@ function showToast(msg) {
     setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function copyText(elId) {
-    const el = document.getElementById(elId);
-    const text = el.value !== undefined ? el.value : el.textContent;
-    navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => showToast('Copy failed.'));
-}
-
 // ---- Mode switching ----
 let currentMode = 'send';
-let recvCamInitialized = false;
 function setMode(mode) {
     currentMode = mode;
     document.getElementById('sendTab').classList.toggle('active', mode === 'send');
     document.getElementById('receiveTab').classList.toggle('active', mode === 'receive');
     document.getElementById('sendPanel').classList.toggle('hidden', mode !== 'send');
     document.getElementById('receivePanel').classList.toggle('hidden', mode !== 'receive');
-    if (mode === 'receive' && !recvCamInitialized) {
-        recvCamInitialized = true;
-        initRecvCamera();
-    }
 }
 
 // ---- Selection Tree ----
@@ -360,7 +337,6 @@ function buildProjectTreeHtml(proj, manifest, sfx) {
     return html + '</div></div>';
 }
 
-// Generic tree handlers (dispatched by container ID suffix)
 function updateItemCBInScope(cb, scopeId) {
     const pid = cb.dataset.pid, cat = cb.dataset.cat;
     const scope = document.getElementById(scopeId);
@@ -413,11 +389,10 @@ function getSelectionFromScope(scopeId) {
     return selProjects;
 }
 
-// Handlers for send tree (sfx = 'send')
+// Tree handler aliases
 function updateItemCB_send(cb) { updateItemCBInScope(cb, 'sendTreeWrap'); }
 function updateCatCB_send(cb) { updateCatCBInScope(cb, 'sendTreeWrap'); }
 function updateProjCB_send(cb) { updateProjCBInScope(cb, 'sendTreeWrap'); }
-// Handlers for receive tree (sfx = 'recv')
 function updateItemCB_recv(cb) { updateItemCBInScope(cb, 'recvTreeWrap'); }
 function updateCatCB_recv(cb) { updateCatCBInScope(cb, 'recvTreeWrap'); }
 function updateProjCB_recv(cb) { updateProjCBInScope(cb, 'recvTreeWrap'); }
@@ -451,157 +426,39 @@ function buildRecvTree(pkg) {
     container.innerHTML = html || '<div class="tree-empty">No data in package.</div>';
 }
 
-// ---- WebRTC ----
-
-let sendPC = null;
-let sendDC = null;
-let sendExportPkg = null;
-let sendScanStop = null;
-
-let recvPC = null;
-let recvChunks = null;
-let recvTotalChunks = 0;
-let recvReceivedPkg = null;
-let recvScanStop = null;
-
+// ---- Step navigation ----
 function showSendStep(n) {
-    ['sendStep1','sendStep2','sendStep3','sendStep4'].forEach((id, i) => {
-        document.getElementById(id).classList.toggle('show', i + 1 === n);
+    ['sendStep1','sendStep2','sendStep3','sendStep4'].forEach((id,i) => {
+        document.getElementById(id).classList.toggle('show', i+1===n);
     });
 }
 function showRecvStep(n) {
-    ['recvStep1','recvStep2','recvStep3','recvStep4'].forEach((id, i) => {
-        document.getElementById(id).classList.toggle('show', i + 1 === n);
+    ['recvStep1','recvStep2','recvStep3','recvStep4'].forEach((id,i) => {
+        document.getElementById(id).classList.toggle('show', i+1===n);
     });
 }
-function setMsg(elId, msg) { document.getElementById(elId).textContent = msg || ''; }
+function setMsg(id, msg) { document.getElementById(id).textContent = msg || ''; }
 
-// Compress a string with deflate-raw + base64. Falls back to identity if unsupported.
-async function compressPayload(obj) {
-    const json = JSON.stringify(obj);
-    if (typeof CompressionStream === 'undefined') return json;
-    try {
-        const bytes = new TextEncoder().encode(json);
-        const cs = new CompressionStream('deflate-raw');
-        const writer = cs.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-        const chunks = [];
-        const reader = cs.readable.getReader();
-        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
-        let len = 0; for (const c of chunks) len += c.length;
-        const out = new Uint8Array(len);
-        let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
-        let bin = ''; for (let i = 0; i < out.length; i++) bin += String.fromCharCode(out[i]);
-        return 'Z:' + btoa(bin);
-    } catch(e) { return json; }
+// ---- Code generation ----
+// Avoids 0/O, 1/I/L for visual clarity when reading aloud or typing
+const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+function generateCode() {
+    let c = '';
+    for (let i = 0; i < 6; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+    return c;
 }
 
-// Decompress a payload produced by compressPayload.
-async function decompressPayload(str) {
-    if (!str.startsWith('Z:')) return JSON.parse(str);
-    try {
-        const bin = atob(str.slice(2));
-        const bytes = new Uint8Array(bin.length);
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-        const cs = new DecompressionStream('deflate-raw');
-        const writer = cs.writable.getWriter();
-        writer.write(bytes);
-        writer.close();
-        const chunks = [];
-        const reader = cs.readable.getReader();
-        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
-        let len = 0; for (const c of chunks) len += c.length;
-        const out = new Uint8Array(len);
-        let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
-        return JSON.parse(new TextDecoder().decode(out));
-    } catch(e) { throw new Error('Decompression failed: ' + e.message); }
-}
+// ---- Send state ----
+let sendPeer = null;
+let sendExportPkg = null;
+let sendCode = null;
+let sendPeerConnected = false;
 
-// Gather ICE candidates then resolve. Handles both null-candidate and state-change signals.
-function gatherIce(pc, timeoutMs) {
-    const candidates = [];
-    return new Promise(resolve => {
-        if (pc.iceGatheringState === 'complete') { resolve(candidates); return; }
-        const done = () => resolve(candidates);
-        const t = setTimeout(done, timeoutMs);
-        const finish = () => { clearTimeout(t); done(); };
-        const prev = pc.onicecandidate;
-        pc.onicecandidate = e => {
-            if (prev) prev(e);
-            if (e.candidate) candidates.push(e.candidate.toJSON());
-            else finish(); // null candidate = end of gathering
-        };
-        pc.onicegatheringstatechange = () => {
-            if (pc.iceGatheringState === 'complete') finish();
-        };
-    });
-}
-
-// Render a QR code and always populate the text fallback for copy-paste.
-function renderQR(containerId, payload, textareaId) {
-    const container = document.getElementById(containerId);
-    container.innerHTML = '';
-    document.getElementById(textareaId).value = payload;
-    if (payload.length <= 2953) {
-        try {
-            new QRCode(container, { text: payload, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L });
-            return;
-        } catch(e) {}
-    }
-    container.innerHTML = '<div style="font-size:0.75em;color:var(--text-muted);padding:8px;">Payload too large for QR — use copy/paste below.</div>';
-}
-
-// ---- Camera scanning ----
-
-async function startCamera(videoElId, statusElId, onResult, stopRef) {
-    const videoEl = document.getElementById(videoElId);
-    const statusEl = document.getElementById(statusElId);
-    if (!('BarcodeDetector' in window)) {
-        statusEl.textContent = 'Camera scan not available — paste the code below.';
-        return null;
-    }
-    let formats;
-    try { formats = await BarcodeDetector.getSupportedFormats(); } catch(e) { formats = ['qr_code']; }
-    if (!formats.includes('qr_code')) {
-        statusEl.textContent = 'QR scanning not supported — paste the code below.';
-        return null;
-    }
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
-        });
-        videoEl.srcObject = stream;
-        await videoEl.play();
-        statusEl.textContent = 'Point camera at QR code…';
-        const detector = new BarcodeDetector({ formats: ['qr_code'] });
-        let active = true;
-        let intervalId = null;
-        const stop = () => {
-            active = false;
-            if (intervalId) { clearInterval(intervalId); intervalId = null; }
-            stream.getTracks().forEach(t => t.stop());
-            videoEl.srcObject = null;
-        };
-        const scan = async () => {
-            if (!active) return;
-            if (videoEl.readyState < 2) return; // not ready yet
-            try {
-                const barcodes = await detector.detect(videoEl);
-                if (barcodes.length && barcodes[0].rawValue) {
-                    stop();
-                    statusEl.textContent = 'QR code detected.';
-                    onResult(barcodes[0].rawValue);
-                }
-            } catch(e) {}
-        };
-        intervalId = setInterval(scan, 350);
-        return stop;
-    } catch(e) {
-        statusEl.textContent = 'Camera access denied — paste the code below.';
-        return null;
-    }
-}
+// ---- Receive state ----
+let recvPeer = null;
+let recvChunks = [];
+let recvTotalChunks = 0;
+let recvReceivedPkg = null;
 
 // ---- Send flow ----
 
@@ -610,97 +467,171 @@ async function startSend() {
     if (!sel.length) { setMsg('sendStep1Msg', 'Select at least one item to send.'); return; }
     setMsg('sendStep1Msg', '');
 
-    document.getElementById('startSendBtn').disabled = true;
-    document.getElementById('startSendBtn').textContent = 'Preparing…';
-    document.getElementById('sendQR').innerHTML = '';
+    const btn = document.getElementById('startSendBtn');
+    btn.disabled = true;
+    btn.textContent = 'Preparing…';
 
     try {
         sendExportPkg = await ftExportSelected(sel);
     } catch(e) {
         setMsg('sendStep1Msg', 'Error building package: ' + e.message);
-        document.getElementById('startSendBtn').disabled = false;
-        document.getElementById('startSendBtn').textContent = 'Generate Transfer Code →';
+        btn.disabled = false; btn.textContent = 'Next →';
         return;
     }
 
+    btn.disabled = false; btn.textContent = 'Next →';
     showSendStep(2);
-    document.getElementById('startSendBtn').disabled = false;
-    document.getElementById('startSendBtn').textContent = 'Generate Transfer Code →';
-    document.getElementById('sendOfferText').value = '';
-    setMsg('sendStep2Msg', 'Gathering network info…');
-
-    sendPC = new RTCPeerConnection({ iceServers: [] });
-    sendDC = sendPC.createDataChannel('transfer', { ordered: true });
-    sendDC.onopen = () => doSendData();
-
-    const offer = await sendPC.createOffer();
-    await sendPC.setLocalDescription(offer);
-    const offerCandidates = await gatherIce(sendPC, 6000);
-
-    const payload = await compressPayload({ type: 'offer', sdp: sendPC.localDescription.sdp, candidates: offerCandidates });
-    renderQR('sendQR', payload, 'sendOfferText');
-    setMsg('sendStep2Msg', '');
-
-    // Start camera to scan answer
-    sendScanStop = await startCamera('sendVideo', 'sendCamStatus', val => {
-        processAnswer(val);
-    }, sendScanStop);
+    initSendPeer(3);
 }
 
-async function processAnswer(answerText) {
-    try {
-        const data = await decompressPayload(answerText.trim());
-        if (data.type !== 'answer') throw new Error('Expected an answer code, got: ' + data.type);
-        await sendPC.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
-        for (const c of (data.candidates || [])) {
-            try { await sendPC.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
-        }
-        showSendStep(3);
-        setMsg('sendStep2Msg', '');
-    } catch(e) {
-        setMsg('sendStep2Msg', 'Invalid answer code: ' + e.message);
+function setPeerStatus(text, type) {
+    const pill = document.getElementById('sendOnlinePill');
+    pill.textContent = text;
+    pill.className = 'status-pill ' + (type === 'ok' ? 'status-ok' : type === 'error' ? 'status-error' : 'status-waiting');
+}
+
+function initSendPeer(retries) {
+    if (typeof Peer === 'undefined') {
+        setPeerStatus('PeerJS unavailable — use Share File', 'error');
+        return;
     }
+    if (sendPeer) { try { sendPeer.destroy(); } catch(e) {} sendPeer = null; }
+    sendPeerConnected = false;
+
+    sendCode = generateCode();
+    const codeEl = document.getElementById('sendCodeDisplay');
+    codeEl.textContent = sendCode;
+    codeEl.classList.remove('loading');
+    setPeerStatus('Connecting to server…', 'waiting');
+
+    sendPeer = new Peer('st2-' + sendCode);
+
+    const openTimeout = setTimeout(() => {
+        if (!sendPeerConnected) {
+            setPeerStatus('Server unreachable — use Share File', 'error');
+        }
+    }, 12000);
+
+    sendPeer.on('open', () => {
+        clearTimeout(openTimeout);
+        sendPeerConnected = true;
+        setPeerStatus('Waiting for receiver…', 'waiting');
+    });
+
+    sendPeer.on('connection', conn => {
+        setPeerStatus('Receiver connected!', 'ok');
+        conn.on('open', () => {
+            showSendStep(3);
+            doSendData(conn);
+        });
+        conn.on('error', err => {
+            setMsg('sendStep2OnlineMsg', 'Connection error: ' + (err.message || err));
+        });
+    });
+
+    sendPeer.on('error', err => {
+        clearTimeout(openTimeout);
+        if (err.type === 'unavailable-id' && retries > 0) {
+            // Code collision — try a different code
+            initSendPeer(retries - 1);
+        } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed') {
+            setPeerStatus('No internet — use Share File below', 'error');
+        } else if (err.type === 'browser-incompatible') {
+            setPeerStatus('Browser not supported — use Share File', 'error');
+        } else {
+            setPeerStatus('Error (' + err.type + ') — use Share File', 'error');
+        }
+    });
+
+    // Copy code when tapped
+    codeEl.onclick = () => {
+        navigator.clipboard.writeText(sendCode).then(() => showToast('Code copied!')).catch(() => {});
+    };
 }
 
-function processSendAnswerPaste() {
-    const val = document.getElementById('sendAnswerPaste').value.trim();
-    if (!val) { setMsg('sendStep2Msg', 'Paste an answer code first.'); return; }
-    if (sendScanStop) { sendScanStop(); sendScanStop = null; }
-    processAnswer(val);
-}
-
-async function doSendData() {
+async function doSendData(conn) {
     const json = JSON.stringify(sendExportPkg);
     const CHUNK = 16384;
     const total = json.length;
-    const chunks = Math.ceil(total / CHUNK);
-    const BUFFER_HIGH = 256 * 1024;
+    const numChunks = Math.ceil(total / CHUNK);
 
-    document.getElementById('sendProgressLabel').textContent = `Sending ${(total/1024).toFixed(0)} KB…`;
-    sendDC.send(JSON.stringify({ type: 'header', total, chunks }));
+    document.getElementById('sendProgressLabel').textContent = `Sending ${(total / 1024).toFixed(0)} KB…`;
+    conn.send({ type: 'header', total, chunks: numChunks });
 
-    for (let i = 0; i < chunks; i++) {
-        while (sendDC.bufferedAmount > BUFFER_HIGH) {
-            await new Promise(r => setTimeout(r, 20));
-        }
-        sendDC.send(JSON.stringify({ type: 'chunk', seq: i, data: json.slice(i * CHUNK, (i + 1) * CHUNK) }));
-        const pct = Math.round((i + 1) / chunks * 100);
+    for (let i = 0; i < numChunks; i++) {
+        conn.send({ type: 'chunk', seq: i, data: json.slice(i * CHUNK, (i + 1) * CHUNK) });
+        const pct = Math.round((i + 1) / numChunks * 100);
         document.getElementById('sendProgressBar').style.width = pct + '%';
         document.getElementById('sendProgressPct').textContent = pct + '%';
-        if (i % 8 === 0) await new Promise(r => setTimeout(r, 0));
+        if (i % 4 === 0) await new Promise(r => setTimeout(r, 0));
     }
-    sendDC.send(JSON.stringify({ type: 'done' }));
+    conn.send({ type: 'done' });
+
+    document.getElementById('sendDoneMsg').textContent = `Sent ${(total / 1024).toFixed(0)} KB successfully.`;
     showSendStep(4);
-    document.getElementById('sendDoneMsg').textContent = `Sent ${(total/1024).toFixed(0)} KB successfully.`;
+    if (sendPeer) { try { sendPeer.destroy(); } catch(e) {} sendPeer = null; }
+}
+
+async function shareDataFile() {
+    if (!sendExportPkg) return;
+    const json = JSON.stringify(sendExportPkg);
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `surveytoolstransfer_${date}.json`;
+    const blob = new Blob([json], { type: 'application/json' });
+
+    if (navigator.canShare) {
+        const file = new File([blob], filename, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({ files: [file], title: 'Survey Tools Transfer' });
+                document.getElementById('sendDoneMsg').textContent = 'File shared — receiver can import it.';
+                showSendStep(4);
+                return;
+            } catch(e) {
+                if (e.name === 'AbortError') return;
+                // fall through to text share or download
+            }
+        }
+        // Try sharing as text
+        if (navigator.canShare({ text: json })) {
+            try {
+                await navigator.share({ text: json, title: 'Survey Tools Transfer' });
+                document.getElementById('sendDoneMsg').textContent = 'Data shared — receiver can import it.';
+                showSendStep(4);
+                return;
+            } catch(e) {
+                if (e.name === 'AbortError') return;
+            }
+        }
+    }
+
+    // Fallback: download
+    downloadDataFile();
+}
+
+function downloadDataFile() {
+    if (!sendExportPkg) return;
+    const json = JSON.stringify(sendExportPkg);
+    const date = new Date().toISOString().slice(0, 10);
+    const filename = `surveytoolstransfer_${date}.json`;
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    document.getElementById('sendDoneMsg').textContent = 'File downloaded — receiver imports it on the Receive tab.';
+    showSendStep(4);
 }
 
 function resetSend() {
-    if (sendPC) { try { sendPC.close(); } catch(e) {} sendPC = null; sendDC = null; }
-    if (sendScanStop) { sendScanStop(); sendScanStop = null; }
-    sendExportPkg = null;
-    document.getElementById('sendQR').innerHTML = '';
-    document.getElementById('sendOfferText').value = '';
-    document.getElementById('sendAnswerPaste').value = '';
+    if (sendPeer) { try { sendPeer.destroy(); } catch(e) {} sendPeer = null; }
+    sendExportPkg = null; sendCode = null; sendPeerConnected = false;
+    const codeEl = document.getElementById('sendCodeDisplay');
+    codeEl.textContent = '…'; codeEl.classList.add('loading');
+    setMsg('sendStep2OnlineMsg', '');
+    setMsg('sendStep2OfflineMsg', '');
     document.getElementById('sendProgressBar').style.width = '0%';
     document.getElementById('sendProgressPct').textContent = '';
     showSendStep(1);
@@ -708,66 +639,120 @@ function resetSend() {
 
 // ---- Receive flow ----
 
-async function initRecvCamera() {
-    recvScanStop = await startCamera('recvVideo', 'recvCamStatus', val => {
-        processOffer(val);
-    }, recvScanStop);
-}
+async function startReceive() {
+    const code = document.getElementById('recvCodeInput').value.trim().toUpperCase();
+    if (code.length !== 6) { setMsg('recvStep1Msg', 'Enter the full 6-character code shown on the sender\'s screen.'); return; }
+    setMsg('recvStep1Msg', '');
 
-async function processOffer(offerText) {
-    try {
-        const data = await decompressPayload(offerText.trim());
-        if (data.type !== 'offer') throw new Error('Expected an offer code, got: ' + data.type);
+    if (typeof Peer === 'undefined') {
+        setMsg('recvStep1Msg', 'PeerJS unavailable — use Import File instead.');
+        return;
+    }
 
-        recvPC = new RTCPeerConnection({ iceServers: [] });
+    showRecvStep(2);
+    document.getElementById('recvWaitLabel').textContent = 'Connecting…';
+    document.getElementById('recvProgressBar').style.width = '0%';
+    document.getElementById('recvProgressPct').textContent = '';
 
-        recvChunks = [];
-        recvTotalChunks = 0;
-        recvPC.ondatachannel = e => {
-            const dc = e.channel;
-            dc.onmessage = evt => {
-                const msg = JSON.parse(evt.data);
-                if (msg.type === 'header') {
-                    recvTotalChunks = msg.chunks;
-                    recvChunks = new Array(msg.chunks);
-                    document.getElementById('recvWaitLabel').textContent = `Receiving ${(msg.total/1024).toFixed(0)} KB…`;
-                } else if (msg.type === 'chunk') {
-                    recvChunks[msg.seq] = msg.data;
-                    const received = recvChunks.filter(c => c !== undefined).length;
-                    const pct = recvTotalChunks ? Math.round(received / recvTotalChunks * 100) : 0;
-                    document.getElementById('recvProgressBar').style.width = pct + '%';
-                    document.getElementById('recvProgressPct').textContent = pct + '%';
-                } else if (msg.type === 'done') {
+    recvChunks = []; recvTotalChunks = 0;
+    if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+
+    recvPeer = new Peer();
+
+    const connTimeout = setTimeout(() => {
+        showRecvStep(1);
+        setMsg('recvStep1Msg', 'Timed out. Check the code and make sure the sender\'s screen is still showing it.');
+        if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+    }, 20000);
+
+    recvPeer.on('open', () => {
+        document.getElementById('recvWaitLabel').textContent = 'Looking up sender…';
+        const conn = recvPeer.connect('st2-' + code);
+        let recvDone = false;
+
+        conn.on('open', () => {
+            clearTimeout(connTimeout);
+            document.getElementById('recvWaitLabel').textContent = 'Connected — receiving data…';
+        });
+
+        conn.on('data', msg => {
+            if (msg.type === 'header') {
+                recvTotalChunks = msg.chunks;
+                recvChunks = new Array(msg.chunks);
+                document.getElementById('recvWaitLabel').textContent = `Receiving ${(msg.total / 1024).toFixed(0)} KB…`;
+            } else if (msg.type === 'chunk') {
+                recvChunks[msg.seq] = msg.data;
+                const received = recvChunks.filter(c => c !== undefined).length;
+                const pct = recvTotalChunks ? Math.round(received / recvTotalChunks * 100) : 0;
+                document.getElementById('recvProgressBar').style.width = pct + '%';
+                document.getElementById('recvProgressPct').textContent = pct + '%';
+            } else if (msg.type === 'done') {
+                recvDone = true;
+                clearTimeout(connTimeout);
+                try {
                     recvReceivedPkg = JSON.parse(recvChunks.join(''));
                     buildRecvTree(recvReceivedPkg);
                     showRecvStep(3);
+                } catch(e) {
+                    showRecvStep(1);
+                    setMsg('recvStep1Msg', 'Data error: ' + e.message);
                 }
-            };
-        };
+                if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+            }
+        });
 
-        await recvPC.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
-        for (const c of (data.candidates || [])) {
-            try { await recvPC.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+        conn.on('close', () => {
+            if (!recvDone) {
+                clearTimeout(connTimeout);
+                showRecvStep(1);
+                setMsg('recvStep1Msg', 'Connection closed before transfer finished. Try again.');
+                if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+            }
+        });
+
+        conn.on('error', err => {
+            clearTimeout(connTimeout);
+            showRecvStep(1);
+            setMsg('recvStep1Msg', 'Transfer error: ' + (err.message || err));
+            if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+        });
+    });
+
+    recvPeer.on('error', err => {
+        clearTimeout(connTimeout);
+        showRecvStep(1);
+        if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error') {
+            setMsg('recvStep1Msg', 'No internet connection — use Import File instead.');
+        } else if (err.type === 'peer-unavailable') {
+            setMsg('recvStep1Msg', 'Code not found. Is the sender still showing the code?');
+        } else {
+            setMsg('recvStep1Msg', 'Connection error (' + err.type + '). Try again or use Import File.');
         }
-        const answer = await recvPC.createAnswer();
-        await recvPC.setLocalDescription(answer);
-        const answerCandidates = await gatherIce(recvPC, 6000);
-
-        showRecvStep(2);
-        const payload = await compressPayload({ type: 'answer', sdp: recvPC.localDescription.sdp, candidates: answerCandidates });
-        renderQR('recvQR', payload, 'recvAnswerText');
-        setMsg('recvStep2Msg', '');
-        setMsg('recvStep1Msg', '');
-    } catch(e) {
-        setMsg('recvStep1Msg', 'Invalid offer code: ' + e.message);
-    }
+        if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+    });
 }
 
-function processRecvOfferPaste() {
-    const val = document.getElementById('recvOfferPaste').value.trim();
-    if (!val) { setMsg('recvStep1Msg', 'Paste an offer code first.'); return; }
-    if (recvScanStop) { recvScanStop(); recvScanStop = null; }
-    processOffer(val);
+async function handleRecvFile(input) {
+    if (!input.files.length) return;
+    try {
+        const text = await input.files[0].text();
+        recvReceivedPkg = JSON.parse(text);
+        buildRecvTree(recvReceivedPkg);
+        showRecvStep(3);
+    } catch(e) {
+        setMsg('recvStep1Msg', 'Invalid file: ' + e.message);
+    }
+    input.value = '';
+}
+
+function resetRecv() {
+    if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+    recvChunks = []; recvTotalChunks = 0; recvReceivedPkg = null;
+    document.getElementById('recvProgressBar').style.width = '0%';
+    document.getElementById('recvProgressPct').textContent = '';
+    setMsg('recvStep2Msg', '');
+    setMsg('recvStep1Msg', '');
+    showRecvStep(1);
 }
 
 async function confirmRecvImport() {
@@ -796,7 +781,6 @@ async function init() {
     }
     await buildSendTree();
 }
-
 init();
 </script>
 </body>
