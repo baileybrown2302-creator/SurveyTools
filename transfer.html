@@ -137,10 +137,10 @@
             <div class="qr-inner" id="sendQR"></div>
             <div class="qr-label">Offer code — show to receiver</div>
         </div>
-        <div id="sendOfferTextWrap" class="hidden">
-            <div class="step-sub">Code is too large for QR — copy and paste it on the receiver:</div>
-            <div class="code-display" id="sendOfferText"></div>
-            <button class="btn btn-secondary btn-sm" onclick="copyText('sendOfferText')">&#128203; Copy Code</button>
+        <div id="sendOfferTextWrap">
+            <div class="paste-label" style="margin-top:8px;">Offer code — copy if QR won't scan:</div>
+            <textarea class="paste-ta" id="sendOfferText" readonly rows="3" placeholder="Generating…"></textarea>
+            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copyText('sendOfferText')">&#128203; Copy Code</button>
         </div>
 
         <div class="step-card" style="margin-top:12px;">
@@ -220,10 +220,10 @@
             <div class="qr-inner" id="recvQR"></div>
             <div class="qr-label">Answer code — show to sender</div>
         </div>
-        <div id="recvAnswerTextWrap" class="hidden">
-            <div class="step-sub">Code is too large for QR — the sender should paste this:</div>
-            <div class="code-display" id="recvAnswerText"></div>
-            <button class="btn btn-secondary btn-sm" onclick="copyText('recvAnswerText')">&#128203; Copy Code</button>
+        <div id="recvAnswerTextWrap">
+            <div class="paste-label" style="margin-top:8px;">Answer code — copy if QR won't scan:</div>
+            <textarea class="paste-ta" id="recvAnswerText" readonly rows="3" placeholder="Generating…"></textarea>
+            <button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="copyText('recvAnswerText')">&#128203; Copy Code</button>
         </div>
         <div class="step-card" style="margin-top:12px;">
             <div class="step-heading" id="recvWaitLabel">Waiting for sender to scan…</div>
@@ -293,7 +293,8 @@ function showToast(msg) {
 
 function copyText(elId) {
     const el = document.getElementById(elId);
-    navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!')).catch(() => showToast('Copy failed.'));
+    const text = el.value !== undefined ? el.value : el.textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('Copied!')).catch(() => showToast('Copy failed.'));
 }
 
 // ---- Mode switching ----
@@ -475,30 +476,80 @@ function showRecvStep(n) {
 }
 function setMsg(elId, msg) { document.getElementById(elId).textContent = msg || ''; }
 
-async function waitForIceComplete(pc, timeoutMs) {
-    if (pc.iceGatheringState === 'complete') return;
+// Compress a string with deflate-raw + base64. Falls back to identity if unsupported.
+async function compressPayload(obj) {
+    const json = JSON.stringify(obj);
+    if (typeof CompressionStream === 'undefined') return json;
+    try {
+        const bytes = new TextEncoder().encode(json);
+        const cs = new CompressionStream('deflate-raw');
+        const writer = cs.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
+        let len = 0; for (const c of chunks) len += c.length;
+        const out = new Uint8Array(len);
+        let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
+        let bin = ''; for (let i = 0; i < out.length; i++) bin += String.fromCharCode(out[i]);
+        return 'Z:' + btoa(bin);
+    } catch(e) { return json; }
+}
+
+// Decompress a payload produced by compressPayload.
+async function decompressPayload(str) {
+    if (!str.startsWith('Z:')) return JSON.parse(str);
+    try {
+        const bin = atob(str.slice(2));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        const cs = new DecompressionStream('deflate-raw');
+        const writer = cs.writable.getWriter();
+        writer.write(bytes);
+        writer.close();
+        const chunks = [];
+        const reader = cs.readable.getReader();
+        for (;;) { const { done, value } = await reader.read(); if (done) break; chunks.push(value); }
+        let len = 0; for (const c of chunks) len += c.length;
+        const out = new Uint8Array(len);
+        let off = 0; for (const c of chunks) { out.set(c, off); off += c.length; }
+        return JSON.parse(new TextDecoder().decode(out));
+    } catch(e) { throw new Error('Decompression failed: ' + e.message); }
+}
+
+// Gather ICE candidates then resolve. Handles both null-candidate and state-change signals.
+function gatherIce(pc, timeoutMs) {
+    const candidates = [];
     return new Promise(resolve => {
-        const t = setTimeout(resolve, timeoutMs);
+        if (pc.iceGatheringState === 'complete') { resolve(candidates); return; }
+        const done = () => resolve(candidates);
+        const t = setTimeout(done, timeoutMs);
+        const finish = () => { clearTimeout(t); done(); };
+        const prev = pc.onicecandidate;
+        pc.onicecandidate = e => {
+            if (prev) prev(e);
+            if (e.candidate) candidates.push(e.candidate.toJSON());
+            else finish(); // null candidate = end of gathering
+        };
         pc.onicegatheringstatechange = () => {
-            if (pc.iceGatheringState === 'complete') { clearTimeout(t); resolve(); }
+            if (pc.iceGatheringState === 'complete') finish();
         };
     });
 }
 
-function renderQR(containerId, payload, fallbackTextId, fallbackWrapId) {
+// Render a QR code and always populate the text fallback for copy-paste.
+function renderQR(containerId, payload, textareaId) {
     const container = document.getElementById(containerId);
     container.innerHTML = '';
-    if (payload.length > 2800) {
-        document.getElementById(fallbackWrapId).classList.remove('hidden');
-        document.getElementById(fallbackTextId).textContent = payload;
-        return;
+    document.getElementById(textareaId).value = payload;
+    if (payload.length <= 2953) {
+        try {
+            new QRCode(container, { text: payload, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L });
+            return;
+        } catch(e) {}
     }
-    try {
-        new QRCode(container, { text: payload, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L });
-    } catch(e) {
-        document.getElementById(fallbackWrapId).classList.remove('hidden');
-        document.getElementById(fallbackTextId).textContent = payload;
-    }
+    container.innerHTML = '<div style="font-size:0.75em;color:var(--text-muted);padding:8px;">Payload too large for QR — use copy/paste below.</div>';
 }
 
 // ---- Camera scanning ----
@@ -525,21 +576,26 @@ async function startCamera(videoElId, statusElId, onResult, stopRef) {
         statusEl.textContent = 'Point camera at QR code…';
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
         let active = true;
-        const stop = () => { active = false; stream.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; };
+        let intervalId = null;
+        const stop = () => {
+            active = false;
+            if (intervalId) { clearInterval(intervalId); intervalId = null; }
+            stream.getTracks().forEach(t => t.stop());
+            videoEl.srcObject = null;
+        };
         const scan = async () => {
             if (!active) return;
+            if (videoEl.readyState < 2) return; // not ready yet
             try {
                 const barcodes = await detector.detect(videoEl);
                 if (barcodes.length && barcodes[0].rawValue) {
                     stop();
                     statusEl.textContent = 'QR code detected.';
                     onResult(barcodes[0].rawValue);
-                    return;
                 }
             } catch(e) {}
-            requestAnimationFrame(scan);
         };
-        requestAnimationFrame(scan);
+        intervalId = setInterval(scan, 350);
         return stop;
     } catch(e) {
         statusEl.textContent = 'Camera access denied — paste the code below.';
@@ -570,23 +626,19 @@ async function startSend() {
     showSendStep(2);
     document.getElementById('startSendBtn').disabled = false;
     document.getElementById('startSendBtn').textContent = 'Generate Transfer Code →';
+    document.getElementById('sendOfferText').value = '';
     setMsg('sendStep2Msg', 'Gathering network info…');
 
     sendPC = new RTCPeerConnection({ iceServers: [] });
     sendDC = sendPC.createDataChannel('transfer', { ordered: true });
     sendDC.onopen = () => doSendData();
 
-    const offerCandidates = [];
-    sendPC.onicecandidate = e => {
-        if (e.candidate) offerCandidates.push(e.candidate.toJSON());
-    };
-
     const offer = await sendPC.createOffer();
     await sendPC.setLocalDescription(offer);
-    await waitForIceComplete(sendPC, 5000);
+    const offerCandidates = await gatherIce(sendPC, 6000);
 
-    const payload = JSON.stringify({ type: 'offer', sdp: sendPC.localDescription.sdp, candidates: offerCandidates });
-    renderQR('sendQR', payload, 'sendOfferText', 'sendOfferTextWrap');
+    const payload = await compressPayload({ type: 'offer', sdp: sendPC.localDescription.sdp, candidates: offerCandidates });
+    renderQR('sendQR', payload, 'sendOfferText');
     setMsg('sendStep2Msg', '');
 
     // Start camera to scan answer
@@ -597,7 +649,7 @@ async function startSend() {
 
 async function processAnswer(answerText) {
     try {
-        const data = JSON.parse(answerText.trim());
+        const data = await decompressPayload(answerText.trim());
         if (data.type !== 'answer') throw new Error('Expected an answer code, got: ' + data.type);
         await sendPC.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
         for (const c of (data.candidates || [])) {
@@ -647,7 +699,7 @@ function resetSend() {
     if (sendScanStop) { sendScanStop(); sendScanStop = null; }
     sendExportPkg = null;
     document.getElementById('sendQR').innerHTML = '';
-    document.getElementById('sendOfferTextWrap').classList.add('hidden');
+    document.getElementById('sendOfferText').value = '';
     document.getElementById('sendAnswerPaste').value = '';
     document.getElementById('sendProgressBar').style.width = '0%';
     document.getElementById('sendProgressPct').textContent = '';
@@ -664,14 +716,10 @@ async function initRecvCamera() {
 
 async function processOffer(offerText) {
     try {
-        const data = JSON.parse(offerText.trim());
+        const data = await decompressPayload(offerText.trim());
         if (data.type !== 'offer') throw new Error('Expected an offer code, got: ' + data.type);
 
         recvPC = new RTCPeerConnection({ iceServers: [] });
-        const answerCandidates = [];
-        recvPC.onicecandidate = e => {
-            if (e.candidate) answerCandidates.push(e.candidate.toJSON());
-        };
 
         recvChunks = [];
         recvTotalChunks = 0;
@@ -703,11 +751,11 @@ async function processOffer(offerText) {
         }
         const answer = await recvPC.createAnswer();
         await recvPC.setLocalDescription(answer);
-        await waitForIceComplete(recvPC, 5000);
+        const answerCandidates = await gatherIce(recvPC, 6000);
 
         showRecvStep(2);
-        const payload = JSON.stringify({ type: 'answer', sdp: recvPC.localDescription.sdp, candidates: answerCandidates });
-        renderQR('recvQR', payload, 'recvAnswerText', 'recvAnswerTextWrap');
+        const payload = await compressPayload({ type: 'answer', sdp: recvPC.localDescription.sdp, candidates: answerCandidates });
+        renderQR('recvQR', payload, 'recvAnswerText');
         setMsg('recvStep2Msg', '');
         setMsg('recvStep1Msg', '');
     } catch(e) {
