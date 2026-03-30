@@ -596,6 +596,7 @@ function _lvResolveField(cp, field) {
 async function syncCPFromLeveling(name, elevation, type) {
     if (!_activeProjectId) return;
     try {
+        const elev = parseFloat(parseFloat(elevation).toFixed(decimalPlaces));
         const pts = await ftGetControlPointsByProject(_activeProjectId);
         const today = new Date().toISOString().split('T')[0];
         const loopName = projectDetails.description || _activeLoopId || 'Level loop';
@@ -603,7 +604,7 @@ async function syncCPFromLeveling(name, elevation, type) {
             id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
             source: 'leveling', date: today,
             label: loopName + ' — ' + today,
-            northing: null, easting: null, elevation,
+            northing: null, easting: null, elevation: elev,
             loopId: _activeLoopId || null, loopName,
             levelType: type,
         };
@@ -618,7 +619,7 @@ async function syncCPFromLeveling(name, elevation, type) {
         } else {
             await ftSaveControlPoint({
                 id: obs.id, projectId: _activeProjectId, name: name.trim(),
-                northing: null, easting: null, elevation,
+                northing: null, easting: null, elevation: elev,
                 preferNorthing: null, preferEasting: null, preferElevation: obs.id,
                 oldStation: '', equation: '', distanceOld: null,
                 newStation: '', distanceNew: null, note: '',

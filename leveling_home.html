@@ -591,15 +591,17 @@
 
     async function _syncCPsFromLoop(projectId, loopId, loopName, levelRows) {
         const today = new Date().toISOString().split('T')[0];
+        const dp = parseInt(await ftGetSetting('levelingDecimals') || '3', 10);
         const toSync = _collectCPCandidates(levelRows);
         for (const c of toSync) {
             try {
+                const elev = parseFloat(parseFloat(c.elevation).toFixed(dp));
                 const pts = await ftGetControlPointsByProject(projectId);
                 const obs = {
                     id: `lv-${Date.now().toString(36)}${Math.random().toString(36).slice(2,5)}`,
                     source: 'leveling', date: today,
                     label: loopName + ' — ' + today,
-                    northing: null, easting: null, elevation: c.elevation,
+                    northing: null, easting: null, elevation: elev,
                     loopId, loopName,
                     levelType: c.levelType,
                 };
@@ -612,7 +614,7 @@
                 } else {
                     await ftSaveControlPoint({
                         id: obs.id, projectId, name: c.name.trim(),
-                        northing: null, easting: null, elevation: c.elevation,
+                        northing: null, easting: null, elevation: elev,
                         preferNorthing: null, preferEasting: null, preferElevation: obs.id,
                         oldStation: '', equation: '', distanceOld: null,
                         newStation: '', distanceNew: null, note: '',
