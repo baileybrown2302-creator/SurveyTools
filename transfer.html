@@ -551,25 +551,21 @@ function initSendPeer(retries) {
 
 async function doSendData(conn) {
     const json = JSON.stringify(sendExportPkg);
-    const CHUNK = 16384;
-    const total = json.length;
-    const numChunks = Math.ceil(total / CHUNK);
+    const kb = (json.length / 1024).toFixed(0);
 
-    document.getElementById('sendProgressLabel').textContent = `Sending ${(total / 1024).toFixed(0)} KB…`;
-    conn.send({ type: 'header', total, chunks: numChunks });
+    document.getElementById('sendProgressLabel').textContent = `Sending ${kb} KB…`;
+    document.getElementById('sendProgressBar').style.width = '40%';
+    document.getElementById('sendProgressPct').textContent = '';
 
-    for (let i = 0; i < numChunks; i++) {
-        conn.send({ type: 'chunk', seq: i, data: json.slice(i * CHUNK, (i + 1) * CHUNK) });
-        const pct = Math.round((i + 1) / numChunks * 100);
-        document.getElementById('sendProgressBar').style.width = pct + '%';
-        document.getElementById('sendProgressPct').textContent = pct + '%';
-        if (i % 4 === 0) await new Promise(r => setTimeout(r, 0));
-    }
-    conn.send({ type: 'done' });
+    // Send the whole payload in one call — PeerJS handles internal chunking
+    // and the receiver gets one complete 'data' event when fully reassembled.
+    conn.send(json);
 
-    document.getElementById('sendDoneMsg').textContent = `Sent ${(total / 1024).toFixed(0)} KB successfully.`;
+    document.getElementById('sendProgressBar').style.width = '100%';
+    document.getElementById('sendDoneMsg').textContent = `Sent ${kb} KB successfully.`;
     showSendStep(4);
-    if (sendPeer) { try { sendPeer.destroy(); } catch(e) {} sendPeer = null; }
+    // Do NOT destroy sendPeer here — the DataChannel buffer may not have
+    // flushed yet. The peer stays alive until the user taps "Send Again".
 }
 
 async function shareDataFile() {
@@ -654,7 +650,6 @@ async function startReceive() {
     document.getElementById('recvProgressBar').style.width = '0%';
     document.getElementById('recvProgressPct').textContent = '';
 
-    recvChunks = []; recvTotalChunks = 0;
     if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
 
     recvPeer = new Peer();
@@ -673,32 +668,25 @@ async function startReceive() {
         conn.on('open', () => {
             clearTimeout(connTimeout);
             document.getElementById('recvWaitLabel').textContent = 'Connected — receiving data…';
+            document.getElementById('recvProgressBar').style.width = '30%';
         });
 
-        conn.on('data', msg => {
-            if (msg.type === 'header') {
-                recvTotalChunks = msg.chunks;
-                recvChunks = new Array(msg.chunks);
-                document.getElementById('recvWaitLabel').textContent = `Receiving ${(msg.total / 1024).toFixed(0)} KB…`;
-            } else if (msg.type === 'chunk') {
-                recvChunks[msg.seq] = msg.data;
-                const received = recvChunks.filter(c => c !== undefined).length;
-                const pct = recvTotalChunks ? Math.round(received / recvTotalChunks * 100) : 0;
-                document.getElementById('recvProgressBar').style.width = pct + '%';
-                document.getElementById('recvProgressPct').textContent = pct + '%';
-            } else if (msg.type === 'done') {
-                recvDone = true;
-                clearTimeout(connTimeout);
-                try {
-                    recvReceivedPkg = JSON.parse(recvChunks.join(''));
-                    buildRecvTree(recvReceivedPkg);
-                    showRecvStep(3);
-                } catch(e) {
-                    showRecvStep(1);
-                    setMsg('recvStep1Msg', 'Data error: ' + e.message);
-                }
-                if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
+        conn.on('data', data => {
+            // PeerJS reassembles all internal chunks before firing this event,
+            // so we receive the complete JSON string in one shot.
+            recvDone = true;
+            clearTimeout(connTimeout);
+            document.getElementById('recvProgressBar').style.width = '100%';
+            try {
+                const str = typeof data === 'string' ? data : new TextDecoder().decode(data);
+                recvReceivedPkg = JSON.parse(str);
+                buildRecvTree(recvReceivedPkg);
+                showRecvStep(3);
+            } catch(e) {
+                showRecvStep(1);
+                setMsg('recvStep1Msg', 'Data error: ' + e.message);
             }
+            if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
         });
 
         conn.on('close', () => {
