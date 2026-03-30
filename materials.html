@@ -170,12 +170,31 @@
         .proctor-log-main{font-size:0.85em;font-weight:700;color:var(--text-primary);}
         .proctor-log-meta{font-size:0.72em;color:var(--text-muted);margin-top:1px;}
         .proctor-log-actions{display:flex;gap:6px;flex-shrink:0;}
-        .corr-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;align-items:end;margin-bottom:8px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:8px 10px;}
+        .corr-row{margin-bottom:8px;background:var(--bg-tertiary);border:1px solid var(--border-primary);border-radius:9px;padding:8px 10px;}
         .corr-row .field-group{margin-bottom:0;}
-        .corr-row-notes{grid-column:1/-1;margin-bottom:0;}
+        .corr-inner{display:grid;gap:6px;margin-bottom:6px;}
+        .corr-inner:last-child{margin-bottom:0;}
+        .corr-col2{grid-template-columns:1fr 1fr;}
+        .corr-header-row{display:flex;gap:6px;align-items:flex-end;margin-bottom:6px;}
+        .corr-header-row .field-group{flex:1;}
+        .corr-section-label{font-size:0.65em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin:6px 0 4px;}
         .btn-icon{background:none;border:none;color:var(--accent-red);font-size:1.1em;cursor:pointer;padding:4px 6px;border-radius:6px;flex-shrink:0;}
         .btn-icon:hover{background:var(--bg-tertiary);}
         .gran-toggle-header{user-select:none;}
+        /* Photo grid */
+        .photo-grid{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+        .photo-thumb-wrap{position:relative;width:80px;height:80px;flex-shrink:0;}
+        .photo-thumb{width:80px;height:80px;object-fit:cover;border-radius:9px;border:1.5px solid var(--border-primary);cursor:pointer;display:block;}
+        .photo-remove{position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:var(--accent-red);color:#fff;border:none;font-size:0.7em;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+        /* Photo strip in card view */
+        .photo-strip{display:flex;gap:8px;overflow-x:auto;padding:6px 0;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+        .photo-strip::-webkit-scrollbar{display:none;}
+        .photo-strip img{width:72px;height:72px;object-fit:cover;border-radius:8px;flex-shrink:0;cursor:pointer;border:1.5px solid var(--border-primary);}
+        /* Lightbox */
+        .lightbox{position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:3000;display:flex;align-items:center;justify-content:center;}
+        .lightbox.hidden{display:none!important;}
+        .lightbox img{max-width:95vw;max-height:88vh;border-radius:8px;object-fit:contain;}
+        .lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,0.15);border:none;color:#fff;font-size:1.5em;font-weight:700;cursor:pointer;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;}
     </style>
 </head>
 <body>
@@ -330,11 +349,25 @@
             <div class="field-group"><label class="label">Unit Weight (pcf) <span class="optional">(optional)</span></label><input class="input" type="number" inputmode="decimal" id="other_uw" placeholder="e.g., 110.0" step="0.1"></div>
             <div class="field-group"><label class="label">Notes <span class="optional">(optional)</span></label><textarea class="textarea-input" id="other_notes" placeholder="Additional notes…"></textarea></div>
         </div>
+        <!-- Reference Photos — shown for all categories -->
+        <div class="section-divider">Reference Photos <span class="optional" style="font-weight:400;font-size:0.85em;">(optional)</span></div>
+        <div class="photo-grid" id="modal_photoGrid"></div>
+        <label class="btn btn-secondary btn-small" style="cursor:pointer;width:100%;margin-bottom:14px;">
+            &#128247; Add Photo
+            <input type="file" accept="image/*" multiple hidden id="photoInput" onchange="handlePhotoInput(this)">
+        </label>
+
         <div class="modal-actions">
             <button class="btn btn-secondary" onclick="closeModal('materialModal')">Cancel</button>
             <button class="btn btn-primary" onclick="saveMaterial()">Save</button>
         </div>
     </div>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div class="lightbox hidden" id="photoLightbox" onclick="closeLightbox()">
+    <img id="lightboxImg" src="" alt="">
+    <button class="lightbox-close" onclick="closeLightbox()">&#10005;</button>
 </div>
 
 <!-- EXPORT CHOOSER MODAL -->
@@ -426,6 +459,7 @@ let editingContractId=null;
 let pendingImportData=null; // holds parsed import JSON
 let _editProctors=[];     // in-modal proctor log state
 let _editCorrelations=[]; // in-modal gauge correlations state
+let _editPhotos=[];       // in-modal reference photos (base64 data URLs)
 
 async function loadData(){
     const contracts=await ftGetAllMaterials();
@@ -637,18 +671,82 @@ function getMaterialSubtitle(m){
     if(m.category==='Granular')return m.gran_source?`Source: ${m.gran_source}`:'';
     return m.other_uw?`${m.other_uw} pcf`:'';
 }
+// ── Reference Photos ────────────────────────────────────
+function compressImage(file){
+    return new Promise(resolve=>{
+        const reader=new FileReader();
+        reader.onload=e=>{
+            const img=new Image();
+            img.onload=()=>{
+                const MAX=900;
+                let w=img.width,h=img.height;
+                if(w>MAX){h=Math.round(h*MAX/w);w=MAX;}
+                const canvas=document.createElement('canvas');
+                canvas.width=w;canvas.height=h;
+                canvas.getContext('2d').drawImage(img,0,0,w,h);
+                resolve(canvas.toDataURL('image/jpeg',0.72));
+            };
+            img.src=e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+function renderModalPhotos(){
+    const grid=document.getElementById('modal_photoGrid');
+    if(!grid)return;
+    if(!_editPhotos.length){grid.innerHTML='';return;}
+    grid.innerHTML=_editPhotos.map((src,i)=>`
+        <div class="photo-thumb-wrap">
+            <img class="photo-thumb" src="${src}" onclick="openLightbox('${src}')" alt="Photo ${i+1}">
+            <button class="photo-remove" onclick="removePhoto(${i})" title="Remove">&#10005;</button>
+        </div>`).join('');
+}
+async function handlePhotoInput(input){
+    const files=Array.from(input.files||[]);
+    if(!files.length)return;
+    for(const file of files){
+        if(!file.type.startsWith('image/'))continue;
+        const dataUrl=await compressImage(file);
+        _editPhotos.push(dataUrl);
+    }
+    input.value='';
+    renderModalPhotos();
+}
+function removePhoto(idx){
+    _editPhotos.splice(idx,1);
+    renderModalPhotos();
+}
+function openLightbox(src){
+    document.getElementById('lightboxImg').src=src;
+    document.getElementById('photoLightbox').classList.remove('hidden');
+}
+function closeLightbox(){
+    document.getElementById('photoLightbox').classList.add('hidden');
+    document.getElementById('lightboxImg').src='';
+}
+function photoStripHtml(m){
+    const photos=m.photos||[];
+    if(!photos.length)return'';
+    return`<div class="data-full" style="margin-top:4px;">
+        <div class="data-label">Reference Photos</div>
+        <div class="photo-strip">${photos.map(src=>`<img src="${src}" onclick="openLightbox('${src}')" alt="Reference photo">`).join('')}</div>
+    </div>`;
+}
+
 function renderMaterialBody(m){
     if(m.category==='HMA')return`<div class="data-grid">
         <div><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.hma_id||'—')}</div></div>
         <div><div class="data-label">JMF Density</div><div class="data-value">${m.hma_density!=null?m.hma_density+' pcf':'—'}</div></div>
         <div><div class="data-label">Bitumen Ratio</div><div class="data-value">${m.hma_ac!=null?m.hma_ac+'%':'—'}</div></div>
         ${m.hma_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.hma_notes)}</div></div>`:''}
+        ${photoStripHtml(m)}
     </div>`;
     if(m.category==='Concrete')return`<div class="data-grid">
         <div><div class="data-label">Mix Design ID</div><div class="data-value">${escHtml(m.conc_id||'—')}</div></div>
         <div><div class="data-label">Unit Weight</div><div class="data-value">${m.conc_uw!=null?m.conc_uw+' pcf':'—'}</div></div>
         <div><div class="data-label">f'c</div><div class="data-value">${m.conc_fc!=null?m.conc_fc+' psi':'—'}</div></div>
         ${m.conc_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.conc_notes)}</div></div>`:''}
+        ${photoStripHtml(m)}
     </div>`;
     if(m.category==='Granular'){
         const pLog=m.gran_proctors||[];const cLog=m.gran_correlations||[];
@@ -663,14 +761,27 @@ function renderMaterialBody(m){
         ${m.gran_omc_corr!=null?`<div><div class="data-label">Corrected OMC</div><div class="data-value">${m.gran_omc_corr}%</div></div>`:''}
         <div class="data-full"><div class="data-label">Test Method</div><div class="data-value">AASHTO T108 (Modified Proctor)</div></div>
         ${pLog.length?`<div class="data-full"><div class="data-label">Proctor Log</div><div class="data-value">${pLog.length} test${pLog.length!==1?'s':''} on record</div></div>`:''}
-        ${cLog.length?`<div class="data-full"><div class="data-label">Gauge Correlations</div><div class="data-value">${cLog.length} correlation${cLog.length!==1?'s':''} saved</div></div>`:''}
+        ${cLog.length?`<div class="data-full"><div class="data-label">Gauge Correlations</div><div class="data-value" style="margin-top:4px;">${cLog.map(cr=>{
+            const parts=[];
+            if(cr.gaugeNo)parts.push(`<strong>${escHtml(cr.gaugeNo)}</strong>`);
+            if(cr.date)parts.push(escHtml(cr.date));
+            if(cr.gaugeReading!=null||cr.ovenMoisture!=null)parts.push(`Gauge ${cr.gaugeReading??'—'}% / Oven ${cr.ovenMoisture??'—'}%`);
+            if(cr.moistureOffset!=null)parts.push(`MCF ${cr.moistureOffset}`);
+            if(cr.wetDensityOffset!=null)parts.push(`WD ${cr.wetDensityOffset}`);
+            const slots=[];if(cr.moistureSlot)slots.push(`Moist→Slot ${escHtml(cr.moistureSlot)}`);if(cr.densitySlot)slots.push(`Dens→Slot ${escHtml(cr.densitySlot)}`);
+            if(slots.length)parts.push(slots.join(' / '));
+            if(cr.notes)parts.push(`<em>${escHtml(cr.notes)}</em>`);
+            return`<div style="font-size:0.82em;padding:4px 0;border-bottom:1px solid var(--border-primary);">${parts.join(' &nbsp;·&nbsp; ')}</div>`;
+        }).join('')}</div></div>`:''}
         ${m.gran_desc?`<div class="data-full"><div class="data-label">Description</div><div class="description-block">${escHtml(m.gran_desc)}</div></div>`:''}
+        ${photoStripHtml(m)}
     </div>`;
     }
     return`<div class="data-grid">
         <div><div class="data-label">Material Name</div><div class="data-value">${escHtml(m.other_name||'—')}</div></div>
         <div><div class="data-label">Unit Weight</div><div class="data-value">${m.other_uw!=null?m.other_uw+' pcf':'—'}</div></div>
         ${m.other_notes?`<div class="data-full"><div class="data-label">Notes</div><div class="description-block">${escHtml(m.other_notes)}</div></div>`:''}
+        ${photoStripHtml(m)}
     </div>`;
 }
 
@@ -699,13 +810,15 @@ function openEditMaterial(id){
     else if(m.category==='Concrete'){document.getElementById('conc_id').value=m.conc_id||'';document.getElementById('conc_uw').value=m.conc_uw??'';document.getElementById('conc_fc').value=m.conc_fc??'';document.getElementById('conc_notes').value=m.conc_notes||'';}
     else if(m.category==='Granular'){document.getElementById('gran_name').value=m.gran_name||'';document.getElementById('gran_source').value=m.gran_source||'';document.getElementById('gran_proctorTestNo').value=m.gran_proctorTestNo||'';document.getElementById('gran_proctorDate').value=m.gran_proctorDate||'';document.getElementById('gran_mdd').value=m.gran_mdd??'';document.getElementById('gran_omc').value=m.gran_omc??'';document.getElementById('gran_mdd_corr').value=m.gran_mdd_corr??'';document.getElementById('gran_omc_corr').value=m.gran_omc_corr??'';document.getElementById('gran_desc').value=m.gran_desc||'';_editProctors=JSON.parse(JSON.stringify(m.gran_proctors||[]));_editCorrelations=JSON.parse(JSON.stringify(m.gran_correlations||[]));renderModalProctors();renderModalCorrelations();}
     else{document.getElementById('other_name').value=m.other_name||'';document.getElementById('other_uw').value=m.other_uw??'';document.getElementById('other_notes').value=m.other_notes||'';}
+    _editPhotos=JSON.parse(JSON.stringify(m.photos||[]));renderModalPhotos();
     openModal('materialModal');
 }
 function clearMaterialForm(){
     ['hma_id','hma_density','hma_ac','hma_notes','conc_id','conc_uw','conc_fc','conc_notes',
      'gran_name','gran_source','gran_proctorTestNo','gran_proctorDate','gran_mdd','gran_omc','gran_mdd_corr','gran_omc_corr','gran_desc',
      'other_name','other_uw','other_notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-    _editProctors=[];_editCorrelations=[];
+    _editProctors=[];_editCorrelations=[];_editPhotos=[];
+    renderModalPhotos();
     // Collapse toggle sections
     ['proctorLog','corrList'].forEach(k=>{
         const s=document.getElementById('gran_'+k+'Section');if(s)s.classList.add('hidden');
@@ -722,6 +835,7 @@ async function saveMaterial(){
     else if(cat==='Concrete'){const id=document.getElementById('conc_id').value.trim();if(!id){alert('Enter a mix design ID.');return;}m.conc_id=id;m.conc_uw=parseNum('conc_uw');m.conc_fc=parseNum('conc_fc');m.conc_notes=document.getElementById('conc_notes').value.trim();}
     else if(cat==='Granular'){const name=document.getElementById('gran_name').value.trim();if(!name){alert('Enter a material name.');return;}m.gran_name=name;m.gran_source=document.getElementById('gran_source').value.trim();m.gran_proctorTestNo=document.getElementById('gran_proctorTestNo').value.trim();m.gran_proctorDate=document.getElementById('gran_proctorDate').value;m.gran_mdd=parseNum('gran_mdd');m.gran_omc=parseNum('gran_omc');m.gran_mdd_corr=parseNum('gran_mdd_corr');m.gran_omc_corr=parseNum('gran_omc_corr');m.gran_desc=document.getElementById('gran_desc').value.trim();m.gran_proctors=_editProctors;m.gran_correlations=_editCorrelations;}
     else{const name=document.getElementById('other_name').value.trim();if(!name){alert('Enter a material name.');return;}m.other_name=name;m.other_uw=parseNum('other_uw');m.other_notes=document.getElementById('other_notes').value.trim();}
+    m.photos=_editPhotos;
     if(editingMaterialId){const idx=c.materials.findIndex(x=>x.id===editingMaterialId);if(idx>=0)c.materials[idx]=m;}
     else c.materials.push(m);
     await saveData();closeModal('materialModal');renderMaterials();
@@ -799,15 +913,40 @@ function renderModalCorrelations(){
     const el=document.getElementById('gran_corrList');
     if(!el)return;
     if(!_editCorrelations.length){el.innerHTML='<div style="font-size:0.8em;color:var(--text-muted);padding:6px 0;">No correlations saved. Add one below.</div>';return;}
-    el.innerHTML=_editCorrelations.map((c,i)=>`
+    const inp=(field,type,val,placeholder,extra='')=>`<input class="input" type="${type}" ${type==='number'?'step="0.01"':''} value="${escHtml(String(val??''))}" placeholder="${placeholder}" data-cid="__CID__" data-field="${field}" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"${extra}>`;
+    el.innerHTML=_editCorrelations.map(c=>{
+        const cid=escHtml(c.id);
+        const row=`
         <div class="corr-row">
-            <div class="field-group"><label class="label" style="font-size:0.7em;">Gauge No.</label><input class="input" type="text" value="${escHtml(c.gaugeNo||'')}" placeholder="e.g. 12345A" data-cid="${escHtml(c.id)}" data-field="gaugeNo" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
-            <div class="field-group"><label class="label" style="font-size:0.7em;">Date</label><input class="input" type="date" value="${escHtml(c.date||'')}" data-cid="${escHtml(c.id)}" data-field="date" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
-            <div class="field-group"><label class="label" style="font-size:0.7em;">Moisture Offset (MCF)</label><input class="input" type="number" step="0.01" value="${c.moistureOffset??''}" placeholder="e.g. 0.00" data-cid="${escHtml(c.id)}" data-field="moistureOffset" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
-            <div class="field-group"><label class="label" style="font-size:0.7em;">WD Offset</label><input class="input" type="number" step="0.01" value="${c.wetDensityOffset??''}" placeholder="e.g. 0.00" data-cid="${escHtml(c.id)}" data-field="wetDensityOffset" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
-            <button class="btn-icon" title="Remove" onclick="removeCorrelationRow('${escHtml(c.id)}')">✕</button>
-            <div class="field-group corr-row-notes"><label class="label" style="font-size:0.7em;">Notes (optional)</label><input class="input" type="text" value="${escHtml(c.notes||'')}" placeholder="e.g. Before re-correlation" data-cid="${escHtml(c.id)}" data-field="notes" onchange="syncCorrelationRow(this)" style="font-size:0.85em;padding:7px 9px;"></div>
-        </div>`).join('');
+            <!-- Gauge ID + Date + delete -->
+            <div class="corr-header-row">
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Gauge No.</label>${inp('gaugeNo','text',c.gaugeNo||'','e.g. 12345A')}</div>
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Corr. Date</label>${inp('date','date',c.date||'','')}</div>
+                <button class="btn-icon" title="Remove" onclick="removeCorrelationRow('${cid}')">✕</button>
+            </div>
+            <!-- Moisture readings used by gauge to auto-calc MCF -->
+            <div class="corr-section-label">Moisture Correlation Readings</div>
+            <div class="corr-inner corr-col2">
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Gauge Moisture % (reading)</label>${inp('gaugeReading','number',c.gaugeReading,'e.g. 8.5')}</div>
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Oven Dried Moisture %</label>${inp('ovenMoisture','number',c.ovenMoisture,'e.g. 7.2')}</div>
+            </div>
+            <!-- Calculated offsets -->
+            <div class="corr-section-label">Offsets</div>
+            <div class="corr-inner corr-col2">
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Moisture Offset (MCF)</label>${inp('moistureOffset','number',c.moistureOffset,'e.g. 0.00')}</div>
+                <div class="field-group"><label class="label" style="font-size:0.7em;">WD Offset</label>${inp('wetDensityOffset','number',c.wetDensityOffset,'e.g. 0.00')}</div>
+            </div>
+            <!-- Gauge memory slot numbers -->
+            <div class="corr-section-label">Gauge Memory Slots</div>
+            <div class="corr-inner corr-col2">
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Moisture Offset → Slot #</label>${inp('moistureSlot','text',c.moistureSlot||'','e.g. 2',' inputmode="numeric"')}</div>
+                <div class="field-group"><label class="label" style="font-size:0.7em;">Density Offset → Slot #</label>${inp('densitySlot','text',c.densitySlot||'','e.g. 2',' inputmode="numeric"')}</div>
+            </div>
+            <!-- Notes -->
+            <div class="corr-inner"><div class="field-group"><label class="label" style="font-size:0.7em;">Notes (optional)</label>${inp('notes','text',c.notes||'','e.g. Before re-correlation')}</div></div>
+        </div>`.replace(/__CID__/g,cid);
+        return row;
+    }).join('');
 }
 
 function syncCorrelationRow(input){
@@ -815,7 +954,7 @@ function syncCorrelationRow(input){
     const field=input.dataset.field;
     const corr=_editCorrelations.find(c=>c.id===cid);
     if(!corr)return;
-    if(field==='moistureOffset'||field==='wetDensityOffset'){
+    if(['moistureOffset','wetDensityOffset','gaugeReading','ovenMoisture'].includes(field)){
         const v=parseFloat(input.value);corr[field]=isNaN(v)?null:v;
     } else {
         corr[field]=input.value;
@@ -823,7 +962,7 @@ function syncCorrelationRow(input){
 }
 
 function addCorrelationRow(){
-    _editCorrelations.push({id:uid(),gaugeNo:'',date:'',moistureOffset:null,wetDensityOffset:null,notes:''});
+    _editCorrelations.push({id:uid(),gaugeNo:'',date:'',gaugeReading:null,ovenMoisture:null,moistureOffset:null,wetDensityOffset:null,moistureSlot:'',densitySlot:'',notes:''});
     // Ensure section is open
     const sec=document.getElementById('gran_corrListSection');if(sec)sec.classList.remove('hidden');
     const tog=document.getElementById('corrListToggle');if(tog)tog.textContent='▾';
