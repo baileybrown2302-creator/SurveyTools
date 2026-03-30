@@ -345,9 +345,9 @@ async function loadMaterialData(){
         if(!materialData.contracts||materialData.contracts.length===0){showNoMaterials();return;}
         const sel=document.getElementById('t_contract');
         sel.innerHTML='<option value="">— Select contract —</option>';
-        const contracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));
-        if(contracts.length===0){showNoMaterials();return;}
-        contracts.forEach(c=>{
+        const hmaContracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));
+        if(hmaContracts.length===0){showNoMaterials();return;}
+        hmaContracts.forEach(c=>{
             const opt=document.createElement('option');
             opt.value=c.id;opt.textContent=c.number+(c.description?' — '+c.description:'');
             sel.appendChild(opt);
