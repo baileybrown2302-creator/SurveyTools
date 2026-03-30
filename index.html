@@ -182,11 +182,41 @@
 
         <!-- Footer + changelog -->
         <div class="home-footer">
-            <div class="footer-meta">Last updated Mar 22, 2026</div>
+            <div class="footer-meta">Last updated Mar 30, 2026</div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Material Reference — Gauge Correlation &amp; Photo References</div>
+                    <ul class="cl-items">
+                        <li>Gauge correlation now captures moisture % reading and oven-dried moisture % for auto-offset calculation</li>
+                        <li>Moisture and density offset slot numbers saved per correlation entry</li>
+                        <li>Reference photos: attach one or more images to any material for visual verification</li>
+                        <li>Photos viewable full-screen from the material card; stored locally on device</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Backup &amp; Transfer</div>
+                    <ul class="cl-items">
+                        <li>Full backup export: select any combination of projects, loops, control points, sessions, materials, tests, and bid items</li>
+                        <li>Import backup with per-record selection — duplicates skipped automatically</li>
+                        <li>Device-to-device transfer via 6-character code (PeerJS, same Wi-Fi or hotspot)</li>
+                        <li>Offline transfer via file share (AirDrop / Nearby Share) or direct file download</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">HMA Tool — bug fix</div>
+                    <ul class="cl-items">
+                        <li>Fixed "From Saved Materials", "Stations" toggle, and "Yield" tab all non-functional due to a JavaScript parse error</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 22, 2026</div>
