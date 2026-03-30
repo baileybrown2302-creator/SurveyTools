@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v18';
+const CACHE_NAME = 'survey-tool-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,9 @@ const ASSETS = [
   './icon.png',
   './controlpoints.html',
   './csvconverter.html',
-  './bidestimate.html'
+  './bidestimate.html',
+  './transfer.html',
+  './lib/qrcode.min.js'
 ];
 
 // Install: cache all assets

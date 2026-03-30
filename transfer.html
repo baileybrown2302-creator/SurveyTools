@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <title>Transfer — Survey Tools</title>
+    <script src="db.js"></script>
+    <script src="lib/qrcode.min.js"></script>
+    <style>
+        :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-red:#ef4444;--accent-red-hover:#dc2626;--accent-orange:#f97316;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--modal-overlay:rgba(0,0,0,0.65);}
+        [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-red:#f87171;--accent-red-hover:#fca5a5;--accent-orange:#fb923c;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--modal-overlay:rgba(0,0,0,0.85);}
+        *{box-sizing:border-box;margin:0;padding:0;}
+        body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding-bottom:60px;-webkit-tap-highlight-color:transparent;}
+        .top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+        .nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+        .nav-title{font-weight:800;font-size:1em;}
+        .theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+        .page{padding:14px 16px;}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 16px;border:none;border-radius:10px;font-size:0.88em;font-weight:700;cursor:pointer;transition:all 0.15s;-webkit-user-select:none;user-select:none;}
+        .btn:active{transform:scale(0.97);}
+        .btn-primary{background:var(--accent-blue);color:#fff;}
+        .btn-primary:hover{background:var(--accent-blue-hover);}
+        .btn-success{background:var(--accent-green);color:#fff;}
+        .btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+        .btn-secondary:hover{background:var(--border-primary);}
+        .btn-sm{padding:7px 13px;font-size:0.82em;min-height:34px;border-radius:8px;}
+        .btn-xs{padding:5px 9px;font-size:0.72em;min-height:30px;border-radius:7px;}
+        .btn:disabled{opacity:0.5;cursor:not-allowed;}
+        /* Mode tabs */
+        .mode-tabs{display:flex;background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:0 16px;}
+        .mode-tab{flex:1;padding:12px 0;font-size:0.9em;font-weight:700;border:none;background:none;color:var(--text-muted);cursor:pointer;border-bottom:3px solid transparent;transition:all 0.15s;}
+        .mode-tab.active{color:var(--accent-blue);border-bottom-color:var(--accent-blue);}
+        /* Steps */
+        .step{display:none;}
+        .step.show{display:block;}
+        .step-card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:var(--shadow);}
+        .step-title{font-size:0.82em;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-muted);margin-bottom:10px;}
+        .step-heading{font-size:1em;font-weight:800;margin-bottom:6px;}
+        .step-sub{font-size:0.82em;color:var(--text-secondary);margin-bottom:12px;line-height:1.5;}
+        /* QR display */
+        .qr-box{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:12px;}
+        .qr-inner{background:#fff;padding:12px;border-radius:8px;display:inline-flex;}
+        .qr-label{font-size:0.78em;color:var(--text-muted);font-weight:600;}
+        /* Camera */
+        .camera-box{background:#000;border-radius:12px;overflow:hidden;position:relative;margin-bottom:8px;max-width:320px;width:100%;}
+        .camera-box video{width:100%;display:block;max-height:240px;object-fit:cover;}
+        .camera-box .cam-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+        .scan-frame{width:160px;height:160px;border:2px solid var(--accent-blue);border-radius:8px;opacity:0.7;}
+        .cam-status{font-size:0.75em;color:var(--text-muted);text-align:center;margin-bottom:8px;}
+        /* Progress */
+        .progress-bar-wrap{background:var(--bg-tertiary);border-radius:20px;height:12px;overflow:hidden;margin:10px 0;}
+        .progress-bar-fill{height:100%;background:var(--accent-blue);border-radius:20px;transition:width 0.2s;}
+        .progress-pct{font-size:0.82em;color:var(--text-muted);text-align:center;}
+        /* Tree */
+        .tree-wrap{max-height:44vh;overflow-y:auto;border:1.5px solid var(--border-primary);border-radius:10px;margin-bottom:10px;}
+        .tree-project{border-bottom:1px solid var(--border-primary);}
+        .tree-project:last-child{border-bottom:none;}
+        .tree-project-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-tertiary);}
+        .tree-project-hdr span{font-size:0.88em;font-weight:800;}
+        .tree-proj-children{padding:4px 0;}
+        .tree-cat{margin-bottom:2px;}
+        .tree-cat-hdr{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 26px;}
+        .tree-cat-hdr span{font-size:0.78em;font-weight:700;color:var(--text-secondary);}
+        .tree-count{font-weight:400;color:var(--text-muted);}
+        .tree-cat-items{padding-left:2px;}
+        .tree-item-row{display:flex;align-items:center;gap:8px;padding:4px 14px 4px 42px;}
+        .tree-item-row span{font-size:0.78em;color:var(--text-primary);}
+        .tree-item-meta{color:var(--text-muted)!important;font-size:0.72em!important;}
+        .tree-empty{padding:8px 14px;font-size:0.8em;color:var(--text-muted);}
+        input[type="checkbox"].tree-cb{width:15px;height:15px;accent-color:var(--accent-blue);flex-shrink:0;cursor:pointer;}
+        .tree-actions{display:flex;gap:8px;margin-bottom:8px;}
+        /* Paste fallback */
+        .paste-wrap{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:10px;padding:12px;margin-bottom:8px;}
+        .paste-label{font-size:0.72em;font-weight:700;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px;}
+        .paste-ta{width:100%;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.7em;min-height:80px;background:var(--input-bg);color:var(--text-primary);border:1.5px solid var(--input-border);border-radius:8px;padding:8px;resize:none;outline:none;}
+        .paste-ta:focus{border-color:var(--accent-blue);}
+        .divider{display:flex;align-items:center;gap:8px;margin:8px 0;color:var(--text-muted);font-size:0.78em;font-weight:700;}
+        .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border-primary);}
+        /* Done */
+        .done-card{text-align:center;padding:32px 16px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin-bottom:12px;}
+        .done-icon{font-size:2.5em;margin-bottom:10px;}
+        .done-title{font-size:1em;font-weight:800;margin-bottom:6px;}
+        .done-sub{font-size:0.82em;color:var(--text-secondary);}
+        /* Code display (for large payload fallback) */
+        .code-display{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:10px;font-family:'SF Mono','Fira Mono','Consolas',monospace;font-size:0.62em;word-break:break-all;max-height:100px;overflow-y:auto;margin-bottom:8px;color:var(--text-secondary);}
+        .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:400;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
+        .toast.show{opacity:1;}
+        .hidden{display:none!important;}
+        .msg-area{font-size:0.82em;color:var(--accent-red);min-height:18px;margin-bottom:6px;}
+    </style>
+</head>
+<body>
+
+<nav class="top-nav">
+    <a href="project_manager.html" class="nav-back">&#8249; Projects</a>
+    <span class="nav-title">&#8644; Transfer</span>
+    <button class="theme-btn" id="themeBtn">&#127769; Dark</button>
+</nav>
+
+<div class="mode-tabs">
+    <button class="mode-tab active" id="sendTab" onclick="setMode('send')">&#8593; Send</button>
+    <button class="mode-tab" id="receiveTab" onclick="setMode('receive')">&#8595; Receive</button>
+</div>
+
+<!-- ===== SEND PANEL ===== -->
+<div id="sendPanel" class="page">
+
+    <!-- Step 1: Select data -->
+    <div id="sendStep1" class="step show">
+        <div class="step-card">
+            <div class="step-heading">Choose what to send</div>
+            <div class="step-sub">Select the projects and individual records to transfer to another device on the same WiFi or hotspot.</div>
+        </div>
+        <div class="tree-actions">
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap', true)">Select All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('sendTreeWrap', false)">Deselect All</button>
+        </div>
+        <div class="tree-wrap" id="sendTreeWrap"><div class="tree-empty">Loading projects…</div></div>
+        <div class="msg-area" id="sendStep1Msg"></div>
+        <button class="btn btn-primary" style="width:100%;" id="startSendBtn" onclick="startSend()">Generate Transfer Code &#8594;</button>
+    </div>
+
+    <!-- Step 2: Show offer QR, scan answer -->
+    <div id="sendStep2" class="step">
+        <div class="step-card">
+            <div class="step-heading">Step 1 of 2 — Show this code to the receiver</div>
+            <div class="step-sub">Open Transfer on the other device, tap Receive, and scan this code.</div>
+        </div>
+        <div class="qr-box" id="sendQRBox">
+            <div class="qr-inner" id="sendQR"></div>
+            <div class="qr-label">Offer code — show to receiver</div>
+        </div>
+        <div id="sendOfferTextWrap" class="hidden">
+            <div class="step-sub">Code is too large for QR — copy and paste it on the receiver:</div>
+            <div class="code-display" id="sendOfferText"></div>
+            <button class="btn btn-secondary btn-sm" onclick="copyText('sendOfferText')">&#128203; Copy Code</button>
+        </div>
+
+        <div class="step-card" style="margin-top:12px;">
+            <div class="step-heading">Step 2 of 2 — Scan the receiver's answer code</div>
+            <div class="step-sub">After the receiver scans your code, they will show an answer code for you to scan.</div>
+        </div>
+        <div id="sendCamWrap">
+            <div class="camera-box" id="sendCamBox">
+                <video id="sendVideo" autoplay muted playsinline></video>
+                <div class="cam-overlay"><div class="scan-frame"></div></div>
+            </div>
+            <div class="cam-status" id="sendCamStatus">Starting camera…</div>
+        </div>
+        <div class="divider">or paste answer code</div>
+        <div class="paste-wrap">
+            <div class="paste-label">Answer code from receiver</div>
+            <textarea class="paste-ta" id="sendAnswerPaste" placeholder='{"type":"answer","sdp":"..."}' rows="3"></textarea>
+        </div>
+        <div class="msg-area" id="sendStep2Msg"></div>
+        <button class="btn btn-primary" style="width:100%;" onclick="processSendAnswerPaste()">Connect with pasted code</button>
+    </div>
+
+    <!-- Step 3: Transfer progress -->
+    <div id="sendStep3" class="step">
+        <div class="step-card">
+            <div class="step-heading">Sending data…</div>
+            <div class="step-sub" id="sendProgressLabel">Preparing…</div>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="sendProgressBar" style="width:0%"></div></div>
+        <div class="progress-pct" id="sendProgressPct">0%</div>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div id="sendStep4" class="step">
+        <div class="done-card">
+            <div class="done-icon">&#10003;</div>
+            <div class="done-title">Transfer Complete</div>
+            <div class="done-sub" id="sendDoneMsg">Data sent successfully.</div>
+        </div>
+        <button class="btn btn-secondary" style="width:100%;" onclick="resetSend()">Send Again</button>
+    </div>
+
+</div><!-- end sendPanel -->
+
+<!-- ===== RECEIVE PANEL ===== -->
+<div id="receivePanel" class="page hidden">
+
+    <!-- Step 1: Scan offer -->
+    <div id="recvStep1" class="step show">
+        <div class="step-card">
+            <div class="step-heading">Scan the sender's transfer code</div>
+            <div class="step-sub">Point your camera at the QR code on the sender's screen, or paste it below.</div>
+        </div>
+        <div id="recvCamWrap">
+            <div class="camera-box" id="recvCamBox">
+                <video id="recvVideo" autoplay muted playsinline></video>
+                <div class="cam-overlay"><div class="scan-frame"></div></div>
+            </div>
+            <div class="cam-status" id="recvCamStatus">Starting camera…</div>
+        </div>
+        <div class="divider">or paste offer code</div>
+        <div class="paste-wrap">
+            <div class="paste-label">Offer code from sender</div>
+            <textarea class="paste-ta" id="recvOfferPaste" placeholder='{"type":"offer","sdp":"..."}' rows="3"></textarea>
+        </div>
+        <div class="msg-area" id="recvStep1Msg"></div>
+        <button class="btn btn-primary" style="width:100%;" onclick="processRecvOfferPaste()">Connect with pasted code</button>
+    </div>
+
+    <!-- Step 2: Show answer QR + wait for data -->
+    <div id="recvStep2" class="step">
+        <div class="step-card">
+            <div class="step-heading">Show this answer code to the sender</div>
+            <div class="step-sub">The sender will scan this code, then data will begin transferring automatically.</div>
+        </div>
+        <div class="qr-box" id="recvQRBox">
+            <div class="qr-inner" id="recvQR"></div>
+            <div class="qr-label">Answer code — show to sender</div>
+        </div>
+        <div id="recvAnswerTextWrap" class="hidden">
+            <div class="step-sub">Code is too large for QR — the sender should paste this:</div>
+            <div class="code-display" id="recvAnswerText"></div>
+            <button class="btn btn-secondary btn-sm" onclick="copyText('recvAnswerText')">&#128203; Copy Code</button>
+        </div>
+        <div class="step-card" style="margin-top:12px;">
+            <div class="step-heading" id="recvWaitLabel">Waiting for sender to scan…</div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" id="recvProgressBar" style="width:0%"></div></div>
+            <div class="progress-pct" id="recvProgressPct"></div>
+        </div>
+        <div class="msg-area" id="recvStep2Msg"></div>
+    </div>
+
+    <!-- Step 3: Import selection -->
+    <div id="recvStep3" class="step">
+        <div class="step-card">
+            <div class="step-heading">Data received — choose what to import</div>
+            <div class="step-sub">Uncheck any items you don't want to import.</div>
+        </div>
+        <div class="tree-actions">
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap', true)">Select All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll('recvTreeWrap', false)">Deselect All</button>
+        </div>
+        <div class="tree-wrap" id="recvTreeWrap"></div>
+        <div class="msg-area" id="recvStep3Msg"></div>
+        <button class="btn btn-success" style="width:100%;" id="recvImportBtn" onclick="confirmRecvImport()">Import Selected</button>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div id="recvStep4" class="step">
+        <div class="done-card">
+            <div class="done-icon">&#10003;</div>
+            <div class="done-title">Import Complete</div>
+            <div class="done-sub" id="recvDoneMsg"></div>
+        </div>
+        <a href="project_manager.html" class="btn btn-primary" style="width:100%;display:flex;">View Projects</a>
+    </div>
+
+</div><!-- end receivePanel -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+// ---- Theme ----
+function applyTheme() {
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.getElementById('themeBtn').textContent = isHC ? '☀️ Light' : '🌙 Dark';
+}
+document.getElementById('themeBtn').addEventListener('click', () => {
+    const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+    document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+    localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
+    ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+    applyTheme();
+});
+applyTheme();
+
+function escHtml(str) {
+    if (!str && str !== 0) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function copyText(elId) {
+    const el = document.getElementById(elId);
+    navigator.clipboard.writeText(el.textContent).then(() => showToast('Copied!')).catch(() => showToast('Copy failed.'));
+}
+
+// ---- Mode switching ----
+let currentMode = 'send';
+let recvCamInitialized = false;
+function setMode(mode) {
+    currentMode = mode;
+    document.getElementById('sendTab').classList.toggle('active', mode === 'send');
+    document.getElementById('receiveTab').classList.toggle('active', mode === 'receive');
+    document.getElementById('sendPanel').classList.toggle('hidden', mode !== 'send');
+    document.getElementById('receivePanel').classList.toggle('hidden', mode !== 'receive');
+    if (mode === 'receive' && !recvCamInitialized) {
+        recvCamInitialized = true;
+        initRecvCamera();
+    }
+}
+
+// ---- Selection Tree ----
+
+function matLabel(m) {
+    const name = m.hma_id || m.conc_id || m.gran_name || m.other_name || '';
+    return m.category && name ? m.category + ': ' + name : m.category || name || 'Material';
+}
+
+function buildCatHtml(projId, catId, label, items, labelFn, idFn, sfx) {
+    if (!items || items.length === 0) return '';
+    let h = `<div class="tree-cat"><label class="tree-cat-hdr">
+        <input type="checkbox" class="tree-cb tree-cat-cb" checked data-pid="${projId}" data-cat="${catId}" onchange="updateCatCB_${sfx}(this)">
+        <span>${label} <span class="tree-count">(${items.length})</span></span>
+    </label><div class="tree-cat-items">`;
+    items.forEach((item, i) => {
+        const id = idFn ? idFn(item, i) : item.id;
+        const lbl = labelFn(item, i);
+        const meta = item.date ? `<span class="tree-item-meta">${escHtml(item.date)}</span>` : '';
+        h += `<label class="tree-item-row">
+            <input type="checkbox" class="tree-cb tree-item-cb" checked data-pid="${projId}" data-cat="${catId}" data-id="${escHtml(String(id))}" onchange="updateItemCB_${sfx}(this)">
+            <span>${escHtml(lbl)}</span>${meta}
+        </label>`;
+    });
+    return h + '</div></div>';
+}
+
+function buildProjectTreeHtml(proj, manifest, sfx) {
+    const projId = proj.id;
+    const m = manifest;
+    const mats = m.materials ? (m.materials.materials || []) : [];
+    let html = `<div class="tree-project" data-pid="${projId}">
+        <label class="tree-project-hdr">
+            <input type="checkbox" class="tree-cb tree-proj-cb" checked data-pid="${projId}" onchange="updateProjCB_${sfx}(this)">
+            <span>${escHtml(ftProjectTitle(proj))}</span>
+        </label>
+        <div class="tree-proj-children">`;
+    html += buildCatHtml(projId, 'levelLoops', 'Leveling Loops', m.levelLoops, l => l.name || l.id, null, sfx);
+    html += buildCatHtml(projId, 'controlPoints', 'Control Points', m.controlPoints, cp => cp.name || cp.id, null, sfx);
+    html += buildCatHtml(projId, 'stakeSessions', 'Slope Staking Sessions', m.stakeSessions,
+        s => s.description || (s.setup && s.setup.station ? (s.setup.station + ' ' + (s.setup.side || '')).trim() : 'Session'), null, sfx);
+    html += buildCatHtml(projId, 'materials', 'Materials', mats, m => matLabel(m), (_, i) => i, sfx);
+    html += buildCatHtml(projId, 'compactionTests', 'Compaction Tests (T335)', m.compactionTests,
+        t => ((t.materialType || '') + (t.liftLane ? ' ' + t.liftLane : '')).trim() || 'Test', null, sfx);
+    html += buildCatHtml(projId, 'soilTests', 'Soil Tests (T103G)', m.soilTests,
+        t => t.nuclearSetNo ? 'Gauge Set #' + t.nuclearSetNo : 'Soil Test', null, sfx);
+    html += buildCatHtml(projId, 'bidContracts', 'Bid Items', m.bidContracts, b => b.contractNo || b.id, null, sfx);
+    return html + '</div></div>';
+}
+
+// Generic tree handlers (dispatched by container ID suffix)
+function updateItemCBInScope(cb, scopeId) {
+    const pid = cb.dataset.pid, cat = cb.dataset.cat;
+    const scope = document.getElementById(scopeId);
+    const catCb = scope.querySelector(`.tree-cat-cb[data-pid="${pid}"][data-cat="${cat}"]`);
+    if (!catCb) return;
+    const all = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]`);
+    const chk = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]:checked`);
+    catCb.checked = chk.length > 0;
+    catCb.indeterminate = chk.length > 0 && chk.length < all.length;
+    syncProjCb(pid, scopeId);
+}
+function updateCatCBInScope(cb, scopeId) {
+    const pid = cb.dataset.pid, cat = cb.dataset.cat;
+    document.getElementById(scopeId).querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]`).forEach(el => el.checked = cb.checked);
+    syncProjCb(pid, scopeId);
+}
+function updateProjCBInScope(cb, scopeId) {
+    const pid = cb.dataset.pid;
+    const scope = document.getElementById(scopeId);
+    scope.querySelectorAll(`.tree-cat-cb[data-pid="${pid}"]`).forEach(el => { el.checked = cb.checked; el.indeterminate = false; });
+    scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]`).forEach(el => el.checked = cb.checked);
+}
+function syncProjCb(pid, scopeId) {
+    const scope = document.getElementById(scopeId);
+    const projCb = scope.querySelector(`.tree-proj-cb[data-pid="${pid}"]`);
+    if (!projCb) return;
+    const all = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]`);
+    const chk = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
+    projCb.checked = chk.length > 0;
+    projCb.indeterminate = chk.length > 0 && chk.length < all.length;
+}
+function treeSelectAll(scopeId, checked) {
+    document.getElementById(scopeId).querySelectorAll('.tree-proj-cb,.tree-cat-cb,.tree-item-cb').forEach(el => { el.checked = checked; el.indeterminate = false; });
+}
+function getSelectionFromScope(scopeId) {
+    const scope = document.getElementById(scopeId);
+    const selProjects = [];
+    scope.querySelectorAll('.tree-proj-cb').forEach(projCb => {
+        const pid = projCb.dataset.pid;
+        const checked = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
+        if (checked.length === 0) return;
+        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [] };
+        checked.forEach(cb => {
+            const cat = cb.dataset.cat, id = cb.dataset.id;
+            if (cat === 'materials') sel.materialIndices.push(parseInt(id));
+            else if (sel[cat]) sel[cat].push(id);
+        });
+        selProjects.push(sel);
+    });
+    return selProjects;
+}
+
+// Handlers for send tree (sfx = 'send')
+function updateItemCB_send(cb) { updateItemCBInScope(cb, 'sendTreeWrap'); }
+function updateCatCB_send(cb) { updateCatCBInScope(cb, 'sendTreeWrap'); }
+function updateProjCB_send(cb) { updateProjCBInScope(cb, 'sendTreeWrap'); }
+// Handlers for receive tree (sfx = 'recv')
+function updateItemCB_recv(cb) { updateItemCBInScope(cb, 'recvTreeWrap'); }
+function updateCatCB_recv(cb) { updateCatCBInScope(cb, 'recvTreeWrap'); }
+function updateProjCB_recv(cb) { updateProjCBInScope(cb, 'recvTreeWrap'); }
+
+async function buildSendTree() {
+    const container = document.getElementById('sendTreeWrap');
+    container.innerHTML = '<div class="tree-empty">Loading…</div>';
+    const allProjects = await ftGetAllProjects();
+    allProjects.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    const active = allProjects.filter(p => !p.archived);
+    let html = '';
+    for (const proj of active) {
+        const manifest = await ftGetProjectManifest(proj.id);
+        html += buildProjectTreeHtml(proj, manifest, 'send');
+    }
+    container.innerHTML = html || '<div class="tree-empty">No projects found.</div>';
+}
+
+function buildRecvTree(pkg) {
+    const container = document.getElementById('recvTreeWrap');
+    let html = '';
+    for (const pd of pkg.projects) {
+        const manifest = {
+            levelLoops: pd.levelLoops || [], controlPoints: pd.controlPoints || [],
+            stakeSessions: pd.stakeSessions || [], materials: pd.materials || null,
+            compactionTests: pd.compactionTests || [], soilTests: pd.soilTests || [],
+            bidContracts: pd.bidContracts || [],
+        };
+        html += buildProjectTreeHtml(pd.project, manifest, 'recv');
+    }
+    container.innerHTML = html || '<div class="tree-empty">No data in package.</div>';
+}
+
+// ---- WebRTC ----
+
+let sendPC = null;
+let sendDC = null;
+let sendExportPkg = null;
+let sendScanStop = null;
+
+let recvPC = null;
+let recvChunks = null;
+let recvTotalChunks = 0;
+let recvReceivedPkg = null;
+let recvScanStop = null;
+
+function showSendStep(n) {
+    ['sendStep1','sendStep2','sendStep3','sendStep4'].forEach((id, i) => {
+        document.getElementById(id).classList.toggle('show', i + 1 === n);
+    });
+}
+function showRecvStep(n) {
+    ['recvStep1','recvStep2','recvStep3','recvStep4'].forEach((id, i) => {
+        document.getElementById(id).classList.toggle('show', i + 1 === n);
+    });
+}
+function setMsg(elId, msg) { document.getElementById(elId).textContent = msg || ''; }
+
+async function waitForIceComplete(pc, timeoutMs) {
+    if (pc.iceGatheringState === 'complete') return;
+    return new Promise(resolve => {
+        const t = setTimeout(resolve, timeoutMs);
+        pc.onicegatheringstatechange = () => {
+            if (pc.iceGatheringState === 'complete') { clearTimeout(t); resolve(); }
+        };
+    });
+}
+
+function renderQR(containerId, payload, fallbackTextId, fallbackWrapId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    if (payload.length > 2800) {
+        document.getElementById(fallbackWrapId).classList.remove('hidden');
+        document.getElementById(fallbackTextId).textContent = payload;
+        return;
+    }
+    try {
+        new QRCode(container, { text: payload, width: 240, height: 240, correctLevel: QRCode.CorrectLevel.L });
+    } catch(e) {
+        document.getElementById(fallbackWrapId).classList.remove('hidden');
+        document.getElementById(fallbackTextId).textContent = payload;
+    }
+}
+
+// ---- Camera scanning ----
+
+async function startCamera(videoElId, statusElId, onResult, stopRef) {
+    const videoEl = document.getElementById(videoElId);
+    const statusEl = document.getElementById(statusElId);
+    if (!('BarcodeDetector' in window)) {
+        statusEl.textContent = 'Camera scan not available — paste the code below.';
+        return null;
+    }
+    let formats;
+    try { formats = await BarcodeDetector.getSupportedFormats(); } catch(e) { formats = ['qr_code']; }
+    if (!formats.includes('qr_code')) {
+        statusEl.textContent = 'QR scanning not supported — paste the code below.';
+        return null;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        videoEl.srcObject = stream;
+        await videoEl.play();
+        statusEl.textContent = 'Point camera at QR code…';
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        let active = true;
+        const stop = () => { active = false; stream.getTracks().forEach(t => t.stop()); videoEl.srcObject = null; };
+        const scan = async () => {
+            if (!active) return;
+            try {
+                const barcodes = await detector.detect(videoEl);
+                if (barcodes.length && barcodes[0].rawValue) {
+                    stop();
+                    statusEl.textContent = 'QR code detected.';
+                    onResult(barcodes[0].rawValue);
+                    return;
+                }
+            } catch(e) {}
+            requestAnimationFrame(scan);
+        };
+        requestAnimationFrame(scan);
+        return stop;
+    } catch(e) {
+        statusEl.textContent = 'Camera access denied — paste the code below.';
+        return null;
+    }
+}
+
+// ---- Send flow ----
+
+async function startSend() {
+    const sel = getSelectionFromScope('sendTreeWrap');
+    if (!sel.length) { setMsg('sendStep1Msg', 'Select at least one item to send.'); return; }
+    setMsg('sendStep1Msg', '');
+
+    document.getElementById('startSendBtn').disabled = true;
+    document.getElementById('startSendBtn').textContent = 'Preparing…';
+    document.getElementById('sendQR').innerHTML = '';
+
+    try {
+        sendExportPkg = await ftExportSelected(sel);
+    } catch(e) {
+        setMsg('sendStep1Msg', 'Error building package: ' + e.message);
+        document.getElementById('startSendBtn').disabled = false;
+        document.getElementById('startSendBtn').textContent = 'Generate Transfer Code →';
+        return;
+    }
+
+    showSendStep(2);
+    document.getElementById('startSendBtn').disabled = false;
+    document.getElementById('startSendBtn').textContent = 'Generate Transfer Code →';
+    setMsg('sendStep2Msg', 'Gathering network info…');
+
+    sendPC = new RTCPeerConnection({ iceServers: [] });
+    sendDC = sendPC.createDataChannel('transfer', { ordered: true });
+    sendDC.onopen = () => doSendData();
+
+    const offerCandidates = [];
+    sendPC.onicecandidate = e => {
+        if (e.candidate) offerCandidates.push(e.candidate.toJSON());
+    };
+
+    const offer = await sendPC.createOffer();
+    await sendPC.setLocalDescription(offer);
+    await waitForIceComplete(sendPC, 5000);
+
+    const payload = JSON.stringify({ type: 'offer', sdp: sendPC.localDescription.sdp, candidates: offerCandidates });
+    renderQR('sendQR', payload, 'sendOfferText', 'sendOfferTextWrap');
+    setMsg('sendStep2Msg', '');
+
+    // Start camera to scan answer
+    sendScanStop = await startCamera('sendVideo', 'sendCamStatus', val => {
+        processAnswer(val);
+    }, sendScanStop);
+}
+
+async function processAnswer(answerText) {
+    try {
+        const data = JSON.parse(answerText.trim());
+        if (data.type !== 'answer') throw new Error('Expected an answer code, got: ' + data.type);
+        await sendPC.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: data.sdp }));
+        for (const c of (data.candidates || [])) {
+            try { await sendPC.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+        }
+        showSendStep(3);
+        setMsg('sendStep2Msg', '');
+    } catch(e) {
+        setMsg('sendStep2Msg', 'Invalid answer code: ' + e.message);
+    }
+}
+
+function processSendAnswerPaste() {
+    const val = document.getElementById('sendAnswerPaste').value.trim();
+    if (!val) { setMsg('sendStep2Msg', 'Paste an answer code first.'); return; }
+    if (sendScanStop) { sendScanStop(); sendScanStop = null; }
+    processAnswer(val);
+}
+
+async function doSendData() {
+    const json = JSON.stringify(sendExportPkg);
+    const CHUNK = 16384;
+    const total = json.length;
+    const chunks = Math.ceil(total / CHUNK);
+    const BUFFER_HIGH = 256 * 1024;
+
+    document.getElementById('sendProgressLabel').textContent = `Sending ${(total/1024).toFixed(0)} KB…`;
+    sendDC.send(JSON.stringify({ type: 'header', total, chunks }));
+
+    for (let i = 0; i < chunks; i++) {
+        while (sendDC.bufferedAmount > BUFFER_HIGH) {
+            await new Promise(r => setTimeout(r, 20));
+        }
+        sendDC.send(JSON.stringify({ type: 'chunk', seq: i, data: json.slice(i * CHUNK, (i + 1) * CHUNK) }));
+        const pct = Math.round((i + 1) / chunks * 100);
+        document.getElementById('sendProgressBar').style.width = pct + '%';
+        document.getElementById('sendProgressPct').textContent = pct + '%';
+        if (i % 8 === 0) await new Promise(r => setTimeout(r, 0));
+    }
+    sendDC.send(JSON.stringify({ type: 'done' }));
+    showSendStep(4);
+    document.getElementById('sendDoneMsg').textContent = `Sent ${(total/1024).toFixed(0)} KB successfully.`;
+}
+
+function resetSend() {
+    if (sendPC) { try { sendPC.close(); } catch(e) {} sendPC = null; sendDC = null; }
+    if (sendScanStop) { sendScanStop(); sendScanStop = null; }
+    sendExportPkg = null;
+    document.getElementById('sendQR').innerHTML = '';
+    document.getElementById('sendOfferTextWrap').classList.add('hidden');
+    document.getElementById('sendAnswerPaste').value = '';
+    document.getElementById('sendProgressBar').style.width = '0%';
+    document.getElementById('sendProgressPct').textContent = '';
+    showSendStep(1);
+}
+
+// ---- Receive flow ----
+
+async function initRecvCamera() {
+    recvScanStop = await startCamera('recvVideo', 'recvCamStatus', val => {
+        processOffer(val);
+    }, recvScanStop);
+}
+
+async function processOffer(offerText) {
+    try {
+        const data = JSON.parse(offerText.trim());
+        if (data.type !== 'offer') throw new Error('Expected an offer code, got: ' + data.type);
+
+        recvPC = new RTCPeerConnection({ iceServers: [] });
+        const answerCandidates = [];
+        recvPC.onicecandidate = e => {
+            if (e.candidate) answerCandidates.push(e.candidate.toJSON());
+        };
+
+        recvChunks = [];
+        recvTotalChunks = 0;
+        recvPC.ondatachannel = e => {
+            const dc = e.channel;
+            dc.onmessage = evt => {
+                const msg = JSON.parse(evt.data);
+                if (msg.type === 'header') {
+                    recvTotalChunks = msg.chunks;
+                    recvChunks = new Array(msg.chunks);
+                    document.getElementById('recvWaitLabel').textContent = `Receiving ${(msg.total/1024).toFixed(0)} KB…`;
+                } else if (msg.type === 'chunk') {
+                    recvChunks[msg.seq] = msg.data;
+                    const received = recvChunks.filter(c => c !== undefined).length;
+                    const pct = recvTotalChunks ? Math.round(received / recvTotalChunks * 100) : 0;
+                    document.getElementById('recvProgressBar').style.width = pct + '%';
+                    document.getElementById('recvProgressPct').textContent = pct + '%';
+                } else if (msg.type === 'done') {
+                    recvReceivedPkg = JSON.parse(recvChunks.join(''));
+                    buildRecvTree(recvReceivedPkg);
+                    showRecvStep(3);
+                }
+            };
+        };
+
+        await recvPC.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: data.sdp }));
+        for (const c of (data.candidates || [])) {
+            try { await recvPC.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+        }
+        const answer = await recvPC.createAnswer();
+        await recvPC.setLocalDescription(answer);
+        await waitForIceComplete(recvPC, 5000);
+
+        showRecvStep(2);
+        const payload = JSON.stringify({ type: 'answer', sdp: recvPC.localDescription.sdp, candidates: answerCandidates });
+        renderQR('recvQR', payload, 'recvAnswerText', 'recvAnswerTextWrap');
+        setMsg('recvStep2Msg', '');
+        setMsg('recvStep1Msg', '');
+    } catch(e) {
+        setMsg('recvStep1Msg', 'Invalid offer code: ' + e.message);
+    }
+}
+
+function processRecvOfferPaste() {
+    const val = document.getElementById('recvOfferPaste').value.trim();
+    if (!val) { setMsg('recvStep1Msg', 'Paste an offer code first.'); return; }
+    if (recvScanStop) { recvScanStop(); recvScanStop = null; }
+    processOffer(val);
+}
+
+async function confirmRecvImport() {
+    const sel = getSelectionFromScope('recvTreeWrap');
+    if (!sel.length) { setMsg('recvStep3Msg', 'Select at least one item to import.'); return; }
+    const btn = document.getElementById('recvImportBtn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+        const summary = await ftImportSelected(recvReceivedPkg, sel);
+        const added = summary.reduce((n, s) => n + s.added, 0);
+        const skipped = summary.reduce((n, s) => n + s.skipped, 0);
+        showRecvStep(4);
+        document.getElementById('recvDoneMsg').textContent = `${added} records added, ${skipped} already existed.`;
+    } catch(e) {
+        setMsg('recvStep3Msg', 'Import error: ' + e.message);
+        btn.disabled = false; btn.textContent = 'Import Selected';
+    }
+}
+
+// ---- Init ----
+async function init() {
+    const theme = await ftGetSetting('surveyTheme');
+    if (theme === 'high-contrast') {
+        document.documentElement.setAttribute('data-theme', 'high-contrast');
+        applyTheme();
+    }
+    await buildSendTree();
+}
+
+init();
+</script>
+</body>
+</html>

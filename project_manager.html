@@ -119,6 +119,25 @@
         .hidden{display:none!important;}
         .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:24px;font-size:0.82em;font-weight:700;z-index:400;pointer-events:none;opacity:0;transition:opacity 0.3s;white-space:nowrap;}
         .toast.show{opacity:1;}
+        /* Selection tree */
+        .tree-wrap{max-height:52vh;overflow-y:auto;border:1.5px solid var(--border-primary);border-radius:10px;margin-bottom:10px;}
+        .tree-project{border-bottom:1px solid var(--border-primary);}
+        .tree-project:last-child{border-bottom:none;}
+        .tree-project-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-tertiary);}
+        .tree-project-hdr span{font-size:0.88em;font-weight:800;}
+        .tree-proj-children{padding:4px 0;}
+        .tree-cat{margin-bottom:2px;}
+        .tree-cat-hdr{display:flex;align-items:center;gap:8px;padding:5px 14px 5px 26px;}
+        .tree-cat-hdr span{font-size:0.78em;font-weight:700;color:var(--text-secondary);}
+        .tree-count{font-weight:400;color:var(--text-muted);}
+        .tree-cat-items{padding-left:2px;}
+        .tree-item-row{display:flex;align-items:center;gap:8px;padding:4px 14px 4px 42px;}
+        .tree-item-row span{font-size:0.78em;color:var(--text-primary);}
+        .tree-item-meta{color:var(--text-muted)!important;font-size:0.72em!important;}
+        .tree-empty{padding:6px 14px 6px 42px;font-size:0.75em;color:var(--text-muted);}
+        input[type="checkbox"].tree-cb{width:15px;height:15px;accent-color:var(--accent-blue);flex-shrink:0;cursor:pointer;}
+        .tree-actions{display:flex;gap:8px;margin-bottom:8px;}
+        .restore-file-status{font-size:0.8em;color:var(--text-muted);margin-top:4px;min-height:18px;}
     </style>
 </head>
 <body>
@@ -140,6 +159,9 @@
         <div class="filter-bar">
             <button class="btn btn-primary btn-sm" onclick="openProjectModal(null)">&#43; New Project</button>
             <button class="btn btn-secondary btn-sm" onclick="openImportModal()">&#8595; Import</button>
+            <button class="btn btn-secondary btn-sm" onclick="openBackupExport()">&#8593; Backup</button>
+            <button class="btn btn-secondary btn-sm" onclick="openBackupRestore()">&#8595; Restore</button>
+            <a href="transfer.html" class="btn btn-secondary btn-sm">&#8644; Transfer</a>
         </div>
         <div id="projectsList"></div>
     </div>
@@ -332,6 +354,47 @@
         <div class="confirm-btns">
             <button class="btn btn-secondary" onclick="closeConfirm()">Cancel</button>
             <button class="btn btn-danger" id="confirmOkBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Backup Export Modal ===== -->
+<div class="modal-overlay hidden" id="backupExportModal">
+    <div class="modal-sheet" style="max-width:560px;">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Backup — Select Data to Export</div>
+        <div class="tree-actions">
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll(true)">Select All</button>
+            <button class="btn btn-secondary btn-xs" onclick="treeSelectAll(false)">Deselect All</button>
+        </div>
+        <div class="tree-wrap" id="selTreeWrap"><div class="tree-empty">Loading projects…</div></div>
+        <div class="modal-btn-row">
+            <button class="btn btn-secondary" onclick="closeModal('backupExportModal')">Cancel</button>
+            <button class="btn btn-primary" id="backupExportConfirmBtn" onclick="confirmBackupExport()">Download</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== Backup Restore Modal ===== -->
+<div class="modal-overlay hidden" id="backupRestoreModal">
+    <div class="modal-sheet" style="max-width:560px;">
+        <div class="modal-handle"></div>
+        <div class="modal-title">Restore from Backup</div>
+        <div class="field-group">
+            <label class="label">Select backup file</label>
+            <input type="file" class="input" id="restoreFileInput" accept=".json" onchange="handleRestoreFile(this)" style="padding:8px;">
+            <div class="restore-file-status" id="restoreFileStatus">No file selected.</div>
+        </div>
+        <div id="restoreTreeSection" class="hidden">
+            <div class="tree-actions">
+                <button class="btn btn-secondary btn-xs" onclick="treeSelectAllRestore(true)">Select All</button>
+                <button class="btn btn-secondary btn-xs" onclick="treeSelectAllRestore(false)">Deselect All</button>
+            </div>
+            <div class="tree-wrap" id="selTreeWrapRestore"></div>
+        </div>
+        <div class="modal-btn-row">
+            <button class="btn btn-secondary" onclick="closeModal('backupRestoreModal')">Cancel</button>
+            <button class="btn btn-primary" id="backupRestoreConfirmBtn" onclick="confirmBackupRestore()" disabled>Restore Selected</button>
         </div>
     </div>
 </div>
@@ -901,7 +964,7 @@ document.getElementById('confirmOkBtn').addEventListener('click', () => {
     closeConfirm();
 });
 
-['projectModal','exportModal','importModal'].forEach(id => {
+['projectModal','exportModal','importModal','backupExportModal','backupRestoreModal'].forEach(id => {
     document.getElementById(id).addEventListener('click', e => {
         if (e.target === document.getElementById(id)) closeModal(id);
     });
@@ -909,6 +972,226 @@ document.getElementById('confirmOkBtn').addEventListener('click', () => {
 document.getElementById('confirmModal').addEventListener('click', e => {
     if (e.target === document.getElementById('confirmModal')) closeConfirm();
 });
+
+// ---- Selection Tree ----
+
+function matLabel(m) {
+    const name = m.hma_id || m.conc_id || m.gran_name || m.other_name || '';
+    return m.category && name ? m.category + ': ' + name : m.category || name || 'Material';
+}
+
+function buildCatHtml(projId, catId, label, items, labelFn, idFn, sfx) {
+    if (!items || items.length === 0) return '';
+    let h = `<div class="tree-cat"><label class="tree-cat-hdr">
+        <input type="checkbox" class="tree-cb tree-cat-cb" checked data-pid="${projId}" data-cat="${catId}" onchange="updateCatCB${sfx}(this)">
+        <span>${label} <span class="tree-count">(${items.length})</span></span>
+    </label><div class="tree-cat-items">`;
+    items.forEach((item, i) => {
+        const id = idFn ? idFn(item, i) : item.id;
+        const lbl = labelFn(item, i);
+        const meta = item.date ? `<span class="tree-item-meta">${escHtml(item.date)}</span>` : '';
+        h += `<label class="tree-item-row">
+            <input type="checkbox" class="tree-cb tree-item-cb" checked data-pid="${projId}" data-cat="${catId}" data-id="${escHtml(String(id))}" onchange="updateItemCB${sfx}(this)">
+            <span>${escHtml(lbl)}</span>${meta}
+        </label>`;
+    });
+    return h + '</div></div>';
+}
+
+function buildProjectTreeHtml(proj, manifest, sfx = '') {
+    const projId = proj.id;
+    const m = manifest;
+    const mats = m.materials ? (m.materials.materials || []) : [];
+    let html = `<div class="tree-project" data-pid="${projId}">
+        <label class="tree-project-hdr">
+            <input type="checkbox" class="tree-cb tree-proj-cb" checked data-pid="${projId}" onchange="updateProjCB${sfx}(this)">
+            <span>${escHtml(ftProjectTitle(proj))}</span>
+        </label>
+        <div class="tree-proj-children">`;
+    html += buildCatHtml(projId, 'levelLoops', 'Leveling Loops', m.levelLoops, l => l.name || l.id, null, sfx);
+    html += buildCatHtml(projId, 'controlPoints', 'Control Points', m.controlPoints, cp => cp.name || cp.id, null, sfx);
+    html += buildCatHtml(projId, 'stakeSessions', 'Slope Staking Sessions', m.stakeSessions,
+        s => s.description || (s.setup && s.setup.station ? (s.setup.station + ' ' + (s.setup.side || '')).trim() : 'Session'), null, sfx);
+    html += buildCatHtml(projId, 'materials', 'Materials', mats, m => matLabel(m), (_, i) => i, sfx);
+    html += buildCatHtml(projId, 'compactionTests', 'Compaction Tests (T335)', m.compactionTests,
+        t => ((t.materialType || '') + (t.liftLane ? ' ' + t.liftLane : '')).trim() || 'Test', null, sfx);
+    html += buildCatHtml(projId, 'soilTests', 'Soil Tests (T103G)', m.soilTests,
+        t => t.nuclearSetNo ? 'Gauge Set #' + t.nuclearSetNo : 'Soil Test', null, sfx);
+    html += buildCatHtml(projId, 'bidContracts', 'Bid Items', m.bidContracts, b => b.contractNo || b.id, null, sfx);
+    return html + '</div></div>';
+}
+
+async function buildSelectionTree(projects) {
+    const container = document.getElementById('selTreeWrap');
+    container.innerHTML = '<div class="tree-empty">Loading…</div>';
+    let html = '';
+    for (const proj of projects) {
+        const manifest = await ftGetProjectManifest(proj.id);
+        html += buildProjectTreeHtml(proj, manifest);
+    }
+    container.innerHTML = html || '<div class="tree-empty">No projects.</div>';
+}
+
+async function buildSelectionTreeFromPkg(pkg) {
+    const container = document.getElementById('selTreeWrapRestore');
+    container.innerHTML = '<div class="tree-empty">Loading…</div>';
+    let html = '';
+    for (const pd of pkg.projects) {
+        const manifest = {
+            levelLoops: pd.levelLoops || [],
+            controlPoints: pd.controlPoints || [],
+            stakeSessions: pd.stakeSessions || [],
+            materials: pd.materials || null,
+            compactionTests: pd.compactionTests || [],
+            soilTests: pd.soilTests || [],
+            bidContracts: pd.bidContracts || [],
+        };
+        html += buildProjectTreeHtml(pd.project, manifest, 'Restore');
+    }
+    container.innerHTML = html || '<div class="tree-empty">No projects in file.</div>';
+}
+
+function updateItemCBInContainer(cb, containerId) {
+    const pid = cb.dataset.pid;
+    const cat = cb.dataset.cat;
+    const scope = containerId ? document.getElementById(containerId) : document;
+    const catCb = scope.querySelector(`.tree-cat-cb[data-pid="${pid}"][data-cat="${cat}"]`);
+    if (!catCb) return;
+    const allItems = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]`);
+    const checkedItems = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]:checked`);
+    catCb.checked = checkedItems.length > 0;
+    catCb.indeterminate = checkedItems.length > 0 && checkedItems.length < allItems.length;
+    updateProjCBFromChildrenInContainer(pid, containerId);
+}
+function updateCatCBInContainer(cb, containerId) {
+    const pid = cb.dataset.pid;
+    const cat = cb.dataset.cat;
+    const scope = containerId ? document.getElementById(containerId) : document;
+    scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"][data-cat="${cat}"]`).forEach(el => el.checked = cb.checked);
+    updateProjCBFromChildrenInContainer(pid, containerId);
+}
+function updateProjCBFromChildrenInContainer(pid, containerId) {
+    const scope = containerId ? document.getElementById(containerId) : document;
+    const projCb = scope.querySelector(`.tree-proj-cb[data-pid="${pid}"]`);
+    if (!projCb) return;
+    const allItems = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]`);
+    const checkedItems = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
+    projCb.checked = checkedItems.length > 0;
+    projCb.indeterminate = checkedItems.length > 0 && checkedItems.length < allItems.length;
+}
+function updateProjCBInContainer(cb, containerId) {
+    const pid = cb.dataset.pid;
+    const scope = containerId ? document.getElementById(containerId) : document;
+    scope.querySelectorAll(`.tree-cat-cb[data-pid="${pid}"]`).forEach(el => { el.checked = cb.checked; el.indeterminate = false; });
+    scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]`).forEach(el => el.checked = cb.checked);
+}
+
+// Export tree handlers
+function updateItemCB(cb) { updateItemCBInContainer(cb, 'selTreeWrap'); }
+function updateCatCB(cb) { updateCatCBInContainer(cb, 'selTreeWrap'); }
+function updateProjCB(cb) { updateProjCBInContainer(cb, 'selTreeWrap'); }
+function treeSelectAll(checked) {
+    document.querySelectorAll('#selTreeWrap .tree-proj-cb, #selTreeWrap .tree-cat-cb, #selTreeWrap .tree-item-cb').forEach(el => { el.checked = checked; el.indeterminate = false; });
+}
+// Restore tree handlers
+function updateItemCBRestore(cb) { updateItemCBInContainer(cb, 'selTreeWrapRestore'); }
+function updateCatCBRestore(cb) { updateCatCBInContainer(cb, 'selTreeWrapRestore'); }
+function updateProjCBRestore(cb) { updateProjCBInContainer(cb, 'selTreeWrapRestore'); }
+function treeSelectAllRestore(checked) {
+    document.querySelectorAll('#selTreeWrapRestore .tree-proj-cb, #selTreeWrapRestore .tree-cat-cb, #selTreeWrapRestore .tree-item-cb').forEach(el => { el.checked = checked; el.indeterminate = false; });
+}
+
+function getSelectionFromContainer(containerId) {
+    const scope = document.getElementById(containerId);
+    const selProjects = [];
+    scope.querySelectorAll('.tree-proj-cb').forEach(projCb => {
+        const pid = projCb.dataset.pid;
+        const checked = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
+        if (checked.length === 0) return;
+        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [] };
+        checked.forEach(cb => {
+            const cat = cb.dataset.cat;
+            const id = cb.dataset.id;
+            if (cat === 'materials') sel.materialIndices.push(parseInt(id));
+            else if (sel[cat]) sel[cat].push(id);
+        });
+        selProjects.push(sel);
+    });
+    return selProjects;
+}
+
+// ---- Backup Export ----
+async function openBackupExport() {
+    document.getElementById('backupExportModal').classList.remove('hidden');
+    const allProjects = await ftGetAllProjects();
+    allProjects.sort((a, b) => (b.created || '').localeCompare(a.created || ''));
+    await buildSelectionTree(allProjects.filter(p => !p.archived));
+}
+
+async function confirmBackupExport() {
+    const sel = getSelectionFromContainer('selTreeWrap');
+    if (!sel.length) { showToast('Nothing selected.'); return; }
+    const btn = document.getElementById('backupExportConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Exporting…';
+    try {
+        const pkg = await ftExportSelected(sel);
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const a = document.createElement('a');
+        a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(pkg, null, 2));
+        a.download = `surveytoolsbackup_${dateStr}.json`;
+        a.click();
+        closeModal('backupExportModal');
+        showToast('Backup downloaded.');
+    } finally { btn.disabled = false; btn.textContent = 'Download'; }
+}
+
+// ---- Backup Restore ----
+let _restorePkg = null;
+
+function openBackupRestore() {
+    _restorePkg = null;
+    document.getElementById('restoreFileInput').value = '';
+    document.getElementById('restoreFileStatus').textContent = 'No file selected.';
+    document.getElementById('restoreTreeSection').classList.add('hidden');
+    document.getElementById('backupRestoreConfirmBtn').disabled = true;
+    document.getElementById('backupRestoreModal').classList.remove('hidden');
+}
+
+async function handleRestoreFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('restoreFileStatus');
+    statusEl.textContent = 'Reading…';
+    try {
+        const text = await file.text();
+        const pkg = JSON.parse(text);
+        if (pkg.format !== 'surveytoolsbackup-v1' || !Array.isArray(pkg.projects)) {
+            statusEl.textContent = 'Invalid backup file format.'; return;
+        }
+        _restorePkg = pkg;
+        const dt = new Date(pkg.exportedAt).toLocaleDateString();
+        statusEl.textContent = `${file.name} — ${pkg.projects.length} project(s), exported ${dt}`;
+        document.getElementById('restoreTreeSection').classList.remove('hidden');
+        document.getElementById('backupRestoreConfirmBtn').disabled = false;
+        await buildSelectionTreeFromPkg(pkg);
+    } catch(e) { statusEl.textContent = 'Error: ' + e.message; }
+}
+
+async function confirmBackupRestore() {
+    if (!_restorePkg) return;
+    const sel = getSelectionFromContainer('selTreeWrapRestore');
+    if (!sel.length) { showToast('Nothing selected.'); return; }
+    const btn = document.getElementById('backupRestoreConfirmBtn');
+    btn.disabled = true; btn.textContent = 'Importing…';
+    try {
+        const summary = await ftImportSelected(_restorePkg, sel);
+        const totalAdded = summary.reduce((n, s) => n + s.added, 0);
+        const totalSkipped = summary.reduce((n, s) => n + s.skipped, 0);
+        closeModal('backupRestoreModal');
+        await renderProjectList();
+        showToast(`Restored: ${totalAdded} added, ${totalSkipped} skipped.`);
+    } finally { btn.disabled = false; btn.textContent = 'Restore Selected'; }
+}
 
 init();
 </script>
