@@ -504,7 +504,12 @@ function initSendPeer(retries) {
     codeEl.classList.remove('loading');
     setPeerStatus('Connecting to server…', 'waiting');
 
-    sendPeer = new Peer('st2-' + sendCode);
+    sendPeer = new Peer('st2-' + sendCode, {
+        config: { iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]}
+    });
 
     const openTimeout = setTimeout(() => {
         if (!sendPeerConnected) {
@@ -535,7 +540,7 @@ function initSendPeer(retries) {
             // Code collision — try a different code
             initSendPeer(retries - 1);
         } else if (err.type === 'network' || err.type === 'server-error' || err.type === 'socket-error' || err.type === 'socket-closed') {
-            setPeerStatus('No internet — use Share File below', 'error');
+            setPeerStatus('Server unreachable (WiFi may be blocking it) — use Share File', 'error');
         } else if (err.type === 'browser-incompatible') {
             setPeerStatus('Browser not supported — use Share File', 'error');
         } else {
@@ -652,7 +657,12 @@ async function startReceive() {
 
     if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
 
-    recvPeer = new Peer();
+    recvPeer = new Peer({
+        config: { iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]}
+    });
 
     const connTimeout = setTimeout(() => {
         showRecvStep(1);
@@ -693,7 +703,7 @@ async function startReceive() {
             if (!recvDone) {
                 clearTimeout(connTimeout);
                 showRecvStep(1);
-                setMsg('recvStep1Msg', 'Connection closed before transfer finished. Try again.');
+                setMsg('recvStep1Msg', 'Connection closed before transfer finished. This usually means the WiFi is blocking direct device connections (AP isolation). Use Import File instead, or switch to a hotspot.');
                 if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
             }
         });
@@ -701,7 +711,12 @@ async function startReceive() {
         conn.on('error', err => {
             clearTimeout(connTimeout);
             showRecvStep(1);
-            setMsg('recvStep1Msg', 'Transfer error: ' + (err.message || err));
+            const isNegFail = (err.message || '').toLowerCase().includes('negotiation') || (err.message || '').toLowerCase().includes('failed');
+            if (isNegFail) {
+                setMsg('recvStep1Msg', 'Could not connect directly to sender. The WiFi network is likely blocking device-to-device traffic (AP/client isolation). Use Import File instead, or switch to a hotspot.');
+            } else {
+                setMsg('recvStep1Msg', 'Transfer error: ' + (err.message || err) + '. Try Import File or switch to a hotspot.');
+            }
             if (recvPeer) { try { recvPeer.destroy(); } catch(e) {} recvPeer = null; }
         });
     });
