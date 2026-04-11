@@ -651,7 +651,8 @@ async function extractTextViaOCR(pdf, updateStatus) {
     for (let p = 1; p <= pdf.numPages; p++) {
       updateStatus(`OCR: rendering page ${p}\u202f/\u202f${pdf.numPages}\u2026`);
       const page = await pdf.getPage(p);
-      const vp = page.getViewport({ scale: 2.0 });
+      const OCR_SCALE = 3.0; // higher scale = more pixels per character = fewer substitution errors
+      const vp = page.getViewport({ scale: OCR_SCALE });
       const canvas = document.createElement('canvas');
       canvas.width = vp.width;
       canvas.height = vp.height;
@@ -660,12 +661,13 @@ async function extractTextViaOCR(pdf, updateStatus) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       // Use no-clip proxy so Type 3 glyphs with bad bboxes still render
       await page.render({ canvasContext: makeNoClipCtx(ctx), viewport: vp }).promise;
-      // Greyscale improves Tesseract accuracy
+      // Binarize to clean B&W: eliminates anti-aliasing fuzz that causes character confusion
       const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const px = id.data;
       for (let i = 0; i < px.length; i += 4) {
         const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-        px[i] = px[i + 1] = px[i + 2] = g;
+        const v = g > 180 ? 255 : 0;
+        px[i] = px[i + 1] = px[i + 2] = v;
       }
       ctx.putImageData(id, 0, 0);
 
@@ -1222,7 +1224,7 @@ function parseAgreementEstimate(items) {
     const grouped = [];
     for (const item of pageItems) {
       const last = grouped[grouped.length-1];
-      if (last && Math.abs(item.y - last.y) < 8) {
+      if (last && Math.abs(item.y - last.y) < 12) {
         last.tokens.push({ str: item.str, x: item.x });
       } else {
         grouped.push({ page: Number(page), y: item.y, tokens: [{ str: item.str, x: item.x }] });
@@ -1462,10 +1464,12 @@ function parsePriceToken(raw) {
 
 function parseBidItemLine(tokens, bidItem) {
   // Column x-boundaries for scale=2.0 on a standard NDOT letter-size page (1224px wide).
-  const COL_QTY_START  = 120;   // quantity + unit column (quantities start at x≈133)
-  const COL_DESC_START = 350;   // description column (desc starts at x≈370)
-  const PRICE_REGION   = 800;   // left bound of unit price column
-  const COL_AMT_START  = 1280;  // left bound of amount column (observed at x≈1318–1339)
+  // Column x-boundaries for scale=3.0 on a standard NDOT letter-size page (1836px wide).
+  // Scale these proportionally if OCR_SCALE changes (multiply original scale=2.0 values by 1.5).
+  const COL_QTY_START  = 180;   // quantity + unit column (quantities start at x≈200)
+  const COL_DESC_START = 525;   // description column (desc starts at x≈555)
+  const PRICE_REGION   = 1200;  // left bound of unit price column
+  const COL_AMT_START  = 1920;  // left bound of amount column (observed at x≈1977–2009)
 
   const rest = tokens.filter(t => t.str.trim() !== bidItem).sort((a, b) => a.x - b.x);
   if (!rest.length) return null;
