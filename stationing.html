@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Tools">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="./icon.png">
+<link rel="apple-touch-icon" href="./icon.png">
+<link rel="stylesheet" href="lib/stationing.css">
+<script src="db.js"></script>
+<script src="lib/alignments.js"></script>
+<script src="lib/stationing.js"></script>
+<title>Station / Offset — Field Tools</title>
+</head>
+<body>
+<div class="top-nav">
+  <a href="index.html" class="nav-back">‹ Menu</a>
+  <span class="nav-title">🧭 Station / Offset</span>
+  <span class="nav-actions">
+    <a href="alignment_photo.html" class="nav-icon" title="Station Photos" aria-label="Station Photos">📷</a>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+  </span>
+</div>
+
+<div class="proj-bar" id="projBar"></div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-tab="cur">📍 Current</button>
+  <button class="mode-tab" data-tab="nav">➤ Navigate</button>
+  <button class="mode-tab" data-tab="setup">⚙️ Setup</button>
+</div>
+
+<div class="chips">
+  <span class="chip" id="gpsChip">GPS: waiting…</span>
+  <span class="chip btnchip" id="compassChip">🧭 Enable compass</span>
+</div>
+<div id="needCard" class="card hidden"></div>
+
+<!-- ═════════ CURRENT ═════════ -->
+<div id="tab-cur">
+  <div class="readout">
+    <div class="ro-align">
+      <span class="ro-align-name" id="roAlign">—</span>
+      <span style="display:flex;gap:6px;align-items:center;">
+        <span class="badge" id="roMode">—</span>
+        <button class="btn btn-secondary btn-sm" onclick="openAlignPicker()">Change</button>
+      </span>
+    </div>
+    <div class="ro-big">
+      <div><div class="ro-label">Station</div><div class="ro-sta" id="roSta">—</div></div>
+      <div><div class="ro-label">Offset</div><div class="ro-off" id="roOff">—</div></div>
+    </div>
+    <div class="ro-sub">
+      <div><div class="ro-label">Northing</div><div id="roN">—</div></div>
+      <div><div class="ro-label">Easting</div><div id="roE">—</div></div>
+      <div><div class="ro-label">Facing</div><div id="roHdg">—</div></div>
+    </div>
+    <div class="ro-warn hidden" id="roWarn"></div>
+  </div>
+  <div class="card" style="padding:12px 16px;">
+    <button class="btn btn-secondary" onclick="navHere()">➤ Navigate from here…</button>
+  </div>
+  <div class="card">
+    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
+    <canvas id="planCur"></canvas>
+  </div>
+  <div class="card" id="otherCard">
+    <div class="card-title">All Alignments</div>
+    <div class="other-list" id="otherList"></div>
+  </div>
+</div>
+
+<!-- ═════════ NAVIGATE ═════════ -->
+<div id="tab-nav" class="hidden">
+  <div class="card">
+    <div class="card-title">Go to</div>
+    <div class="field-group"><label class="label">Alignment</label><select class="input" id="tAl"></select></div>
+    <div class="row2">
+      <div class="field-group"><label class="label">Station</label><input class="input" id="tSta" inputmode="decimal" placeholder="145+32 or 14532"></div>
+      <div class="field-group"><label class="label">Offset</label><input class="input" id="tOff" inputmode="decimal" placeholder="0.0"></div>
+    </div>
+    <div class="row2">
+      <div class="step-row" style="grid-template-columns:repeat(4,1fr);margin-top:0;">
+        <button class="btn btn-secondary btn-sm" onclick="stepSta(-100)">−100</button>
+        <button class="btn btn-secondary btn-sm" onclick="stepSta(-50)">−50</button>
+        <button class="btn btn-secondary btn-sm" onclick="stepSta(50)">+50</button>
+        <button class="btn btn-secondary btn-sm" onclick="stepSta(100)">+100</button>
+      </div>
+      <div class="seg" id="tSide"><button data-s="-1">LT</button><button data-s="1" class="on">RT</button></div>
+    </div>
+    <div class="hint" id="tHint">Type the station as 145+32 or 14532. Offset 0 = on the alignment.</div>
+  </div>
+
+  <div class="readout" id="navOut">
+    <div class="ro-align"><span class="ro-align-name" id="navTarget">No target</span><span class="badge" id="navRef">—</span></div>
+    <div class="nav-wrap">
+      <svg class="nav-arrow" id="navArrow" viewBox="-100 -100 200 200" aria-hidden="true">
+        <circle r="92" fill="none" stroke="currentColor" stroke-width="3" opacity="0.18"/>
+        <path d="M0,-82 L46,30 L0,10 L-46,30 Z" fill="currentColor"/>
+      </svg>
+      <div class="nav-dist" id="navDist">—</div>
+      <div class="nav-sub" id="navBrg">—</div>
+      <div class="nav-moves">
+        <div class="nav-move"><div class="ro-label" id="navAheadLbl">Ahead / Back</div><div class="v" id="navAhead">—</div></div>
+        <div class="nav-move"><div class="ro-label" id="navSideLbl">Left / Right</div><div class="v" id="navSide">—</div></div>
+      </div>
+      <div class="nav-there hidden" id="navThere">✅ You're on it</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
+    <canvas id="planNav"></canvas>
+  </div>
+</div>
+
+<!-- ═════════ SETUP ═════════ -->
+<div id="tab-setup" class="hidden">
+  <div id="setupPanel"></div>
+  <div class="card"><div class="hint" style="font-size:0.82em;">Alignments and settings are shared with 📷 Station Photos for the same project.</div></div>
+</div>
+
+<script>
+'use strict';
+/* Station / Offset — live stationing and navigate-to-station. Core lives in lib/stationing.js */
+let tab = 'cur';
+function onTabChange(t) { tab = t; }
+$('navOut').style.color = 'var(--result-text)';
+
+function onStationUpdate() {
+  const need = $('needCard');
+  if (!G.projId) { need.innerHTML = '<div class="card-title">Select a project</div><div class="hint" style="font-size:0.85em;">Pick a project at the top. Alignments are saved per project.</div>'; need.classList.remove('hidden'); }
+  else if (!aligns.length && tab !== 'setup') { need.innerHTML = `<div class="card-title">No alignments for this project</div><div class="hint" style="font-size:0.85em;margin-bottom:10px;">Import a LandXML file to get live station &amp; offset.</div><button class="btn btn-primary" onclick="switchTab('setup')">Go to Setup →</button>`; need.classList.remove('hidden'); }
+  else need.classList.add('hidden');
+  if (tab === 'cur') renderCurrent();
+  if (tab === 'nav') renderNav();
+}
+
+// ───────── current ─────────
+function renderCurrent() {
+  let w = '';
+  $('roN').textContent = pos ? fmtNum(pos.N, 1) : '—'; $('roE').textContent = pos ? fmtNum(pos.E, 1) : '—'; $('roHdg').textContent = fmtHdg(headingNow());
+  if (current) {
+    const { al, r } = current, u = unitsOf(al);
+    $('roAlign').textContent = al.name;
+    $('roMode').textContent = PS().lockId ? '🔒 Locked' : 'Auto'; $('roMode').className = 'badge ' + (PS().lockId ? 'lock' : 'auto');
+    $('roSta').textContent = fmtSta(displaySta(al, r.sta), u); $('roOff').textContent = fmtOff(r.off, u);
+    if (!r.inRange) w = r.sta < al.poly.ss[0] ? 'Before the start of this alignment.' : 'Past the end of this alignment.';
+    if (r.dist * UNIT_M[u] > 1500) w = `You're ${(r.dist * UNIT_M[u] / 1609.344).toFixed(1)} mi from this alignment — check projection zone, units and combined factor in Setup.`;
+  } else {
+    $('roAlign').textContent = aligns.length ? (pos ? '—' : 'Waiting for GPS…') : 'No alignments';
+    $('roMode').textContent = '—'; $('roMode').className = 'badge'; $('roSta').textContent = '—'; $('roOff').textContent = '—';
+  }
+  $('roWarn').textContent = w; $('roWarn').classList.toggle('hidden', !w);
+  $('otherCard').classList.toggle('hidden', results.length < 2);
+  $('otherList').innerHTML = results.slice().sort((a, b) => Math.abs(a.r.off) - Math.abs(b.r.off)).map(x =>
+    `<div><span>${x === current ? '▶ ' : ''}${esc(x.al.name)}</span><span>${fmtSta(displaySta(x.al, x.r.sta), unitsOf(x.al))} &nbsp; ${fmtOff(x.r.off, unitsOf(x.al))}${x.r.inRange ? '' : ' *'}</span></div>`).join('');
+  drawPlan($('planCur'));
+}
+
+// ───────── navigate ─────────
+function fillTargetForm() {
+  const t = PS().target || {};
+  $('tAl').innerHTML = aligns.filter(a => a.visible !== false).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') || '<option value="">No alignments</option>';
+  const alId = (t.alignId && aligns.find(a => a.id === t.alignId)) ? t.alignId : (current ? current.al.id : (aligns[0] && aligns[0].id) || '');
+  $('tAl').value = alId;
+  const al = aligns.find(a => a.id === alId);
+  $('tSta').value = t.sta != null && al ? fmtSta(t.sta, unitsOf(al)).replace(/\.0$/, '') : '';
+  $('tOff').value = t.off != null && t.off !== 0 ? Math.abs(t.off) : '';
+  setSide(t.off != null && t.off < 0 ? -1 : 1, false);
+}
+function setSide(s, save = true) { [...$('tSide').children].forEach(b => b.classList.toggle('on', +b.dataset.s === s)); if (save) saveTarget(); }
+const getSide = () => +$('tSide').querySelector('.on').dataset.s;
+$('tSide').addEventListener('click', e => { if (e.target.dataset.s) setSide(+e.target.dataset.s); });
+function saveTarget() {
+  const al = aligns.find(a => a.id === $('tAl').value);
+  const sta = al ? parseSta($('tSta').value, unitsOf(al)) : NaN;
+  const offAbs = parseFloat($('tOff').value);
+  PS().target = (al && isFinite(sta)) ? { alignId: al.id, sta, off: (isFinite(offAbs) ? Math.abs(offAbs) : 0) * getSide() } : null;
+  saveSettings(); notify();
+}
+['tAl', 'tSta', 'tOff'].forEach(id => $(id).addEventListener('change', saveTarget));
+$('tSta').addEventListener('keyup', e => { if (e.key === 'Enter') { $('tSta').blur(); } });
+function stepSta(d) {
+  const al = aligns.find(a => a.id === $('tAl').value); if (!al) return;
+  let s = parseSta($('tSta').value, unitsOf(al));
+  if (!isFinite(s)) s = current && current.al === al ? Math.round(displaySta(al, current.r.sta) / Math.abs(d)) * Math.abs(d) : displaySta(al, al.poly.ss[0]);
+  else { const m = Math.abs(d); s = Math.abs(s / m - Math.round(s / m)) < 1e-6 ? s + d : (d > 0 ? Math.ceil(s / m) * m : Math.floor(s / m) * m); }
+  $('tSta').value = fmtSta(s, unitsOf(al)).replace(/\.0$/, ''); saveTarget();
+}
+function navHere() {
+  if (current) PS().target = { alignId: current.al.id, sta: Math.round(displaySta(current.al, current.r.sta)), off: 0 };
+  saveSettings(); fillTargetForm(); switchTab('nav');
+}
+let arrowRot = 0;
+function setArrow(deg) {
+  let d = ((deg - arrowRot) % 360 + 540) % 360 - 180; // shortest turn
+  arrowRot += d; $('navArrow').style.transform = `rotate(${arrowRot}deg)`;
+}
+function renderNav() {
+  const t = PS().target, al = t && aligns.find(a => a.id === t.alignId);
+  const tgtPt = al ? pointAt(al.poly, internalSta(al, t.sta), t.off) : null;
+  drawPlan($('planNav'), { target: tgtPt, fitTarget: true, highlight: al });
+  const blank = msg => { $('navTarget').textContent = msg; $('navDist').textContent = '—'; $('navBrg').textContent = ''; $('navAhead').textContent = '—'; $('navSide').textContent = '—'; $('navThere').classList.add('hidden'); $('navRef').textContent = '—'; $('navRef').className = 'badge'; };
+  if (!al) return blank('Enter a station to navigate to');
+  const u = unitsOf(al);
+  $('navTarget').textContent = `${fmtSta(t.sta, u)} · ${fmtOff(t.off, u)} · ${al.name}`;
+  const ss = al.poly.ss, internal = internalSta(al, t.sta);
+  $('tHint').textContent = (internal < ss[0] - 0.01 || internal > ss[ss.length - 1] + 0.01) ? `⚠ That station is outside ${al.name} (${fmtSta(displaySta(al, ss[0]), u)} → ${fmtSta(displaySta(al, ss[ss.length - 1]), u)}).` : 'Type the station as 145+32 or 14532. Offset 0 = on the alignment.';
+  if (!pos) { blank('Waiting for GPS…'); $('navTarget').textContent = `${fmtSta(t.sta, u)} · ${fmtOff(t.off, u)} · ${al.name}`; return; }
+  const dE = tgtPt.x - pos.E, dN = tgtPt.y - pos.N, dist = Math.hypot(dE, dN);
+  const gridAz = (Math.atan2(dE, dN) * R2D + 360) % 360, trueAz = (gridAz - gridNorthOffset(fix.lat, fix.lon) + 360) % 360;
+  const h = headingNow(), ref = h != null ? h : gpsCourse;
+  if (ref != null) { setArrow(trueAz - ref); $('navRef').textContent = h != null ? 'Compass' : 'GPS course'; $('navRef').className = 'badge auto'; }
+  else { setArrow(gridAz); $('navRef').textContent = 'North-up'; $('navRef').className = 'badge lock'; }
+  $('navDist').textContent = `${dist < 1000 ? dist.toFixed(1) : Math.round(dist).toLocaleString()} ${UNIT_LBL[u]}`;
+  $('navBrg').textContent = `Bearing ${fmtHdg(trueAz)} true` + (ref == null ? ' · enable compass or start walking to point the arrow' : '');
+  const rr = stationOffset(al.poly, pos.E, pos.N);
+  const dSta = internal - rr.sta, dOff = t.off - rr.off;
+  $('navAheadLbl').textContent = dSta >= 0 ? 'Go ahead (up-station)' : 'Go back (down-station)';
+  $('navAhead').textContent = `${Math.abs(dSta).toFixed(1)} ${UNIT_LBL[u]}`;
+  $('navSideLbl').textContent = dOff >= 0 ? 'Move right' : 'Move left';
+  $('navSide').textContent = `${Math.abs(dOff).toFixed(1)} ${UNIT_LBL[u]}`;
+  const tol = Math.max(1 / UNIT_M[u], (fix.acc || 0) * 0.5 / UNIT_M[u]);
+  $('navThere').classList.toggle('hidden', dist > tol);
+  $('navThere').textContent = `✅ You're on it (within ±${tol.toFixed(1)} ${UNIT_LBL[u]})`;
+}
+function onProjectChange() { fillTargetForm(); }
+
+initTabs(['cur', 'nav', 'setup']);
+const _sw = window.switchTab;
+window.switchTab = t => { tab = t; if (t === 'nav') fillTargetForm(); _sw(t); };
+document.querySelectorAll('.mode-tab[data-tab]').forEach(b => b.addEventListener('click', () => { if (b.dataset.tab === 'nav') fillTargetForm(); }, true));
+stationingInit();
+</script>
+</body>
+</html>

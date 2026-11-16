@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v11';
+const CACHE_NAME = 'survey-tool-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -14,7 +14,9 @@ const ASSETS = [
   './lib/piexif.js',
   './stationing.html',
   './lib/stationing.js',
-  './lib/stationing.css'
+  './lib/stationing.css',
+  './lib/alignments.js',
+  './project_manager.html'
 ];
 
 // Install: cache all assets

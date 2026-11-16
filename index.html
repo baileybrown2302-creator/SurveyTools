@@ -154,6 +154,22 @@
         </div>
         <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
         <div class="sections">
+            <a href="stationing.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">🧭</span>
+                <div class="section-info">
+                    <div class="section-name">Station / Offset</div>
+                    <div class="section-count">Live station &amp; offset from GPS · navigate to a station</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+            <a href="alignment_photo.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">📸</span>
+                <div class="section-info">
+                    <div class="section-name">Station Photos</div>
+                    <div class="section-count">Photos stamped with station, offset &amp; description</div>
+                </div>
+        <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
+        <div class="sections">
             <div class="section-card" onclick="openSection('survey')">
                 <span class="section-icon">📡</span>
                 <div class="section-info">
@@ -182,11 +198,25 @@
 
         <!-- Footer + changelog -->
         <div class="home-footer">
-            <div class="footer-meta">Last updated Mar 30, 2026</div>
+            <div class="footer-meta">Last updated Nov 16, 2026</div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Nov 16, 2026</div>
+                    <div class="cl-title">Station / Offset &amp; Station Photos (beta)</div>
+                    <ul class="cl-items">
+                        <li>New Station / Offset app: live station &amp; offset from phone GPS, plus a Navigate tab with an arrow and distance to any station/offset</li>
+                        <li>Navigate shows how far to go ahead/back and left/right along the alignment, with ±50/±100 station steps</li>
+                        <li>Station Photos: photos stamped with description, station/offset, alignment, date/time, facing &amp; GPS accuracy</li>
+                        <li>Optional custom photo name used as the file name; CSV &amp; KML photo log export</li>
+                        <li>Alignments (LandXML: lines, curves, spirals, station equations), coordinate settings and photos are kept per project</li>
+                        <li>Upload alignments to a project from the Project Manager project screen</li>
+                        <li>NAD83 Nevada West/Central/East or custom projection, combined factor, and check-in on a known point</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 30, 2026</div>

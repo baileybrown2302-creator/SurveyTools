@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v24';
+const CACHE_NAME = 'survey-tool-v25';
 const ASSETS = [
   './',
   './index.html',
@@ -12,7 +12,13 @@ const ASSETS = [
   './bidestimate.html',
   './transfer.html',
   './lib/qrcode.min.js',
-  './lib/peerjs.min.js'
+  './lib/peerjs.min.js',
+  './stationing.html',
+  './alignment_photo.html',
+  './lib/alignments.js',
+  './lib/stationing.js',
+  './lib/stationing.css',
+  './lib/piexif.js'
 ];
 
 // Install: cache all assets

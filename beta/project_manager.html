@@ -12,6 +12,7 @@
     <link rel="apple-touch-icon" href="../beta/icon.png">
     <title>Project Manager — Field Tools</title>
     <script src="db.js"></script>
+    <script src="lib/alignments.js"></script>
     <style>
         :root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-red:#ef4444;--accent-red-hover:#dc2626;--accent-orange:#f97316;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--modal-overlay:rgba(0,0,0,0.65);}
         [data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-red:#f87171;--accent-red-hover:#fca5a5;--accent-orange:#fb923c;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--modal-overlay:rgba(0,0,0,0.85);}
@@ -194,6 +195,15 @@
                 <div class="info-field-label">Description / Notes</div>
                 <div class="info-field-value" id="detailDescription">—</div>
             </div>
+        </div>
+
+        <div class="section-card">
+            <div class="section-card-title" style="display:flex;align-items:center;justify-content:space-between;">
+                <span>Alignments</span>
+                <button class="btn btn-primary btn-xs" onclick="document.getElementById('detailAlignInput').click()">＋ Upload LandXML</button>
+            </div>
+            <input type="file" id="detailAlignInput" accept=".xml,.landxml,text/xml,application/xml" multiple style="display:none" onchange="uploadDetailAlignments(this)">
+            <div id="detailAlignments"><div class="data-empty">Loading…</div></div>
         </div>
 
         <div class="section-card">
@@ -486,6 +496,7 @@ async function openDetailView(projectId) {
     document.getElementById('detailArchiveBtn').onclick = () => archiveProject(projectId);
     document.getElementById('detailExportBtn').onclick = () => startExport(projectId);
     document.getElementById('detailDeleteBtn').onclick = () => confirmDelete(projectId);
+    renderDetailAlignments(projectId);
     document.getElementById('detailNewTestBtn').href = `thinlift.html?projectId=${encodeURIComponent(projectId)}`;
 
     const levelLoops = await ftGetLoopsForProject(projectId);
@@ -873,6 +884,7 @@ async function confirmDelete(projectId) {
 
 async function deleteProject(id) {
     await ftDeleteProject(id);
+    try { await FTAlign.deleteProjectData(id); } catch (e) { console.warn(e); }
     await ftDeleteLevelProject(id);
     await ftDeleteLoopsForProject(id);
     await ftDeleteStakeSessionsForProject(id);
@@ -880,6 +892,45 @@ async function deleteProject(id) {
     if (currentDetailProjectId === id) closeDetailView();
     await renderProjectList();
     showToast('Project deleted.');
+}
+
+// ---- Alignments (LandXML, used by Station / Offset & Station Photos) ----
+async function renderDetailAlignments(projectId) {
+    const el = document.getElementById('detailAlignments');
+    let list = [];
+    try { list = await FTAlign.getForProject(projectId); } catch (e) { el.innerHTML = '<div class="data-empty">Could not load alignments.</div>'; return; }
+    list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    if (!list.length) { el.innerHTML = '<div class="data-empty">No alignments yet. Upload a LandXML file exported from TBC or Civil 3D.</div>'; return; }
+    el.innerHTML = list.map(a => {
+        let range = '';
+        try { const s = FTAlign.summarize(a); range = FTAlign.fmtSta(s.start, a.units) + ' → ' + FTAlign.fmtSta(s.end, a.units); } catch (e) {}
+        const meta = [range, a.els.length + ' elements', a.eqs && a.eqs.length ? a.eqs.length + ' sta eq' : '', a.file].filter(Boolean).join(' \u00b7 ');
+        return `<div class="data-item">
+            <div class="data-item-info">
+                <div class="data-item-name">${escHtml(a.name)}</div>
+                <div class="data-item-meta">${escHtml(meta)}</div>
+            </div>
+            <div class="data-item-actions">
+                <a href="stationing.html?project=${encodeURIComponent(a.projId)}" class="btn btn-primary btn-xs" style="text-decoration:none;">Sta/Off</a>
+                <button class="btn btn-danger btn-xs" onclick="removeDetailAlignment('${escHtml(a.id)}')">&#10005;</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+async function uploadDetailAlignments(input) {
+    const files = [...input.files]; input.value = '';
+    if (!files.length || !currentDetailProjectId) return;
+    const res = await FTAlign.importFiles(currentDetailProjectId, files, { updateSettings: true });
+    await renderDetailAlignments(currentDetailProjectId);
+    if (res.errors.length) alert(res.errors.join('\n'));
+    if (res.added) showToast(`Uploaded ${res.added} alignment${res.added > 1 ? 's' : ''}.`);
+}
+async function removeDetailAlignment(id) {
+    showConfirm('Remove alignment?', 'It will be removed from this project in Station / Offset and Station Photos.', async () => {
+        await FTAlign.apDel('alignments', id);
+        await renderDetailAlignments(currentDetailProjectId);
+        showToast('Alignment removed.');
+    });
 }
 
 // ---- Modals ----
