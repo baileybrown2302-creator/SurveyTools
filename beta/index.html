@@ -154,11 +154,30 @@
         </div>
         <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
         <div class="sections">
+            <a href="stationing.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">🧭</span>
+                <div class="section-info">
+                    <div class="section-name">Station / Offset</div>
+                    <div class="section-count">Live station &amp; offset from GPS · navigate to a station</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+            <a href="alignment_photo.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">📸</span>
+                <div class="section-info">
+                    <div class="section-name">Station Photos</div>
+                    <div class="section-count">Photos stamped with station, offset &amp; description</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+        </div>
+        <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
+        <div class="sections">
             <div class="section-card" onclick="openSection('survey')">
                 <span class="section-icon">📡</span>
                 <div class="section-info">
                     <div class="section-name">Survey Tools</div>
-                    <div class="section-count">Leveling · Slope Staking · Control Points · Station Photos · CSV Converter</div>
+                    <div class="section-count">Leveling · Slope Staking · Control Points · CSV Converter</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -190,14 +209,14 @@
 
                 <div class="cl-entry">
                     <div class="cl-date">Nov 16, 2026</div>
-                    <div class="cl-title">Station Photos (beta)</div>
+                    <div class="cl-title">Station / Offset &amp; Station Photos (beta)</div>
                     <ul class="cl-items">
-                        <li>Import LandXML alignments — lines, curves, spirals &amp; station equations</li>
-                        <li>Live station &amp; offset from phone GPS, auto-picks the nearest alignment with a lock override</li>
+                        <li>New Station / Offset app: live station &amp; offset from phone GPS, plus a Navigate tab with an arrow and distance to any station/offset</li>
+                        <li>Navigate shows how far to go ahead/back and left/right along the alignment, with ±50/±100 station steps</li>
+                        <li>Station Photos: photos stamped with description, station/offset, alignment, date/time, facing &amp; GPS accuracy</li>
+                        <li>Optional custom photo name used as the file name; CSV &amp; KML photo log export</li>
+                        <li>Alignments (LandXML: lines, curves, spirals, station equations), coordinate settings and photos are kept per project</li>
                         <li>NAD83 Nevada West/Central/East or custom projection, combined factor, and check-in on a known point</li>
-                        <li>Live camera with station overlay, or full-res phone camera / gallery photos</li>
-                        <li>Black stamp bar: description, station/offset, alignment, date/time, facing direction, GPS accuracy</li>
-                        <li>GPS, heading &amp; description written into the photo's EXIF; CSV and KML photo log export</li>
                     </ul>
                 </div>
 
@@ -350,7 +369,6 @@
                     { icon: '🔭', name: 'Differential Leveling', desc: 'Level loops, stadia, misclosure & accuracy', href: 'leveling_home.html' },
                     { icon: '📍', name: 'Slope Staking', desc: 'Catch point, cut/fill, iterative field workflow', href: 'slope_stake_home.html' },
                     { icon: '🗺️', name: 'Control Points', desc: 'Location control sheet — monument status tracking', href: 'controlpoints.html' },
-                    { icon: '📸', name: 'Station Photos', desc: 'Live station & offset from GPS + stamped photos (LandXML)', href: 'alignment_photo.html' },
                     { icon: '🔄', name: 'CSV Converter', desc: 'LOIS LPN CSV → GRID & GNSS output files', href: 'csvconverter.html' },
                 ]
             },
