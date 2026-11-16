@@ -158,7 +158,7 @@
                 <span class="section-icon">📡</span>
                 <div class="section-info">
                     <div class="section-name">Survey Tools</div>
-                    <div class="section-count">Leveling · Slope Staking · Control Points · CSV Converter</div>
+                    <div class="section-count">Leveling · Slope Staking · Control Points · Station Photos · CSV Converter</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -182,11 +182,24 @@
 
         <!-- Footer + changelog -->
         <div class="home-footer">
-            <div class="footer-meta">Last updated Mar 22, 2026</div>
+            <div class="footer-meta">Last updated Nov 16, 2026</div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
             <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Nov 16, 2026</div>
+                    <div class="cl-title">Station Photos (beta)</div>
+                    <ul class="cl-items">
+                        <li>Import LandXML alignments — lines, curves, spirals &amp; station equations</li>
+                        <li>Live station &amp; offset from phone GPS, auto-picks the nearest alignment with a lock override</li>
+                        <li>NAD83 Nevada West/Central/East or custom projection, combined factor, and check-in on a known point</li>
+                        <li>Live camera with station overlay, or full-res phone camera / gallery photos</li>
+                        <li>Black stamp bar: description, station/offset, alignment, date/time, facing direction, GPS accuracy</li>
+                        <li>GPS, heading &amp; description written into the photo's EXIF; CSV and KML photo log export</li>
+                    </ul>
+                </div>
 
                 <div class="cl-entry">
                     <div class="cl-date">Mar 22, 2026</div>
@@ -337,6 +350,7 @@
                     { icon: '🔭', name: 'Differential Leveling', desc: 'Level loops, stadia, misclosure & accuracy', href: 'leveling_home.html' },
                     { icon: '📍', name: 'Slope Staking', desc: 'Catch point, cut/fill, iterative field workflow', href: 'slope_stake_home.html' },
                     { icon: '🗺️', name: 'Control Points', desc: 'Location control sheet — monument status tracking', href: 'controlpoints.html' },
+                    { icon: '📸', name: 'Station Photos', desc: 'Live station & offset from GPS + stamped photos (LandXML)', href: 'alignment_photo.html' },
                     { icon: '🔄', name: 'CSV Converter', desc: 'LOIS LPN CSV → GRID & GNSS output files', href: 'csvconverter.html' },
                 ]
             },

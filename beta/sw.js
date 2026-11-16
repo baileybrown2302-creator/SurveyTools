@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v9';
+const CACHE_NAME = 'survey-tool-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,9 @@ const ASSETS = [
   './icon.png',
   './controlpoints.html',
   './csvconverter.html',
-  './bidestimate.html'
+  './bidestimate.html',
+  './alignment_photo.html',
+  './lib/piexif.js'
 ];
 
 // Install: cache all assets

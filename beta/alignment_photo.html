@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Field Tools">
+<meta name="theme-color" content="#1a1a2e">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="../beta/icon.png">
+<link rel="apple-touch-icon" href="../beta/icon.png">
+<script src="db.js"></script>
+<script src="lib/piexif.js"></script>
+<title>Station Photos — Field Tools</title>
+<style>
+:root{--bg-primary:#f3f4f6;--bg-secondary:#ffffff;--bg-tertiary:#f9fafb;--text-primary:#111827;--text-secondary:#374151;--text-tertiary:#6b7280;--text-muted:#9ca3af;--border-primary:#e5e7eb;--border-secondary:#d1d5db;--accent-blue:#3b82f6;--accent-blue-hover:#2563eb;--accent-green:#22c55e;--accent-orange:#f97316;--accent-red:#ef4444;--shadow:0 1px 3px rgba(0,0,0,0.1);--shadow-lg:0 10px 25px rgba(0,0,0,0.12);--input-bg:#ffffff;--input-border:#d1d5db;--result-bg:#eff6ff;--result-border:#bfdbfe;--result-text:#1d4ed8;--warn-bg:#fff7ed;--warn-border:#fed7aa;--warn-text:#9a3412;--plan-bg:#f8fafc;--plan-line:#94a3b8;}
+[data-theme="high-contrast"]{--bg-primary:#000000;--bg-secondary:#0a0a0a;--bg-tertiary:#111111;--text-primary:#ffffff;--text-secondary:#f0f0f0;--text-tertiary:#cccccc;--text-muted:#999999;--border-primary:#333333;--border-secondary:#444444;--accent-blue:#60a5fa;--accent-blue-hover:#93bbfd;--accent-green:#4ade80;--accent-orange:#fb923c;--accent-red:#f87171;--shadow:0 1px 3px rgba(0,0,0,0.5);--shadow-lg:0 10px 25px rgba(0,0,0,0.5);--input-bg:#1a1a1a;--input-border:#555555;--result-bg:#1e1b4b;--result-border:#4338ca;--result-text:#c7d2fe;--warn-bg:#431407;--warn-border:#9a3412;--warn-text:#fb923c;--plan-bg:#0f0f0f;--plan-line:#666666;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;background:var(--bg-primary);color:var(--text-primary);min-height:100vh;padding:0 0 90px;-webkit-tap-highlight-color:transparent;}
+.top-nav{background:var(--bg-secondary);border-bottom:1.5px solid var(--border-primary);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:var(--shadow);}
+.nav-back{color:var(--accent-blue);font-weight:700;font-size:0.9em;text-decoration:none;}
+.nav-title{font-weight:800;font-size:1em;color:var(--text-primary);}
+.theme-btn{background:var(--bg-tertiary);border:1.5px solid var(--border-secondary);border-radius:8px;padding:5px 10px;font-size:0.75em;font-weight:700;color:var(--text-secondary);cursor:pointer;}
+.mode-tabs{display:flex;margin:14px 16px 0;gap:8px;}
+.mode-tab{flex:1;padding:11px 6px;border-radius:10px;border:2px solid var(--border-primary);background:var(--bg-secondary);color:var(--text-secondary);font-weight:700;font-size:0.82em;cursor:pointer;text-align:center;}
+.mode-tab.active{border-color:var(--accent-blue);background:var(--result-bg);color:var(--result-text);}
+[data-theme="high-contrast"] .mode-tab.active{border-color:#fbbf24;background:#1c1700;color:#fbbf24;}
+.card{background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:14px;margin:12px 16px;padding:16px;box-shadow:var(--shadow);}
+.card-title{font-size:0.72em;font-weight:800;text-transform:uppercase;letter-spacing:0.8px;color:var(--text-muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.field-group{margin-bottom:12px;}
+.label{display:block;font-size:0.82em;font-weight:700;color:var(--text-secondary);margin-bottom:5px;}
+.hint{font-size:0.75em;color:var(--text-muted);margin-top:4px;line-height:1.35;}
+.input,select.input,textarea.input{display:block;width:100%;padding:10px 12px;border:1.5px solid var(--input-border);border-radius:9px;background:var(--input-bg);color:var(--text-primary);font-size:1em;outline:none;font-family:inherit;}
+.input:focus{border-color:var(--accent-blue);box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border:none;border-radius:10px;font-size:0.92em;font-weight:700;cursor:pointer;color:white;min-height:46px;-webkit-user-select:none;user-select:none;width:100%;font-family:inherit;}
+.btn:active{transform:scale(0.97);}
+.btn-primary{background:var(--accent-blue);}
+.btn-green{background:#16a34a;}
+.btn-red{background:var(--accent-red);}
+.btn-secondary{background:var(--bg-tertiary);color:var(--text-secondary);border:1.5px solid var(--border-secondary);}
+.btn-sm{min-height:34px;padding:6px 10px;font-size:0.8em;width:auto;border-radius:8px;}
+.btn-row{display:flex;gap:10px;margin-top:8px;}
+.hidden{display:none!important;}
+/* Live readout */
+.readout{background:var(--result-bg);border:1.5px solid var(--result-border);border-radius:14px;margin:12px 16px;padding:16px;}
+.ro-align{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px;}
+.ro-align-name{font-weight:800;color:var(--result-text);font-size:0.95em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.badge{font-size:0.65em;font-weight:800;text-transform:uppercase;padding:3px 7px;border-radius:6px;color:white;background:#6b7280;flex-shrink:0;}
+.badge.auto{background:#16a34a;}
+.badge.lock{background:#d97706;}
+.ro-big{display:grid;grid-template-columns:1.25fr 1fr;gap:10px;}
+.ro-label{font-size:0.68em;font-weight:800;text-transform:uppercase;letter-spacing:0.6px;color:var(--result-text);opacity:0.75;}
+.ro-sta{font-size:clamp(1.4em,8.5vw,2.2em);white-space:nowrap;font-weight:900;font-variant-numeric:tabular-nums;color:var(--result-text);line-height:1.1;}
+.ro-off{font-size:clamp(1.4em,8.5vw,2.2em);white-space:nowrap;font-weight:900;font-variant-numeric:tabular-nums;color:var(--result-text);line-height:1.1;}
+.ro-sub{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;font-variant-numeric:tabular-nums;}
+.ro-sub div{font-size:0.9em;font-weight:700;color:var(--text-primary);}
+.ro-warn{margin-top:10px;background:var(--warn-bg);border:1.5px solid var(--warn-border);color:var(--warn-text);border-radius:9px;padding:8px 10px;font-size:0.8em;font-weight:600;}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:12px 16px 0;}
+.chip{font-size:0.75em;font-weight:700;padding:5px 10px;border-radius:999px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);color:var(--text-secondary);cursor:default;}
+.chip.ok{border-color:#16a34a;color:#16a34a;}
+.chip.bad{border-color:var(--accent-red);color:var(--accent-red);}
+.chip.btnchip{cursor:pointer;border-color:var(--accent-blue);color:var(--accent-blue);}
+.other-list{font-size:0.8em;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+.other-list div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-primary);}
+.other-list div:last-child{border-bottom:none;}
+#planCanvas{width:100%;height:240px;display:block;border-radius:10px;background:var(--plan-bg);touch-action:none;}
+.cam-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+/* alignment list */
+.al-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border-primary);}
+.al-item:last-child{border-bottom:none;}
+.al-info{flex:1;min-width:0;}
+.al-name{font-weight:700;font-size:0.92em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.al-meta{font-size:0.75em;color:var(--text-muted);font-variant-numeric:tabular-nums;}
+/* photos */
+.ph-toolbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 16px 0;}
+.ph-toolbar .btn{flex:1;min-width:100px;}
+.ph-item{display:flex;gap:12px;align-items:center;padding:10px;background:var(--bg-secondary);border:1.5px solid var(--border-primary);border-radius:12px;margin:8px 16px;cursor:pointer;}
+.ph-item.sel{border-color:var(--accent-blue);background:var(--result-bg);}
+.ph-thumb{width:84px;height:64px;object-fit:cover;border-radius:8px;flex-shrink:0;background:#000;}
+.ph-info{flex:1;min-width:0;}
+.ph-sta{font-weight:800;font-size:0.95em;font-variant-numeric:tabular-nums;}
+.ph-desc{font-size:0.82em;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ph-time{font-size:0.72em;color:var(--text-muted);}
+.ph-check{width:24px;height:24px;border-radius:50%;border:2px solid var(--border-secondary);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:0.8em;color:white;}
+.ph-item.sel .ph-check{background:var(--accent-blue);border-color:var(--accent-blue);}
+.empty{text-align:center;color:var(--text-muted);font-size:0.9em;padding:40px 20px;}
+/* overlays */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);display:flex;align-items:flex-end;justify-content:center;}
+.sheet{background:var(--bg-secondary);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border-radius:18px 18px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom));}
+.sheet-title{font-weight:800;font-size:1.05em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+.sheet-close{background:none;border:none;font-size:1.4em;color:var(--text-muted);cursor:pointer;padding:0 4px;}
+.review-img{width:100%;border-radius:10px;display:block;background:#000;margin-bottom:12px;}
+.pick-item{padding:12px;border:1.5px solid var(--border-primary);border-radius:10px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-size:0.9em;}
+.pick-item.cur{border-color:var(--accent-blue);background:var(--result-bg);}
+.pick-item .pm{color:var(--text-muted);font-variant-numeric:tabular-nums;font-size:0.9em;white-space:nowrap;}
+/* camera */
+#camView{position:fixed;inset:0;z-index:300;background:#000;display:flex;flex-direction:column;}
+#camVideo{flex:1;width:100%;min-height:0;object-fit:contain;background:#000;}
+.cam-hud{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 14px 10px;background:linear-gradient(rgba(0,0,0,0.65),rgba(0,0,0,0));color:white;font-variant-numeric:tabular-nums;pointer-events:none;}
+.cam-hud .h1{font-size:1.5em;font-weight:900;}
+.cam-hud .h2{font-size:0.85em;font-weight:600;opacity:0.9;}
+.cam-bar{display:flex;align-items:center;justify-content:space-around;padding:14px 10px calc(18px + env(safe-area-inset-bottom));background:#000;}
+.shutter{width:74px;height:74px;border-radius:50%;border:5px solid white;background:rgba(255,255,255,0.25);cursor:pointer;}
+.shutter:active{background:white;}
+.cam-side{color:white;background:none;border:none;font-size:1em;font-weight:700;width:80px;cursor:pointer;}
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(20px);background:#1f2937;color:white;padding:10px 18px;border-radius:10px;font-size:0.85em;font-weight:600;opacity:0;transition:all 0.3s;z-index:500;pointer-events:none;max-width:90vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.busy{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;color:white;font-weight:700;}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:0.82em;font-variant-numeric:tabular-nums;}
+.kv span:nth-child(odd){color:var(--text-muted);font-weight:700;}
+.switch-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:0.9em;font-weight:600;}
+.switch-row input{width:22px;height:22px;}
+</style>
+</head>
+<body>
+<div class="top-nav">
+  <a href="index.html" class="nav-back">‹ Menu</a>
+  <span class="nav-title">📸 Station Photos</span>
+  <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+</div>
+
+<div class="mode-tabs">
+  <button class="mode-tab active" data-tab="live">📍 Live</button>
+  <button class="mode-tab" data-tab="photos">🖼️ Photos <span id="photoCount"></span></button>
+  <button class="mode-tab" data-tab="setup">⚙️ Setup</button>
+</div>
+
+<!-- ═════════ LIVE ═════════ -->
+<div id="tab-live">
+  <div class="chips">
+    <span class="chip" id="gpsChip">GPS: waiting…</span>
+    <span class="chip btnchip" id="compassChip">🧭 Enable compass</span>
+  </div>
+
+  <div id="noAlignCard" class="card hidden">
+    <div class="card-title">No alignments loaded</div>
+    <div class="hint" style="font-size:0.85em;margin-bottom:10px;">Import a LandXML file with your project alignments to get live station &amp; offset.</div>
+    <button class="btn btn-primary" onclick="switchTab('setup')">Go to Setup →</button>
+  </div>
+
+  <div class="readout" id="readout">
+    <div class="ro-align">
+      <span class="ro-align-name" id="roAlign">—</span>
+      <span style="display:flex;gap:6px;align-items:center;">
+        <span class="badge" id="roMode">—</span>
+        <button class="btn btn-secondary btn-sm" onclick="openAlignPicker()">Change</button>
+      </span>
+    </div>
+    <div class="ro-big">
+      <div><div class="ro-label">Station</div><div class="ro-sta" id="roSta">—</div></div>
+      <div><div class="ro-label">Offset</div><div class="ro-off" id="roOff">—</div></div>
+    </div>
+    <div class="ro-sub">
+      <div><div class="ro-label">Northing</div><div id="roN">—</div></div>
+      <div><div class="ro-label">Easting</div><div id="roE">—</div></div>
+      <div><div class="ro-label">Facing</div><div id="roHdg">—</div></div>
+    </div>
+    <div class="ro-warn hidden" id="roWarn"></div>
+  </div>
+
+  <div class="card">
+    <div class="cam-btns">
+      <button class="btn btn-primary" onclick="openCamera()">📷 Live Camera</button>
+      <button class="btn btn-secondary" onclick="phoneCamera()">📱 Phone Camera</button>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:10px;" onclick="importPhoto()">🖼️ Stamp a photo from gallery</button>
+    <div class="hint">Live Camera shows station &amp; offset while you frame the shot. Phone Camera uses your normal camera for full resolution — position is recorded when you tap the button.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
+    <canvas id="planCanvas"></canvas>
+    <div class="hint" id="planScale"></div>
+  </div>
+
+  <div class="card" id="otherCard">
+    <div class="card-title">All Alignments</div>
+    <div class="other-list" id="otherList"></div>
+  </div>
+</div>
+
+<!-- ═════════ PHOTOS ═════════ -->
+<div id="tab-photos" class="hidden">
+  <div class="ph-toolbar">
+    <button class="btn btn-secondary btn-sm" id="selModeBtn" onclick="toggleSelectMode()">Select</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportCSV()">⬇ CSV log</button>
+    <button class="btn btn-secondary btn-sm" onclick="exportKML()">⬇ KML</button>
+  </div>
+  <div class="ph-toolbar hidden" id="selBar">
+    <button class="btn btn-primary btn-sm" onclick="shareSelected()">Share / Save (<span id="selCount">0</span>)</button>
+    <button class="btn btn-secondary btn-sm" onclick="selectAll()">All</button>
+    <button class="btn btn-red btn-sm" onclick="deleteSelected()">Delete</button>
+  </div>
+  <div id="photoList"></div>
+</div>
+
+<!-- ═════════ SETUP ═════════ -->
+<div id="tab-setup" class="hidden">
+  <div class="card">
+    <div class="card-title">Project</div>
+    <div class="field-group">
+      <label class="label">Link to project</label>
+      <select class="input" id="projSelect"></select>
+    </div>
+    <div class="field-group">
+      <label class="label">Project label on photos</label>
+      <input class="input" id="projLabel" placeholder="e.g., Contract 3812 · US 50">
+      <div class="hint">Printed on every photo stamp. Fills in from the linked project.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Alignments <button class="btn btn-primary btn-sm" onclick="document.getElementById('xmlInput').click()">＋ Import LandXML</button></div>
+    <input type="file" id="xmlInput" accept=".xml,.landxml,text/xml,application/xml" multiple class="hidden">
+    <div id="alignList"></div>
+    <div class="hint">Lines, curves and spirals are supported, plus station equations. Export from TBC or Civil 3D as LandXML.</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Coordinate System</div>
+    <div class="field-group">
+      <label class="label">Projection</label>
+      <select class="input" id="csZone">
+        <option value="NV_W">NAD83 Nevada West (2703)</option>
+        <option value="NV_C">NAD83 Nevada Central (2702)</option>
+        <option value="NV_E">NAD83 Nevada East (2701)</option>
+        <option value="TM">Custom Transverse Mercator</option>
+        <option value="LCC">Custom Lambert Conformal (2SP)</option>
+      </select>
+    </div>
+    <div id="customProj" class="hidden">
+      <div class="row2">
+        <div class="field-group"><label class="label">Origin lat (°)</label><input class="input" id="cpLat0" inputmode="decimal"></div>
+        <div class="field-group"><label class="label">Central meridian (°)</label><input class="input" id="cpLon0" inputmode="decimal" placeholder="-118.5833333"></div>
+      </div>
+      <div class="row2" id="tmOnly">
+        <div class="field-group"><label class="label">Scale k₀</label><input class="input" id="cpK0" inputmode="decimal" placeholder="0.9999"></div>
+        <div></div>
+      </div>
+      <div class="row2" id="lccOnly">
+        <div class="field-group"><label class="label">Std parallel 1 (°)</label><input class="input" id="cpLat1" inputmode="decimal"></div>
+        <div class="field-group"><label class="label">Std parallel 2 (°)</label><input class="input" id="cpLat2" inputmode="decimal"></div>
+      </div>
+      <div class="row2">
+        <div class="field-group"><label class="label">False easting (m)</label><input class="input" id="cpFE" inputmode="decimal"></div>
+        <div class="field-group"><label class="label">False northing (m)</label><input class="input" id="cpFN" inputmode="decimal"></div>
+      </div>
+    </div>
+    <div class="field-group">
+      <label class="label">Coordinate units</label>
+      <select class="input" id="csUnits">
+        <option value="usft">US survey feet</option>
+        <option value="ift">International feet</option>
+        <option value="m">Meters</option>
+      </select>
+      <div class="hint" id="unitsHint">Set automatically from the LandXML file.</div>
+    </div>
+    <div class="field-group">
+      <label class="label">Combined factor (Ground = Grid ÷ CF)</label>
+      <input class="input" id="csCF" inputmode="decimal" placeholder="1.00000000">
+      <div class="hint">Leave at 1 if the alignment is in grid coordinates. For ground (surface) coordinates, enter the project combined factor.</div>
+    </div>
+    <div class="row2">
+      <div class="field-group"><label class="label">Scale about N</label><input class="input" id="csBaseN" inputmode="decimal" placeholder="0"></div>
+      <div class="field-group"><label class="label">Scale about E</label><input class="input" id="csBaseE" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <div class="hint" style="margin-top:-6px;margin-bottom:12px;">Base point for the scale. Leave 0,0 unless the project scaled about a specific point.</div>
+    <div class="field-group">
+      <label class="label">Check-in shift</label>
+      <div class="kv" id="shiftKv" style="margin-bottom:8px;"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openCalibrate()">📌 Check in on a known point</button>
+        <button class="btn btn-secondary btn-sm" onclick="clearShift()">Clear</button>
+      </div>
+      <div class="hint">Stand on a point you know (control or a station/offset) and the app shifts GPS to match. Corrects datum, scale and phone GPS bias in the local area.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Heading &amp; Stamp</div>
+    <div class="field-group">
+      <label class="label">Magnetic declination (° East)</label>
+      <input class="input" id="decl" inputmode="decimal" placeholder="12.4">
+      <div class="hint">Phone compasses read magnetic north. Northern Nevada is about 12–13° E.</div>
+    </div>
+    <div class="switch-row"><span>Show N / E on stamp</span><input type="checkbox" id="stampNE"></div>
+    <div class="switch-row"><span>Show lat / long on stamp</span><input type="checkbox" id="stampLL"></div>
+    <div class="switch-row"><span>Show facing direction on stamp</span><input type="checkbox" id="stampHdg" checked></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Storage</div>
+    <div class="hint" id="storageInfo" style="font-size:0.82em;">—</div>
+    <div class="hint">Photos stay on this phone until you delete them. Share or export regularly — iOS can clear website storage for apps that go unused for weeks.</div>
+  </div>
+</div>
+
+<!-- hidden inputs -->
+<input type="file" id="camInput" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="galleryInput" accept="image/*" class="hidden">
+
+<!-- live camera -->
+<div id="camView" class="hidden">
+  <video id="camVideo" playsinline muted autoplay></video>
+  <div class="cam-hud"><div class="h1" id="hudMain">—</div><div class="h2" id="hudSub">—</div></div>
+  <div class="cam-bar">
+    <button class="cam-side" onclick="closeCamera()">Cancel</button>
+    <button class="shutter" id="shutterBtn" onclick="shutter()" aria-label="Take photo"></button>
+    <button class="cam-side" onclick="openAlignPicker()">Align ▾</button>
+  </div>
+</div>
+
+<div id="overlay" class="overlay hidden"><div class="sheet" id="sheet"></div></div>
+<div id="busy" class="busy hidden">Working…</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ══════════════════════════════════════════════════════════════
+   Station Photos — live station/offset from phone GPS against
+   LandXML alignments, with stamped photos.
+   ══════════════════════════════════════════════════════════════ */
+
+// ───────── small utils ─────────
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+let toastTimer;
+function toast(msg, ms = 2200) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+function busy(on, msg = 'Working…') { $('busy').textContent = msg; $('busy').classList.toggle('hidden', !on); }
+const fmtNum = (v, d = 1) => (v == null || !isFinite(v)) ? '—' : v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+
+// ───────── local DB (alignments + photos) ─────────
+const AP_DB = 'FieldToolsStationPhotos';
+let _apdb;
+function apDB() {
+  if (_apdb) return Promise.resolve(_apdb);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(AP_DB, 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains('alignments')) db.createObjectStore('alignments', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('photos')) db.createObjectStore('photos', { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
+    };
+    r.onsuccess = () => { _apdb = r.result; res(_apdb); };
+    r.onerror = () => rej(r.error);
+  });
+}
+async function apTx(store, mode, fn) {
+  const db = await apDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, mode); const os = tx.objectStore(store);
+    const req = fn(os);
+    tx.oncomplete = () => res(req ? req.result : undefined);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+const apGetAll = s => apTx(s, 'readonly', os => os.getAll());
+const apGet = (s, k) => apTx(s, 'readonly', os => os.get(k));
+const apPut = (s, v, k) => apTx(s, 'readwrite', os => k !== undefined ? os.put(v, k) : os.put(v));
+const apDel = (s, k) => apTx(s, 'readwrite', os => os.delete(k));
+
+// ───────── settings ─────────
+const DEFAULTS = { zone: 'NV_W', units: 'usft', cf: 1, baseN: 0, baseE: 0, shiftN: 0, shiftE: 0, decl: 12.4,
+  stampNE: false, stampLL: false, stampHdg: true, projId: '', projLabel: '', lockId: '',
+  custom: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, lat1: 0, lat2: 0, fe: 800000, fn: 4000000 }, planWidth: 300 };
+let S = structuredClone(DEFAULTS);
+async function loadSettings() { const s = await ftGetSetting('stationPhotos', null); if (s) S = Object.assign(structuredClone(DEFAULTS), s); }
+function saveSettings() { ftSetSetting('stationPhotos', S); }
+
+// ═════════ PROJECTIONS (GRS80 / NAD83) ═════════
+const ELL = { a: 6378137, f: 1 / 298.257222101 };
+ELL.e2 = ELL.f * (2 - ELL.f); ELL.e = Math.sqrt(ELL.e2); ELL.ep2 = ELL.e2 / (1 - ELL.e2);
+const ZONES = {
+  NV_E: { type: 'TM', lat0: 34.75, lon0: -115.5833333333, k0: 0.9999, fe: 200000, fn: 8000000 },
+  NV_C: { type: 'TM', lat0: 34.75, lon0: -116.6666666667, k0: 0.9999, fe: 500000, fn: 6000000 },
+  NV_W: { type: 'TM', lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, fe: 800000, fn: 4000000 },
+};
+function meridionalArc(phi) {
+  const e2 = ELL.e2, e4 = e2 * e2, e6 = e4 * e2;
+  return ELL.a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+    + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi) - (35 * e6 / 3072) * Math.sin(6 * phi));
+}
+function tmForward(latDeg, lonDeg, p) {
+  const phi = latDeg * D2R, lam = lonDeg * D2R, lam0 = p.lon0 * D2R;
+  const sin = Math.sin(phi), cos = Math.cos(phi), tan = Math.tan(phi);
+  const N = ELL.a / Math.sqrt(1 - ELL.e2 * sin * sin);
+  const T = tan * tan, C = ELL.ep2 * cos * cos, A = (lam - lam0) * cos;
+  const M = meridionalArc(phi), M0 = meridionalArc(p.lat0 * D2R);
+  const x = p.k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ELL.ep2) * A ** 5 / 120);
+  const y = p.k0 * (M - M0 + N * tan * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ELL.ep2) * A ** 6 / 720));
+  return { E: x + p.fe, N: y + p.fn };
+}
+function lccForward(latDeg, lonDeg, p) {
+  const e = ELL.e;
+  const m = f => Math.cos(f) / Math.sqrt(1 - ELL.e2 * Math.sin(f) ** 2);
+  const t = f => Math.tan(Math.PI / 4 - f / 2) / Math.pow((1 - e * Math.sin(f)) / (1 + e * Math.sin(f)), e / 2);
+  const p1 = p.lat1 * D2R, p2 = p.lat2 * D2R, p0 = p.lat0 * D2R;
+  const n = Math.abs(p1 - p2) < 1e-10 ? Math.sin(p1) : (Math.log(m(p1)) - Math.log(m(p2))) / (Math.log(t(p1)) - Math.log(t(p2)));
+  const F = m(p1) / (n * Math.pow(t(p1), n));
+  const rho = ELL.a * F * Math.pow(t(latDeg * D2R), n), rho0 = ELL.a * F * Math.pow(t(p0), n);
+  const th = n * (lonDeg - p.lon0) * D2R;
+  return { E: p.fe + rho * Math.sin(th), N: p.fn + rho0 - rho * Math.cos(th) };
+}
+const UNIT_M = { usft: 1200 / 3937, ift: 0.3048, m: 1 };
+const UNIT_LBL = { usft: 'ft', ift: 'ft', m: 'm' };
+// lat/lon → project N/E (grid → ground → check-in shift), in project units
+function projectLL(lat, lon) {
+  let p, g;
+  if (S.zone === 'TM' || S.zone === 'LCC') { p = S.custom; g = S.zone === 'TM' ? tmForward(lat, lon, p) : lccForward(lat, lon, p); }
+  else g = tmForward(lat, lon, ZONES[S.zone]);
+  const u = UNIT_M[S.units];
+  let N = g.N / u, E = g.E / u;
+  const cf = +S.cf || 1;
+  N = S.baseN + (N - S.baseN) / cf; E = S.baseE + (E - S.baseE) / cf;
+  return { N: N + (+S.shiftN || 0), E: E + (+S.shiftE || 0), rawN: N, rawE: E };
+}
+
+// ═════════ LANDXML PARSING ═════════
+const LX_UNITS = { usSurveyFoot: 'usft', USSurveyFoot: 'usft', foot: 'ift', InternationalFoot: 'ift', internationalFoot: 'ift', meter: 'm', metre: 'm' };
+function lxChildren(el, name) { return [...el.children].filter(c => c.localName === name); }
+function lxFirst(el, name) { return [...el.children].find(c => c.localName === name); }
+function parseLandXML(text, fileName) {
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if (doc.querySelector('parsererror')) throw new Error('Not a valid XML file');
+  const root = doc.documentElement;
+  if (root.localName !== 'LandXML') throw new Error('Not a LandXML file');
+  // units
+  let units = null;
+  const uEl = lxFirst(root, 'Units');
+  if (uEl) { const u = uEl.firstElementChild; const lu = u && u.getAttribute('linearUnit'); if (lu) units = LX_UNITS[lu] || (u.localName === 'Metric' ? 'm' : 'usft'); }
+  // coordinate system hint
+  let csHint = '';
+  const cs = lxFirst(root, 'CoordinateSystem');
+  if (cs) {
+    const txt = [cs.getAttribute('name'), cs.getAttribute('desc'), cs.getAttribute('horizontalCoordinateSystemName'), cs.getAttribute('epsgCode')].filter(Boolean).join(' ');
+    if (/nevada/i.test(txt) || /\b(2701|2702|2703|3421|3422|3423|32107|32108|32109)\b/.test(txt)) {
+      if (/west|2703|3423|32109/i.test(txt)) csHint = 'NV_W'; else if (/central|2702|3422|32108/i.test(txt)) csHint = 'NV_C'; else if (/east|2701|3421|32107/i.test(txt)) csHint = 'NV_E';
+    }
+  }
+  // CgPoints for pntRef lookups
+  const cg = {};
+  doc.querySelectorAll('CgPoint').forEach(p => { const n = p.getAttribute('name'); if (n) cg[n] = p.textContent; });
+  const pt = el => {
+    if (!el) return null;
+    let txt = el.textContent.trim();
+    if (!txt && el.getAttribute('pntRef')) txt = cg[el.getAttribute('pntRef')] || '';
+    const v = txt.split(/[\s,]+/).map(Number);
+    if (v.length < 2 || !isFinite(v[0]) || !isFinite(v[1])) return null;
+    return { x: v[1], y: v[0] }; // LandXML = "Northing Easting"
+  };
+  const out = [];
+  doc.querySelectorAll('Alignment').forEach(al => {
+    const geom = lxFirst(al, 'CoordGeom');
+    if (!geom) return;
+    const staStart = parseFloat(al.getAttribute('staStart')) || 0;
+    const els = [];
+    for (const c of geom.children) {
+      const t = c.localName;
+      const staAttr = parseFloat(c.getAttribute('staStart'));
+      const base = { sta: isFinite(staAttr) ? staAttr : null };
+      if (t === 'Line') {
+        const s = pt(lxFirst(c, 'Start')), e = pt(lxFirst(c, 'End'));
+        if (s && e) els.push({ ...base, t: 'L', s, e });
+      } else if (t === 'Curve') {
+        const s = pt(lxFirst(c, 'Start')), e = pt(lxFirst(c, 'End')), ctr = pt(lxFirst(c, 'Center'));
+        if (s && e && ctr) els.push({ ...base, t: 'C', s, e, c: ctr, rot: (c.getAttribute('rot') || 'cw').toLowerCase() });
+      } else if (t === 'Spiral') {
+        const s = pt(lxFirst(c, 'Start')), e = pt(lxFirst(c, 'End')), pi = pt(lxFirst(c, 'PI'));
+        const rs = c.getAttribute('radiusStart'), re = c.getAttribute('radiusEnd');
+        if (s && e) els.push({ ...base, t: 'S', s, e, pi, L: parseFloat(c.getAttribute('length')),
+          rs: (!rs || /inf/i.test(rs)) ? Infinity : parseFloat(rs), re: (!re || /inf/i.test(re)) ? Infinity : parseFloat(re),
+          rot: (c.getAttribute('rot') || 'cw').toLowerCase() });
+      } else if (t === 'IrregularLine' || t === 'Chain') {
+        const pl = lxFirst(c, 'PntList2D') || lxFirst(c, 'PntList3D');
+        if (pl) {
+          const dim = pl.localName === 'PntList3D' ? 3 : 2;
+          const v = pl.textContent.trim().split(/[\s,]+/).map(Number);
+          for (let i = 0; i + 2 * dim - 1 < v.length; i += dim) els.push({ t: 'L', sta: null, s: { x: v[i + 1], y: v[i] }, e: { x: v[i + dim + 1], y: v[i + dim] } });
+        }
+      }
+    }
+    if (!els.length) return;
+    const eqs = lxChildren(al, 'StaEquation').map(q => ({
+      internal: parseFloat(q.getAttribute('staInternal')), ahead: parseFloat(q.getAttribute('staAhead')), back: parseFloat(q.getAttribute('staBack'))
+    })).filter(q => isFinite(q.internal) && isFinite(q.ahead)).sort((a, b) => a.internal - b.internal);
+    out.push({ name: al.getAttribute('name') || 'Alignment', staStart, els, eqs });
+  });
+  if (!out.length) throw new Error('No horizontal alignments found in file');
+  return { alignments: out, units, csHint, fileName };
+}
+
+// Densify elements into polyline with internal stationing.
+function buildPolyline(al, units) {
+  const maxChord = units === 'm' ? 0.5 : 1.5;
+  const X = [], Y = [], St = [];
+  let sta = al.staStart;
+  const push = (x, y, s) => {
+    const n = X.length;
+    if (n && Math.abs(X[n - 1] - x) < 1e-6 && Math.abs(Y[n - 1] - y) < 1e-6) { St[n - 1] = s; return; }
+    X.push(x); Y.push(y); St.push(s);
+  };
+  for (const el of al.els) {
+    if (el.sta != null && X.length === 0) sta = el.sta;
+    else if (el.sta != null && Math.abs(el.sta - sta) < 1) sta = el.sta; // trust element station if close
+    const s0 = sta;
+    if (el.t === 'L') {
+      const len = Math.hypot(el.e.x - el.s.x, el.e.y - el.s.y);
+      push(el.s.x, el.s.y, s0); push(el.e.x, el.e.y, s0 + len); sta = s0 + len;
+    } else if (el.t === 'C') {
+      const R = Math.hypot(el.s.x - el.c.x, el.s.y - el.c.y);
+      const a0 = Math.atan2(el.s.y - el.c.y, el.s.x - el.c.x), a1 = Math.atan2(el.e.y - el.c.y, el.e.x - el.c.x);
+      let d = a1 - a0;
+      if (el.rot === 'ccw') { while (d <= 0) d += 2 * Math.PI; } else { while (d >= 0) d -= 2 * Math.PI; }
+      const len = R * Math.abs(d);
+      const n = Math.max(2, Math.ceil(len / maxChord), Math.ceil(Math.abs(d) / (0.5 * D2R)));
+      for (let i = 0; i <= n; i++) { const a = a0 + d * i / n; push(el.c.x + R * Math.cos(a), el.c.y + R * Math.sin(a), s0 + len * i / n); }
+      sta = s0 + len;
+    } else if (el.t === 'S') {
+      const pts = spiralPoints(el, maxChord);
+      for (const p of pts) push(p.x, p.y, s0 + p.s);
+      sta = s0 + pts[pts.length - 1].s;
+    }
+  }
+  const xs = Float64Array.from(X), ys = Float64Array.from(Y), ss = Float64Array.from(St);
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (let i = 0; i < xs.length; i++) { minX = Math.min(minX, xs[i]); maxX = Math.max(maxX, xs[i]); minY = Math.min(minY, ys[i]); maxY = Math.max(maxY, ys[i]); }
+  return { xs, ys, ss, bbox: [minX, minY, maxX, maxY] };
+}
+// Clothoid by numeric integration, then fitted to the exact End point.
+function spiralPoints(el, maxChord) {
+  let L = el.L;
+  const chord = Math.hypot(el.e.x - el.s.x, el.e.y - el.s.y);
+  if (!isFinite(L) || L <= 0) L = chord;
+  let th0;
+  if (el.pi && Math.hypot(el.pi.x - el.s.x, el.pi.y - el.s.y) > 1e-6) th0 = Math.atan2(el.pi.y - el.s.y, el.pi.x - el.s.x);
+  else th0 = Math.atan2(el.e.y - el.s.y, el.e.x - el.s.x);
+  const sg = el.rot === 'ccw' ? 1 : -1;
+  const k1 = isFinite(el.rs) && el.rs > 0 ? sg / el.rs : 0, k2 = isFinite(el.re) && el.re > 0 ? sg / el.re : 0;
+  const th = s => th0 + k1 * s + (k2 - k1) * s * s / (2 * L);
+  const n = Math.max(4, Math.ceil(L / maxChord));
+  const pts = [{ x: 0, y: 0, s: 0 }];
+  let x = 0, y = 0;
+  for (let i = 1; i <= n; i++) {
+    const a = L * (i - 1) / n, b = L * i / n, m = (a + b) / 2, h = b - a;
+    x += h / 6 * (Math.cos(th(a)) + 4 * Math.cos(th(m)) + Math.cos(th(b)));
+    y += h / 6 * (Math.sin(th(a)) + 4 * Math.sin(th(m)) + Math.sin(th(b)));
+    pts.push({ x, y, s: b });
+  }
+  // similarity fit: map computed end onto actual end
+  const ex = el.e.x - el.s.x, ey = el.e.y - el.s.y;
+  const cl = Math.hypot(x, y) || 1, sc = Math.hypot(ex, ey) / cl;
+  const rot = Math.atan2(ey, ex) - Math.atan2(y, x);
+  const cr = Math.cos(rot) * sc, sr = Math.sin(rot) * sc;
+  return pts.map(p => ({ x: el.s.x + p.x * cr - p.y * sr, y: el.s.y + p.x * sr + p.y * cr, s: p.s }));
+}
+
+// Station equation: internal → display
+function displaySta(al, internal) {
+  let s = internal;
+  for (const q of al.eqs || []) if (internal >= q.internal) s = q.ahead + (internal - q.internal);
+  return s;
+}
+function internalSta(al, display) {
+  const eqs = al.eqs || [];
+  // try each region; first region that contains the value wins
+  const regions = [{ from: -Infinity, to: eqs.length ? eqs[0].internal : Infinity, map: d => d }];
+  eqs.forEach((q, i) => regions.push({ from: q.internal, to: i + 1 < eqs.length ? eqs[i + 1].internal : Infinity, map: d => q.internal + (d - q.ahead) }));
+  for (const r of regions) { const s = r.map(display); if (s >= r.from - 1e-6 && s <= r.to + 1e-6 && s >= al.poly.ss[0] - 1e-6 && s <= al.poly.ss[al.poly.ss.length - 1] + 1e-6) return s; }
+  return regions[0].map(display);
+}
+function fmtSta(v, units) {
+  if (v == null || !isFinite(v)) return '—';
+  const per = units === 'm' ? 1000 : 100, dec = 1;
+  const neg = v < 0; let a = Math.abs(v);
+  let st = Math.floor(a / per), rem = a - st * per;
+  let remS = rem.toFixed(dec);
+  if (parseFloat(remS) >= per) { st += 1; remS = (0).toFixed(dec); }
+  const w = units === 'm' ? 3 : 2;
+  const [ip, dp] = remS.split('.');
+  return (neg ? '-' : '') + st + '+' + ip.padStart(w, '0') + (dp ? '.' + dp : '');
+}
+function fmtOff(off, units) {
+  if (off == null || !isFinite(off)) return '—';
+  const u = units === 'm' ? ' m' : "'";
+  if (Math.abs(off) < 0.05) return '0.0' + u + ' CL';
+  return Math.abs(off).toFixed(1) + u + (off > 0 ? ' RT' : ' LT');
+}
+
+// Project point onto polyline → {sta (internal), off (+right), dist, inRange, x, y}
+function stationOffset(poly, px, py) {
+  const { xs, ys, ss } = poly, n = xs.length;
+  let best = null, bestD2 = Infinity;
+  for (let i = 0; i < n - 1; i++) {
+    const ax = xs[i], ay = ys[i], dx = xs[i + 1] - ax, dy = ys[i + 1] - ay;
+    const L2 = dx * dx + dy * dy; if (L2 === 0) continue;
+    let t = ((px - ax) * dx + (py - ay) * dy) / L2;
+    const tc = t < 0 ? 0 : t > 1 ? 1 : t;
+    const qx = ax + tc * dx, qy = ay + tc * dy;
+    const d2 = (px - qx) ** 2 + (py - qy) ** 2;
+    if (d2 < bestD2 - 1e-9) { bestD2 = d2; best = { i, t, tc }; }
+  }
+  if (!best) return null;
+  const { i } = best;
+  const ax = xs[i], ay = ys[i], dx = xs[i + 1] - ax, dy = ys[i + 1] - ay, L = Math.hypot(dx, dy);
+  // before start / beyond end: extend tangent
+  let t = best.tc;
+  let inRange = true;
+  if (i === 0 && best.t < 0) { t = best.t; inRange = false; }
+  if (i === n - 2 && best.t > 1) { t = best.t; inRange = false; }
+  const sta = ss[i] + t * (ss[i + 1] - ss[i]);
+  const cross = dx * (py - ay) - dy * (px - ax); // + = left
+  const off = -cross / L;
+  return { sta, off, dist: Math.sqrt(bestD2), inRange };
+}
+// Point at internal station / offset (for check-in by station)
+function pointAt(poly, sta, off) {
+  const { xs, ys, ss } = poly, n = xs.length;
+  let i = 0;
+  if (sta <= ss[0]) i = 0; else if (sta >= ss[n - 1]) i = n - 2;
+  else { let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ss[m] <= sta) lo = m; else hi = m; } i = lo; }
+  const dx = xs[i + 1] - xs[i], dy = ys[i + 1] - ys[i], L = Math.hypot(dx, dy), ds = ss[i + 1] - ss[i];
+  const t = ds ? (sta - ss[i]) / ds : 0;
+  const x = xs[i] + t * dx, y = ys[i] + t * dy;
+  return { x: x + off * dy / L, y: y - off * dx / L }; // right normal
+}
+
+// ═════════ STATE ═════════
+let aligns = [];          // {id, name, file, units, staStart, els, eqs, poly, visible}
+let fix = null;           // {lat, lon, acc, alt, time}
+let pos = null;           // {N, E}
+let heading = null;       // true heading degrees (smoothed)
+let results = [];         // per alignment results
+let current = null;       // chosen {al, r}
+let autoId = null;        // hysteresis for auto pick
+
+async function loadAligns() {
+  const rows = await apGetAll('alignments');
+  aligns = rows.map(r => ({ ...r, poly: buildPolyline(r, r.units || S.units) }));
+  aligns.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+}
+
+// Compute results for all alignments at current position and choose one.
+function computeAll() {
+  results = [];
+  if (!pos) { current = null; return; }
+  for (const al of aligns) {
+    if (al.visible === false) continue;
+    const r = stationOffset(al.poly, pos.E, pos.N);
+    if (r) results.push({ al, r });
+  }
+  if (!results.length) { current = null; return; }
+  const locked = S.lockId && results.find(x => x.al.id === S.lockId);
+  if (locked) { current = locked; return; }
+  const score = x => x.r.inRange ? x.r.dist : x.r.dist + 1e6;
+  let best = results.reduce((a, b) => score(b) < score(a) ? b : a);
+  const prev = autoId && results.find(x => x.al.id === autoId);
+  if (prev && prev !== best && score(prev) - score(best) < 2) best = prev; // 2-unit hysteresis
+  autoId = best.al.id; current = best;
+}
+
+// ═════════ GPS ═════════
+let watchId = null;
+function startGPS() {
+  if (!('geolocation' in navigator)) { $('gpsChip').textContent = 'GPS not available'; $('gpsChip').className = 'chip bad'; return; }
+  watchId = navigator.geolocation.watchPosition(p => {
+    fix = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, alt: p.coords.altitude, time: p.timestamp };
+    pos = projectLL(fix.lat, fix.lon);
+    computeAll(); renderLive();
+  }, err => {
+    $('gpsChip').textContent = err.code === 1 ? 'GPS: permission denied' : 'GPS: ' + (err.message || 'error');
+    $('gpsChip').className = 'chip bad';
+  }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+}
+
+// ═════════ COMPASS ═════════
+let compassOn = false, hx = null, hy = null, lastHeadingAt = 0;
+function headingFromEuler(alpha, beta, gamma) {
+  const a = alpha * D2R, b = beta * D2R, g = gamma * D2R;
+  const ca = Math.cos(a), sa = Math.sin(a), cb = Math.cos(b), sb = Math.sin(b), cg = Math.cos(g), sg = Math.sin(g);
+  // back-camera vector (device −Z) in earth frame (x=E, y=N)
+  let e = -(ca * sg + sa * sb * cg), n = ca * sb * cg - sa * sg;
+  if (Math.hypot(e, n) < 0.5) { e = -sa * cb; n = ca * cb; } // phone near flat → use top edge
+  return (Math.atan2(e, n) * R2D + 360) % 360;
+}
+function feedHeading(mag) {
+  const tru = (mag + (+S.decl || 0) + 360) % 360;
+  const x = Math.sin(tru * D2R), y = Math.cos(tru * D2R);
+  if (hx == null) { hx = x; hy = y; } else { hx = hx * 0.8 + x * 0.2; hy = hy * 0.8 + y * 0.2; }
+  heading = (Math.atan2(hx, hy) * R2D + 360) % 360;
+  lastHeadingAt = Date.now();
+}
+function onOrientIOS(e) { if (e.webkitCompassHeading != null && e.webkitCompassHeading >= 0) feedHeading(e.webkitCompassHeading); }
+function onOrientAbs(e) { if (e.alpha != null && e.beta != null) feedHeading(headingFromEuler(e.alpha, e.beta, e.gamma || 0)); }
+async function enableCompass() {
+  try {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const r = await DeviceOrientationEvent.requestPermission();
+      if (r !== 'granted') { toast('Compass permission denied'); return; }
+      window.addEventListener('deviceorientation', onOrientIOS);
+    } else if ('ondeviceorientationabsolute' in window) {
+      window.addEventListener('deviceorientationabsolute', onOrientAbs);
+    } else {
+      window.addEventListener('deviceorientation', e => { if (e.absolute) onOrientAbs(e); else if (e.webkitCompassHeading != null) onOrientIOS(e); });
+    }
+    compassOn = true; ftSetSetting('stationPhotosCompass', true);
+    setTimeout(() => { if (!lastHeadingAt) toast('No compass data from this device'); renderLive(); }, 2500);
+    renderLive();
+  } catch (err) { toast('Compass unavailable: ' + err.message); }
+}
+const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+const fmtHdg = h => h == null ? '—' : DIRS[Math.round(h / 45) % 8] + ' ' + Math.round(h) + '°';
+const headingNow = () => (heading != null && Date.now() - lastHeadingAt < 5000) ? heading : null;
+
+// ═════════ LIVE RENDER ═════════
+let renderPending = false;
+function renderLive() {
+  if (renderPending) return; renderPending = true;
+  requestAnimationFrame(() => { renderPending = false; _renderLive(); });
+}
+function unitsOf(al) { return (al && al.units) || S.units; }
+function _renderLive() {
+  const gc = $('gpsChip');
+  if (fix) { const ft = fix.acc / UNIT_M[S.units]; gc.textContent = `GPS ±${Math.round(ft)} ${UNIT_LBL[S.units]}`; gc.className = 'chip ' + (fix.acc <= 10 ? 'ok' : fix.acc > 30 ? 'bad' : ''); }
+  const cc = $('compassChip');
+  if (compassOn) { cc.textContent = '🧭 ' + (headingNow() != null ? fmtHdg(headingNow()) : 'no data'); cc.className = 'chip ' + (headingNow() != null ? 'ok' : ''); }
+  $('noAlignCard').classList.toggle('hidden', aligns.length > 0);
+  $('roN').textContent = pos ? fmtNum(pos.N, 1) : '—';
+  $('roE').textContent = pos ? fmtNum(pos.E, 1) : '—';
+  $('roHdg').textContent = fmtHdg(headingNow());
+  const warn = $('roWarn');
+  let w = '';
+  if (current) {
+    const { al, r } = current, u = unitsOf(al);
+    $('roAlign').textContent = al.name;
+    $('roMode').textContent = S.lockId ? '🔒 Locked' : 'Auto';
+    $('roMode').className = 'badge ' + (S.lockId ? 'lock' : 'auto');
+    $('roSta').textContent = fmtSta(displaySta(al, r.sta), u);
+    $('roOff').textContent = fmtOff(r.off, u);
+    if (!r.inRange) w = r.sta < al.poly.ss[0] ? 'Before the start of this alignment.' : 'Past the end of this alignment.';
+    const miles = r.dist * UNIT_M[u] / 1609.344;
+    if (r.dist * UNIT_M[u] > 1500) w = `You're ${miles.toFixed(1)} mi from this alignment — check projection zone, units and combined factor in Setup.`;
+  } else {
+    $('roAlign').textContent = aligns.length ? (pos ? '—' : 'Waiting for GPS…') : 'No alignments';
+    $('roMode').textContent = '—'; $('roMode').className = 'badge';
+    $('roSta').textContent = '—'; $('roOff').textContent = '—';
+  }
+  if (S.lockId && !aligns.find(a => a.id === S.lockId)) { S.lockId = ''; saveSettings(); }
+  warn.textContent = w; warn.classList.toggle('hidden', !w);
+  // other alignments
+  $('otherCard').classList.toggle('hidden', results.length < 2);
+  $('otherList').innerHTML = results.slice().sort((a, b) => Math.abs(a.r.off) - Math.abs(b.r.off)).map(x =>
+    `<div><span>${x === current ? '▶ ' : ''}${esc(x.al.name)}</span><span>${fmtSta(displaySta(x.al, x.r.sta), unitsOf(x.al))} &nbsp; ${fmtOff(x.r.off, unitsOf(x.al))}${x.r.inRange ? '' : ' *'}</span></div>`).join('');
+  // camera HUD
+  if (!$('camView').classList.contains('hidden')) {
+    $('hudMain').textContent = current ? `STA ${fmtSta(displaySta(current.al, current.r.sta), unitsOf(current.al))}  ${fmtOff(current.r.off, unitsOf(current.al))}` : (pos ? 'No alignment' : 'Waiting for GPS…');
+    $('hudSub').textContent = [current && current.al.name + (S.lockId ? ' 🔒' : ''), headingNow() != null && 'Facing ' + fmtHdg(headingNow()), fix && `GPS ±${Math.round(fix.acc / UNIT_M[S.units])} ${UNIT_LBL[S.units]}`].filter(Boolean).join('  ·  ');
+  }
+  drawPlan();
+}
+
+// ═════════ PLAN VIEW ═════════
+function zoomPlan(f) { S.planWidth = Math.min(20000, Math.max(40, S.planWidth * f)); saveSettings(); drawPlan(); }
+function drawPlan() {
+  const cv = $('planCanvas'); if (!cv || $('tab-live').classList.contains('hidden')) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const css = getComputedStyle(document.documentElement);
+  const lineCol = css.getPropertyValue('--plan-line').trim(), txtCol = css.getPropertyValue('--text-muted').trim(), accent = css.getPropertyValue('--accent-blue').trim();
+  let cx, cy;
+  if (pos) { cx = pos.E; cy = pos.N; }
+  else if (aligns.length) { const b = aligns[0].poly.bbox; cx = (b[0] + b[2]) / 2; cy = (b[1] + b[3]) / 2; }
+  else { ctx.fillStyle = txtCol; ctx.font = '13px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('No alignments loaded', W / 2, H / 2); $('planScale').textContent = ''; return; }
+  const sc = W / S.planWidth;
+  const tx = x => W / 2 + (x - cx) * sc, ty = y => H / 2 - (y - cy) * sc;
+  const half = S.planWidth * 0.75;
+  for (const al of aligns) {
+    if (al.visible === false) continue;
+    const b = al.poly.bbox; if (b[2] < cx - half || b[0] > cx + half || b[3] < cy - half || b[1] > cy + half) continue;
+    const isCur = current && current.al === al;
+    ctx.strokeStyle = isCur ? accent : lineCol; ctx.lineWidth = isCur ? 3 : 1.5;
+    ctx.beginPath();
+    const { xs, ys, ss } = al.poly;
+    for (let i = 0; i < xs.length; i++) { const X = tx(xs[i]), Y = ty(ys[i]); i ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+    ctx.stroke();
+    if (isCur) { // station ticks
+      const u = unitsOf(al), per = u === 'm' ? (S.planWidth > 2000 ? 1000 : 100) : (S.planWidth > 3000 ? 1000 : 100);
+      ctx.fillStyle = accent; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+      for (let i = 0; i < xs.length - 1; i++) {
+        const d0 = displaySta(al, ss[i]), d1 = displaySta(al, ss[i + 1]);
+        for (let k = Math.ceil(d0 / per) * per; k <= d1 && d1 - d0 < per * 50; k += per) {
+          const t = (k - d0) / ((d1 - d0) || 1), X = tx(xs[i] + t * (xs[i + 1] - xs[i])), Y = ty(ys[i] + t * (ys[i + 1] - ys[i]));
+          if (X < -20 || X > W + 20 || Y < -20 || Y > H + 20) continue;
+          const dx = xs[i + 1] - xs[i], dy = ys[i + 1] - ys[i], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = -dx / L; // screen normal
+          ctx.beginPath(); ctx.moveTo(X - nx * 6, Y - ny * 6); ctx.lineTo(X + nx * 6, Y + ny * 6); ctx.stroke();
+          ctx.fillText(fmtSta(k, u).replace(/\.\d+$/, ''), X + 8, Y - 4);
+        }
+      }
+    }
+  }
+  if (pos) {
+    const X = W / 2, Y = H / 2;
+    if (fix) { const r = fix.acc / UNIT_M[S.units] * sc; if (r > 4 && r < W) { ctx.fillStyle = 'rgba(59,130,246,0.12)'; ctx.beginPath(); ctx.arc(X, Y, r, 0, 7); ctx.fill(); } }
+    const h = headingNow();
+    if (h != null) { const a = h * D2R; ctx.fillStyle = 'rgba(59,130,246,0.35)'; ctx.beginPath(); ctx.moveTo(X, Y); ctx.arc(X, Y, 40, a - Math.PI / 2 - 0.35, a - Math.PI / 2 + 0.35); ctx.closePath(); ctx.fill(); }
+    ctx.fillStyle = '#2563eb'; ctx.strokeStyle = 'white'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(X, Y, 7, 0, 7); ctx.fill(); ctx.stroke();
+  }
+  ctx.fillStyle = txtCol; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right'; ctx.fillText('N ↑', W - 8, 16);
+  $('planScale').textContent = `View width ≈ ${Math.round(S.planWidth).toLocaleString()} ${UNIT_LBL[S.units]}`;
+}
+
+// ═════════ ALIGNMENT PICKER ═════════
+function openSheet(html) { $('sheet').innerHTML = html; $('overlay').classList.remove('hidden'); }
+function closeSheet() { $('overlay').classList.add('hidden'); $('sheet').innerHTML = ''; }
+$('overlay').addEventListener('click', e => { if (e.target === $('overlay')) closeSheet(); });
+let pickerCb = null;
+function openAlignPicker(cb, curId) {
+  pickerCb = cb || null;
+  const sel = cb ? curId : (S.lockId || '');
+  const row = (id, label, meta) => `<div class="pick-item ${sel === id ? 'cur' : ''}" onclick="pickAlign('${id}')"><span>${label}</span><span class="pm">${meta}</span></div>`;
+  let html = `<div class="sheet-title">Alignment <button class="sheet-close" onclick="closeSheet()">×</button></div>`;
+  html += row('', '🎯 Auto — nearest alignment', cb ? '' : (current && !S.lockId ? esc(current.al.name) : ''));
+  const list = aligns.filter(a => a.visible !== false).map(al => ({ al, r: pos ? stationOffset(al.poly, pos.E, pos.N) : null }))
+    .sort((a, b) => (a.r ? a.r.dist : 0) - (b.r ? b.r.dist : 0));
+  for (const { al, r } of list) html += row(al.id, esc(al.name), r ? `${fmtSta(displaySta(al, r.sta), unitsOf(al))} · ${fmtOff(r.off, unitsOf(al))}` : '');
+  if (!aligns.length) html += '<div class="empty">No alignments loaded yet.</div>';
+  openSheet(html);
+  // camera view sits above overlay; raise overlay
+  $('overlay').style.zIndex = $('camView').classList.contains('hidden') ? 200 : 350;
+}
+function pickAlign(id) {
+  closeSheet();
+  if (pickerCb) { const cb = pickerCb; pickerCb = null; cb(id); return; }
+  S.lockId = id; saveSettings(); computeAll(); renderLive();
+  toast(id ? 'Locked to ' + aligns.find(a => a.id === id).name : 'Auto: nearest alignment');
+}
+
+// ═════════ CAPTURE ═════════
+// Snapshot of everything needed to stamp a photo, taken at shutter time.
+function snapshot(at) {
+  const f = at && at.fix ? at.fix : fix;
+  return { fix: f ? { ...f } : null, heading: at && 'heading' in at ? at.heading : headingNow(), time: at && at.time ? at.time : Date.now(), lockId: S.lockId };
+}
+// Resolve alignment info for a snapshot, optionally forcing an alignment id ('' = auto)
+function resolveAlign(snap, forceId) {
+  if (!snap.fix || !aligns.length) return null;
+  const p = projectLL(snap.fix.lat, snap.fix.lon);
+  const id = forceId !== undefined ? forceId : snap.lockId;
+  const cands = aligns.filter(a => a.visible !== false || a.id === id).map(al => ({ al, r: stationOffset(al.poly, p.E, p.N) })).filter(x => x.r);
+  if (!cands.length) return { N: p.N, E: p.E };
+  let pick = id && cands.find(x => x.al.id === id);
+  if (!pick) {
+    if (forceId === undefined && current && cands.find(x => x.al === current.al)) pick = cands.find(x => x.al === current.al);
+    else pick = cands.reduce((a, b) => ((b.r.inRange ? 0 : 1e6) + b.r.dist < (a.r.inRange ? 0 : 1e6) + a.r.dist ? b : a));
+  }
+  const u = unitsOf(pick.al), ds = displaySta(pick.al, pick.r.sta);
+  return { N: p.N, E: p.E, alignId: pick.al.id, alignName: pick.al.name, locked: !!id, units: u,
+    sta: ds, staText: fmtSta(ds, u), off: pick.r.off, offText: fmtOff(pick.r.off, u), inRange: pick.r.inRange, dist: pick.r.dist };
+}
+
+let camStream = null, camTrack = null;
+async function openCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Live camera not supported — using phone camera'); return phoneCamera(); }
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: { ideal: 'environment' }, width: { ideal: 4032 }, height: { ideal: 3024 } } });
+  } catch (e) { toast('Camera blocked: ' + e.message); return; }
+  camTrack = camStream.getVideoTracks()[0];
+  const v = $('camVideo'); v.srcObject = camStream; await v.play().catch(() => {});
+  $('camView').classList.remove('hidden'); document.body.style.overflow = 'hidden';
+  renderLive();
+}
+function closeCamera() {
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  camStream = camTrack = null; $('camVideo').srcObject = null;
+  $('camView').classList.add('hidden'); document.body.style.overflow = '';
+}
+async function shutter() {
+  const snap = snapshot();
+  const v = $('camVideo');
+  let blob = null;
+  busy(true, 'Capturing…');
+  try {
+    if (typeof ImageCapture !== 'undefined' && camTrack) {
+      try { blob = await new ImageCapture(camTrack).takePhoto(); } catch (e) { blob = null; }
+    }
+    if (!blob) {
+      const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+    }
+  } finally { busy(false); }
+  closeCamera();
+  if (blob) openReview(blob, snap);
+}
+let pendingSnap = null;
+function phoneCamera() { pendingSnap = snapshot(); $('camInput').value = ''; $('camInput').click(); }
+$('camInput').addEventListener('change', e => { const f = e.target.files[0]; if (f) openReview(f, pendingSnap || snapshot()); });
+function importPhoto() { $('galleryInput').value = ''; $('galleryInput').click(); }
+$('galleryInput').addEventListener('change', async e => {
+  const f = e.target.files[0]; if (!f) return;
+  const ex = await readExifInfo(f);
+  let snap;
+  if (ex && ex.lat != null) {
+    snap = snapshot({ fix: { lat: ex.lat, lon: ex.lon, acc: null, alt: ex.alt }, heading: ex.dir, time: ex.time || f.lastModified });
+    snap.lockId = S.lockId;
+  } else {
+    if (!confirm('This photo has no GPS location. Stamp it with your current position instead?')) return;
+    snap = snapshot();
+  }
+  openReview(f, snap);
+});
+function readExifInfo(file) {
+  return new Promise(res => {
+    if (!/jpe?g/i.test(file.type) && !/\.jpe?g$/i.test(file.name)) return res(null);
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        const ex = piexif.load(fr.result), g = ex.GPS || {};
+        const dms = a => a[0][0] / a[0][1] + a[1][0] / a[1][1] / 60 + a[2][0] / a[2][1] / 3600;
+        const out = {};
+        if (g[piexif.GPSIFD.GPSLatitude] && g[piexif.GPSIFD.GPSLongitude]) {
+          out.lat = dms(g[piexif.GPSIFD.GPSLatitude]) * (g[piexif.GPSIFD.GPSLatitudeRef] === 'S' ? -1 : 1);
+          out.lon = dms(g[piexif.GPSIFD.GPSLongitude]) * (g[piexif.GPSIFD.GPSLongitudeRef] === 'W' ? -1 : 1);
+          const al = g[piexif.GPSIFD.GPSAltitude]; if (al) out.alt = al[0] / al[1];
+          const d = g[piexif.GPSIFD.GPSImgDirection]; if (d) out.dir = d[0] / d[1];
+        }
+        const dt = ex.Exif && ex.Exif[piexif.ExifIFD.DateTimeOriginal];
+        if (dt) { const m = dt.match(/(\d+):(\d+):(\d+) (\d+):(\d+):(\d+)/); if (m) out.time = new Date(+m[1], m[2] - 1, +m[3], +m[4], +m[5], +m[6]).getTime(); }
+        res(out);
+      } catch (e) { res(null); }
+    };
+    fr.onerror = () => res(null);
+    fr.readAsDataURL(file);
+  });
+}
+
+// ═════════ STAMPING ═════════
+function loadImage(blob) {
+  return new Promise((res, rej) => { const u = URL.createObjectURL(blob); const im = new Image(); im.onload = () => { res(im); setTimeout(() => URL.revokeObjectURL(u), 1000); }; im.onerror = () => rej(new Error('Could not read image')); im.src = u; });
+}
+function fmtDateTime(ms) {
+  const d = new Date(ms);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) + '  ' + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+function stampLines(rec) {
+  const lines = [];
+  if (rec.desc && rec.desc.trim()) lines.push({ text: rec.desc.trim(), size: 1.12, weight: 800, color: '#ffffff', wrap: 3 });
+  if (rec.staText) lines.push({ text: `STA ${rec.staText}    ${rec.offText}    ·    ${rec.alignName}${rec.inRange === false ? ' (beyond limits)' : ''}`, size: 1.0, weight: 800, color: '#fde047' });
+  else lines.push({ text: rec.lat != null ? (aligns.length ? 'No alignment match' : 'No alignment loaded') : 'No GPS position', size: 1.0, weight: 800, color: '#fde047' });
+  const l3 = [fmtDateTime(rec.takenAt)];
+  if (S.stampHdg && rec.heading != null) l3.push('Facing ' + fmtHdg(rec.heading));
+  if (rec.acc != null) l3.push(`GPS ±${Math.round(rec.acc / UNIT_M[rec.units || S.units])} ${UNIT_LBL[rec.units || S.units]}`);
+  lines.push({ text: l3.join('    ·    '), size: 0.82, weight: 600, color: '#e5e7eb' });
+  const l4 = [];
+  if (rec.project) l4.push(rec.project);
+  if (S.stampNE && rec.N != null) l4.push(`N ${fmtNum(rec.N, 1)}  E ${fmtNum(rec.E, 1)}`);
+  if (S.stampLL && rec.lat != null) l4.push(`${rec.lat.toFixed(6)}, ${rec.lon.toFixed(6)}`);
+  if (l4.length) lines.push({ text: l4.join('    ·    '), size: 0.82, weight: 600, color: '#cbd5e1' });
+  return lines;
+}
+function wrapText(ctx, text, maxW, maxLines) {
+  const words = text.split(/\s+/), out = []; let line = '';
+  for (const w of words) {
+    const t = line ? line + ' ' + w : w;
+    if (ctx.measureText(t).width <= maxW || !line) line = t; else { out.push(line); line = w; }
+  }
+  if (line) out.push(line);
+  if (out.length > maxLines) { out.length = maxLines; out[maxLines - 1] = out[maxLines - 1].replace(/\s*\S*$/, '') + '…'; }
+  return out;
+}
+const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+async function renderStamp(srcBlob, rec) {
+  const img = await loadImage(srcBlob);
+  let W = img.naturalWidth, H = img.naturalHeight;
+  const fs0 = Math.max(W, H * 0.75) * 0.024;
+  const pad = fs0 * 0.7;
+  const meas = document.createElement('canvas').getContext('2d');
+  const lines = stampLines(rec);
+  const rows = [];
+  for (const ln of lines) {
+    meas.font = `${ln.weight} ${ln.size * fs0}px ${FONT}`;
+    const parts = ln.wrap ? wrapText(meas, ln.text, W - 2 * pad, ln.wrap) : wrapText(meas, ln.text, W - 2 * pad, 2);
+    for (const p of parts) rows.push({ ...ln, text: p });
+  }
+  const lh = r => r.size * fs0 * 1.32;
+  let barH = pad * 2 + rows.reduce((s, r) => s + lh(r), 0);
+  // keep under iOS canvas limit (~16.7 MP)
+  let scale = 1; const maxPx = 16.0e6;
+  if (W * (H + barH) > maxPx) scale = Math.sqrt(maxPx / (W * (H + barH)));
+  const cw = Math.floor(W * scale), ih = Math.floor(H * scale), bh = Math.ceil(barH * scale);
+  const c = document.createElement('canvas'); c.width = cw; c.height = ih + bh;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, cw, ih);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, ih, cw, bh);
+  ctx.textBaseline = 'top';
+  let y = ih + pad * scale;
+  for (const r of rows) {
+    ctx.font = `${r.weight} ${r.size * fs0 * scale}px ${FONT}`; ctx.fillStyle = r.color;
+    ctx.fillText(r.text, pad * scale, y + r.size * fs0 * 0.12 * scale);
+    y += lh(r) * scale;
+  }
+  return c;
+}
+// EXIF helpers
+const toRat = (v, den = 1000000) => [Math.round(v * den), den];
+function degToDms(d) { d = Math.abs(d); const deg = Math.floor(d), mf = (d - deg) * 60, min = Math.floor(mf), sec = (mf - min) * 60; return [[deg, 1], [min, 1], toRat(sec, 10000)]; }
+const exifDate = ms => { const d = new Date(ms), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}:${p(d.getMonth() + 1)}:${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; };
+const ascii = s => String(s || '').normalize('NFKD').replace(/[^\x20-\x7e]/g, '');
+function exifSummary(rec) { return ascii([rec.desc, rec.staText && `STA ${rec.staText} ${rec.offText} ${rec.alignName}`, rec.project].filter(Boolean).join(' | ')); }
+function canvasToJpegWithExif(canvas, rec) {
+  let dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+  try {
+    const z = {}, ex = {}, gps = {};
+    z[piexif.ImageIFD.ImageDescription] = exifSummary(rec);
+    z[piexif.ImageIFD.Software] = 'Field Tools - Station Photos';
+    z[piexif.ImageIFD.DateTime] = exifDate(rec.takenAt);
+    ex[piexif.ExifIFD.DateTimeOriginal] = exifDate(rec.takenAt);
+    ex[piexif.ExifIFD.UserComment] = 'ASCII\0\0\0' + exifSummary(rec);
+    if (rec.lat != null) {
+      gps[piexif.GPSIFD.GPSVersionID] = [2, 3, 0, 0];
+      gps[piexif.GPSIFD.GPSLatitudeRef] = rec.lat < 0 ? 'S' : 'N'; gps[piexif.GPSIFD.GPSLatitude] = degToDms(rec.lat);
+      gps[piexif.GPSIFD.GPSLongitudeRef] = rec.lon < 0 ? 'W' : 'E'; gps[piexif.GPSIFD.GPSLongitude] = degToDms(rec.lon);
+      if (rec.alt != null && isFinite(rec.alt)) { gps[piexif.GPSIFD.GPSAltitudeRef] = rec.alt < 0 ? 1 : 0; gps[piexif.GPSIFD.GPSAltitude] = toRat(Math.abs(rec.alt), 100); }
+      if (rec.heading != null) { gps[piexif.GPSIFD.GPSImgDirectionRef] = 'T'; gps[piexif.GPSIFD.GPSImgDirection] = toRat(rec.heading, 100); }
+      if (rec.acc != null) gps[31] = toRat(rec.acc, 100); // GPSHPositioningError
+    }
+    dataUrl = piexif.insert(piexif.dump({ '0th': z, Exif: ex, GPS: gps }), dataUrl);
+  } catch (e) { console.warn('EXIF write failed', e); }
+  return dataUrlToBlob(dataUrl);
+}
+function dataUrlToBlob(u) { const [h, b] = u.split(','); const bin = atob(b); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: h.match(/:(.*?);/)[1] }); }
+function thumbOf(canvas) { const w = 320, h = Math.round(canvas.height * w / canvas.width); const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(canvas, 0, 0, w, h); return c.toDataURL('image/jpeg', 0.7); }
+function fileNameFor(rec) {
+  const d = new Date(rec.takenAt), p = n => String(n).padStart(2, '0');
+  const ts = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  const st = rec.staText ? `STA${rec.staText.replace(/\.\d+$/, '')}_${Math.abs(rec.off).toFixed(0)}${rec.off >= 0 ? 'RT' : 'LT'}_` : '';
+  const desc = ascii(rec.desc).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
+  return `${st}${ts}${desc ? '_' + desc : ''}.jpg`;
+}
+
+// ═════════ REVIEW SHEET ═════════
+let review = null; // {src, snap, forceId, rec, editId}
+let lastDesc = '';
+function buildRecord(snap, forceId, desc, base) {
+  const a = resolveAlign(snap, forceId) || {};
+  return Object.assign({}, base || {}, {
+    takenAt: snap.time, lat: snap.fix ? snap.fix.lat : null, lon: snap.fix ? snap.fix.lon : null, acc: snap.fix ? snap.fix.acc : null, alt: snap.fix ? snap.fix.alt : null,
+    heading: snap.heading, desc, project: S.projLabel || '',
+    N: a.N ?? null, E: a.E ?? null, alignId: a.alignId || null, alignName: a.alignName || '', locked: !!a.locked, units: a.units || S.units,
+    sta: a.sta ?? null, staText: a.staText || '', off: a.off ?? null, offText: a.offText || '', inRange: a.inRange,
+  });
+}
+async function openReview(src, snap, edit, opts = {}) {
+  const forceId = 'forceId' in opts ? opts.forceId : (edit ? (edit.alignId || '') : undefined);
+  review = { src, snap, forceId, editId: edit ? edit.id : null, base: edit || null };
+  const desc = 'desc' in opts ? opts.desc : (edit ? edit.desc : '');
+  openSheet(`
+    <div class="sheet-title">${edit ? 'Edit Photo' : 'New Photo'} <button class="sheet-close" onclick="cancelReview()">×</button></div>
+    <img class="review-img" id="revImg" alt="">
+    <div class="field-group"><label class="label">Description</label>
+      <textarea class="input" id="revDesc" rows="2" placeholder="e.g., Culvert outlet erosion, Lt side ditch">${esc(desc)}</textarea>
+      ${!edit && lastDesc ? `<button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="$('revDesc').value=lastDesc;restamp()">↺ Use last: ${esc(lastDesc.slice(0, 30))}${lastDesc.length > 30 ? '…' : ''}</button>` : ''}
+    </div>
+    <div class="field-group"><label class="label">Alignment</label>
+      <button class="btn btn-secondary" id="revAlignBtn" onclick="reviewPickAlign()">—</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="cancelReview()">Cancel</button>
+      <button class="btn btn-green" onclick="saveReview()">Save Photo</button>
+    </div>`);
+  $('overlay').style.zIndex = 200;
+  let t; $('revDesc').addEventListener('input', () => { clearTimeout(t); t = setTimeout(restamp, 500); });
+  await restamp();
+}
+async function restamp() {
+  if (!review) return;
+  const rv = review;
+  rv.rec = buildRecord(rv.snap, rv.forceId, $('revDesc') ? $('revDesc').value : '', rv.base);
+  const r = rv.rec;
+  $('revAlignBtn').textContent = r.alignName ? `${r.alignName} — ${r.staText}  ${r.offText}${r.locked ? '  🔒' : '  (auto)'}` : (aligns.length ? (r.lat != null ? 'No match — tap to choose' : 'No GPS position') : 'No alignments loaded');
+  const c = await renderStamp(rv.src, r);
+  if (review !== rv) return;
+  const preview = document.createElement('canvas'); const pw = Math.min(1200, c.width); preview.width = pw; preview.height = Math.round(c.height * pw / c.width);
+  preview.getContext('2d').drawImage(c, 0, 0, preview.width, preview.height);
+  if ($('revImg')) $('revImg').src = preview.toDataURL('image/jpeg', 0.8);
+}
+function reviewPickAlign() {
+  const rv = review, desc = $('revDesc').value;
+  const cur = rv.forceId !== undefined ? rv.forceId : (rv.rec && rv.rec.locked ? rv.rec.alignId : '');
+  openAlignPicker(id => openReview(rv.src, rv.snap, rv.base, { forceId: id, desc }), cur);
+}
+function cancelReview() { review = null; closeSheet(); }
+async function saveReview() {
+  if (!review) return;
+  busy(true, 'Saving…');
+  try {
+    review.rec = buildRecord(review.snap, review.forceId, $('revDesc').value, review.base);
+    const c = await renderStamp(review.src, review.rec);
+    const rec = review.rec;
+    const id = review.editId || uid();
+    const stamped = canvasToJpegWithExif(c, rec);
+    rec.id = id; rec.created = rec.created || Date.now(); rec.fileName = fileNameFor(rec); rec.thumb = thumbOf(c); rec.size = stamped.size;
+    rec.snap = review.snap;
+    if (!review.editId) await apPut('blobs', review.src instanceof Blob ? review.src : new Blob([review.src]), id + ':orig');
+    await apPut('blobs', stamped, id + ':stamp');
+    await apPut('photos', rec);
+    if (rec.desc) lastDesc = rec.desc;
+    review = null;
+    await loadPhotos();
+    busy(false);
+    showSaved(rec, stamped);
+  } catch (e) { busy(false); toast('Save failed: ' + e.message, 4000); console.error(e); }
+}
+function showSaved(rec, blob) {
+  openSheet(`
+    <div class="sheet-title">✅ Photo saved <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="hint" style="font-size:0.85em;margin-bottom:12px;">${esc(rec.staText ? 'STA ' + rec.staText + ' · ' + rec.offText : '')} ${esc(rec.desc)}</div>
+    <button class="btn btn-primary" onclick="shareIds(['${rec.id}'])">📤 Share / Save to Photos</button>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="closeSheet();openCamera()">📷 Take another</button><button class="btn btn-secondary" onclick="closeSheet()">Done</button></div>`);
+  blobCache.set(rec.id, blob);
+}
+
+// ═════════ PHOTOS LIST ═════════
+let photos = [], selectMode = false, selected = new Set();
+const blobCache = new Map();
+async function loadPhotos() {
+  photos = (await apGetAll('photos')).sort((a, b) => b.takenAt - a.takenAt);
+  $('photoCount').textContent = photos.length ? `(${photos.length})` : '';
+  renderPhotos(); updateStorage();
+}
+function renderPhotos() {
+  const el = $('photoList');
+  if (!photos.length) { el.innerHTML = '<div class="empty">No photos yet.<br>Take one from the Live tab.</div>'; return; }
+  el.innerHTML = photos.map(p => `
+    <div class="ph-item ${selected.has(p.id) ? 'sel' : ''}" onclick="photoTap('${p.id}')">
+      ${selectMode ? '<span class="ph-check">✓</span>' : ''}
+      <img class="ph-thumb" src="${p.thumb}" alt="" loading="lazy">
+      <div class="ph-info">
+        <div class="ph-sta">${p.staText ? 'STA ' + esc(p.staText) + ' · ' + esc(p.offText) : '<span style="color:var(--text-muted)">No station</span>'}</div>
+        <div class="ph-desc">${esc(p.desc) || '<span style="color:var(--text-muted)">No description</span>'}</div>
+        <div class="ph-time">${fmtDateTime(p.takenAt)}${p.alignName ? ' · ' + esc(p.alignName) : ''}</div>
+      </div>
+    </div>`).join('');
+  $('selCount').textContent = selected.size;
+}
+async function getStamped(id) { if (blobCache.has(id)) return blobCache.get(id); const b = await apGet('blobs', id + ':stamp'); if (b) blobCache.set(id, b); return b; }
+async function photoTap(id) {
+  if (selectMode) {
+    if (selected.has(id)) selected.delete(id); else { selected.add(id); getStamped(id); }
+    renderPhotos(); return;
+  }
+  const p = photos.find(x => x.id === id); const b = await getStamped(id);
+  const url = b ? URL.createObjectURL(b) : p.thumb;
+  openSheet(`
+    <div class="sheet-title">${p.staText ? 'STA ' + esc(p.staText) : 'Photo'} <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <img class="review-img" src="${url}" alt="">
+    <div class="kv" style="margin-bottom:12px;">
+      <span>Alignment</span><span>${esc(p.alignName || '—')}${p.locked ? ' 🔒' : ''}</span>
+      <span>Station</span><span>${esc(p.staText || '—')} &nbsp; ${esc(p.offText || '')}</span>
+      <span>N / E</span><span>${fmtNum(p.N, 2)} / ${fmtNum(p.E, 2)}</span>
+      <span>Lat / Lon</span><span>${p.lat != null ? p.lat.toFixed(7) + ', ' + p.lon.toFixed(7) : '—'}</span>
+      <span>GPS</span><span>${p.acc != null ? '±' + (p.acc / UNIT_M[p.units || S.units]).toFixed(1) + ' ' + UNIT_LBL[p.units || S.units] : '—'}</span>
+      <span>Facing</span><span>${fmtHdg(p.heading)}</span>
+      <span>Taken</span><span>${fmtDateTime(p.takenAt)}</span>
+      <span>File</span><span style="word-break:break-all">${esc(p.fileName)}</span>
+    </div>
+    <button class="btn btn-primary" onclick="shareIds(['${p.id}'])">📤 Share / Save to Photos</button>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="editPhoto('${p.id}')">✏️ Edit</button>
+      <button class="btn btn-red" onclick="deletePhotos(['${p.id}'])">🗑 Delete</button>
+    </div>`);
+}
+async function editPhoto(id) {
+  const p = photos.find(x => x.id === id);
+  const orig = await apGet('blobs', id + ':orig');
+  if (!orig) { toast('Original image not found'); return; }
+  openReview(orig, p.snap || { fix: p.lat != null ? { lat: p.lat, lon: p.lon, acc: p.acc, alt: p.alt } : null, heading: p.heading, time: p.takenAt, lockId: p.alignId || '' }, p);
+}
+function toggleSelectMode() { selectMode = !selectMode; selected.clear(); $('selBar').classList.toggle('hidden', !selectMode); $('selModeBtn').textContent = selectMode ? 'Cancel' : 'Select'; renderPhotos(); }
+function selectAll() { photos.forEach(p => { selected.add(p.id); getStamped(p.id); }); renderPhotos(); }
+async function deleteSelected() { if (selected.size) deletePhotos([...selected]); }
+async function deletePhotos(ids) {
+  if (!confirm(`Delete ${ids.length} photo${ids.length > 1 ? 's' : ''}? This can't be undone.`)) return;
+  for (const id of ids) { await apDel('photos', id); await apDel('blobs', id + ':orig'); await apDel('blobs', id + ':stamp'); blobCache.delete(id); selected.delete(id); }
+  closeSheet(); await loadPhotos(); toast('Deleted');
+}
+// Share must run inside the tap, so blobs are pre-cached.
+function shareSelected() { if (!selected.size) return toast('Select photos first'); shareIds([...selected]); }
+function shareIds(ids) {
+  const files = []; let missing = 0;
+  for (const id of ids) { const b = blobCache.get(id); const p = photos.find(x => x.id === id); if (b && p) files.push(new File([b], p.fileName, { type: 'image/jpeg' })); else missing++; }
+  if (missing) { toast('Loading photos… tap again'); ids.forEach(getStamped); return; }
+  if (navigator.canShare && navigator.canShare({ files })) {
+    navigator.share({ files, title: files.length === 1 ? files[0].name : `${files.length} station photos` }).catch(e => { if (e.name !== 'AbortError') downloadFiles(files); });
+  } else downloadFiles(files);
+}
+function downloadFiles(files) {
+  files.forEach((f, i) => setTimeout(() => { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, i * 400));
+}
+function shareOrDownloadText(name, text, type) {
+  const f = new File([text], name, { type });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: name }).catch(e => { if (e.name !== 'AbortError') downloadFiles([f]); });
+  else downloadFiles([f]);
+}
+const csvCell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+function logBaseName() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `StationPhotos_${ascii(S.projLabel).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'log'}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`; }
+function exportCSV() {
+  if (!photos.length) return toast('No photos to export');
+  const head = ['File', 'Date', 'Time', 'Description', 'Alignment', 'Station', 'Station (num)', 'Offset', 'Side', 'Northing', 'Easting', 'Latitude', 'Longitude', 'GPS Acc (m)', 'Facing (deg true)', 'Project'];
+  const rows = photos.slice().sort((a, b) => a.takenAt - b.takenAt).map(p => {
+    const d = new Date(p.takenAt);
+    return [p.fileName, d.toLocaleDateString('en-US'), d.toLocaleTimeString('en-US'), p.desc, p.alignName, p.staText, p.sta != null ? p.sta.toFixed(2) : '',
+      p.off != null ? Math.abs(p.off).toFixed(2) : '', p.off == null ? '' : p.off >= 0 ? 'RT' : 'LT', p.N != null ? p.N.toFixed(3) : '', p.E != null ? p.E.toFixed(3) : '',
+      p.lat != null ? p.lat.toFixed(8) : '', p.lon != null ? p.lon.toFixed(8) : '', p.acc != null ? p.acc.toFixed(1) : '', p.heading != null ? Math.round(p.heading) : '', p.project].map(csvCell).join(',');
+  });
+  shareOrDownloadText(logBaseName() + '.csv', [head.join(','), ...rows].join('\r\n'), 'text/csv');
+}
+function exportKML() {
+  const pts = photos.filter(p => p.lat != null);
+  if (!pts.length) return toast('No photos with GPS to export');
+  const x = s => esc(s);
+  const pm = pts.map(p => `<Placemark><name>${x(p.staText ? 'STA ' + p.staText + ' ' + p.offText : p.fileName)}</name><description>${x([p.desc, p.alignName, fmtDateTime(p.takenAt), p.fileName].filter(Boolean).join('\n'))}</description>${p.heading != null ? `<Style><IconStyle><heading>${Math.round(p.heading)}</heading></IconStyle></Style>` : ''}<Point><coordinates>${p.lon.toFixed(8)},${p.lat.toFixed(8)},0</coordinates></Point></Placemark>`).join('\n');
+  const kml = `<?xml version="1.0" encoding="UTF-8"?>\n<kml xmlns="http://www.opengis.net/kml/2.2"><Document><name>${x(logBaseName())}</name>\n${pm}\n</Document></kml>`;
+  shareOrDownloadText(logBaseName() + '.kml', kml, 'application/vnd.google-earth.kml+xml');
+}
+async function updateStorage() {
+  let txt = `${photos.length} photo${photos.length === 1 ? '' : 's'} stored`;
+  const bytes = photos.reduce((s, p) => s + (p.size || 0) * 2, 0);
+  if (bytes) txt += ` (≈${(bytes / 1048576).toFixed(0)} MB incl. originals)`;
+  if (navigator.storage && navigator.storage.estimate) { try { const e = await navigator.storage.estimate(); txt += ` · ${(e.quota / 1073741824).toFixed(1)} GB available to app`; } catch (e) {} }
+  $('storageInfo').textContent = txt;
+}
+
+// ═════════ SETUP ═════════
+async function importLandXML(files) {
+  let added = 0, unitsSet = false;
+  for (const f of files) {
+    try {
+      const res = parseLandXML(await f.text(), f.name);
+      if (res.units && !aligns.length && !unitsSet) { S.units = res.units; unitsSet = true; }
+      if (res.csHint && !aligns.length) S.zone = res.csHint;
+      for (const a of res.alignments) {
+        const rec = { id: uid(), name: a.name, file: f.name, units: res.units || S.units, staStart: a.staStart, els: a.els, eqs: a.eqs, visible: true, imported: Date.now() };
+        // replace same-name alignment from same file
+        const dup = aligns.find(x => x.name === a.name && x.file === f.name);
+        if (dup) { rec.id = dup.id; rec.visible = dup.visible; }
+        await apPut('alignments', rec); added++;
+      }
+    } catch (e) { toast(`${f.name}: ${e.message}`, 4000); }
+  }
+  saveSettings();
+  await loadAligns(); renderSetup();
+  if (fix) pos = projectLL(fix.lat, fix.lon);
+  computeAll(); renderLive();
+  if (added) toast(`Imported ${added} alignment${added > 1 ? 's' : ''}`);
+}
+$('xmlInput').addEventListener('change', e => { if (e.target.files.length) importLandXML([...e.target.files]); e.target.value = ''; });
+function renderSetup() {
+  const L = $('alignList');
+  L.innerHTML = aligns.length ? aligns.map(a => {
+    const ss = a.poly.ss, u = unitsOf(a);
+    return `<div class="al-item">
+      <input type="checkbox" ${a.visible !== false ? 'checked' : ''} onchange="toggleAlign('${a.id}', this.checked)" style="width:20px;height:20px;">
+      <div class="al-info"><div class="al-name">${esc(a.name)}</div>
+      <div class="al-meta">${fmtSta(displaySta(a, ss[0]), u)} → ${fmtSta(displaySta(a, ss[ss.length - 1]), u)} · ${a.els.length} el${a.eqs && a.eqs.length ? ' · ' + a.eqs.length + ' eq' : ''} · ${esc(a.file)}</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="removeAlign('${a.id}')">✕</button></div>`;
+  }).join('') : '<div class="hint" style="font-size:0.85em;padding:6px 0 10px;">No alignments yet.</div>';
+  $('csZone').value = S.zone; $('csUnits').value = S.units; $('csCF').value = S.cf === 1 ? '' : S.cf;
+  $('csBaseN').value = S.baseN || ''; $('csBaseE').value = S.baseE || '';
+  $('decl').value = S.decl; $('stampNE').checked = S.stampNE; $('stampLL').checked = S.stampLL; $('stampHdg').checked = S.stampHdg;
+  $('projLabel').value = S.projLabel || '';
+  const c = S.custom; $('cpLat0').value = c.lat0; $('cpLon0').value = c.lon0; $('cpK0').value = c.k0; $('cpLat1').value = c.lat1; $('cpLat2').value = c.lat2; $('cpFE').value = c.fe; $('cpFN').value = c.fn;
+  $('customProj').classList.toggle('hidden', S.zone !== 'TM' && S.zone !== 'LCC');
+  $('tmOnly').classList.toggle('hidden', S.zone !== 'TM'); $('lccOnly').classList.toggle('hidden', S.zone !== 'LCC');
+  const mixed = new Set(aligns.map(a => a.units));
+  $('unitsHint').textContent = mixed.size > 1 ? '⚠ Files have different units — check your exports.' : (aligns.length ? `From LandXML: ${({ usft: 'US survey feet', ift: 'international feet', m: 'meters' })[aligns[0].units] || '—'}` : 'Set automatically from the LandXML file.');
+  $('shiftKv').innerHTML = `<span>ΔN</span><span>${fmtNum(S.shiftN, 2)}</span><span>ΔE</span><span>${fmtNum(S.shiftE, 2)}</span>`;
+}
+async function toggleAlign(id, on) { const a = aligns.find(x => x.id === id); a.visible = on; const { poly, ...rec } = a; await apPut('alignments', rec); computeAll(); renderLive(); }
+async function removeAlign(id) { const a = aligns.find(x => x.id === id); if (!confirm(`Remove ${a.name}?`)) return; await apDel('alignments', id); if (S.lockId === id) { S.lockId = ''; saveSettings(); } await loadAligns(); renderSetup(); computeAll(); renderLive(); }
+function onSetupChange() {
+  const num = (id, d) => { const v = parseFloat($(id).value); return isFinite(v) ? v : d; };
+  S.zone = $('csZone').value; S.units = $('csUnits').value;
+  const cf = num('csCF', 1); S.cf = cf > 0.9 && cf < 1.1 ? cf : 1;
+  S.baseN = num('csBaseN', 0); S.baseE = num('csBaseE', 0); S.decl = num('decl', 12.4);
+  S.stampNE = $('stampNE').checked; S.stampLL = $('stampLL').checked; S.stampHdg = $('stampHdg').checked;
+  S.projLabel = $('projLabel').value;
+  S.custom = { lat0: num('cpLat0', 0), lon0: num('cpLon0', 0), k0: num('cpK0', 1), lat1: num('cpLat1', 0), lat2: num('cpLat2', 0), fe: num('cpFE', 0), fn: num('cpFN', 0) };
+  saveSettings(); renderSetup();
+  if (fix) pos = projectLL(fix.lat, fix.lon);
+  hx = hy = null; computeAll(); renderLive();
+}
+['csZone', 'csUnits', 'csCF', 'csBaseN', 'csBaseE', 'decl', 'stampNE', 'stampLL', 'stampHdg', 'projLabel', 'cpLat0', 'cpLon0', 'cpK0', 'cpLat1', 'cpLat2', 'cpFE', 'cpFN'].forEach(id => $(id).addEventListener('change', onSetupChange));
+async function loadProjects() {
+  let projs = [];
+  try { projs = await ftGetAllProjects(); } catch (e) {}
+  $('projSelect').innerHTML = '<option value="">— None —</option>' + projs.map(p => `<option value="${esc(p.id)}">${esc(ftProjectTitle(p))}</option>`).join('');
+  $('projSelect').value = S.projId || '';
+  $('projSelect').onchange = () => {
+    S.projId = $('projSelect').value; const p = projs.find(x => x.id === S.projId);
+    if (p) S.projLabel = ftProjectTitle(p);
+    saveSettings(); renderSetup();
+  };
+}
+// Check-in: stand on a known point
+function openCalibrate() {
+  if (!fix) return toast('Waiting for GPS…');
+  const al = current ? current.al : aligns[0];
+  openSheet(`
+    <div class="sheet-title">Check in on a known point <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="hint" style="font-size:0.85em;margin-bottom:12px;">Stand on the point and wait for GPS to settle (now ±${(fix.acc / UNIT_M[S.units]).toFixed(1)} ${UNIT_LBL[S.units]}). The shift replaces any previous one.</div>
+    <div class="mode-tabs" style="margin:0 0 12px;">
+      <button class="mode-tab active" id="calTabNE" onclick="calTab('ne')">Known N / E</button>
+      <button class="mode-tab" id="calTabSO" onclick="calTab('so')" ${aligns.length ? '' : 'disabled'}>Known Sta / Offset</button>
+    </div>
+    <div id="calNE"><div class="row2">
+      <div class="field-group"><label class="label">Northing</label><input class="input" id="calN" inputmode="decimal"></div>
+      <div class="field-group"><label class="label">Easting</label><input class="input" id="calE" inputmode="decimal"></div></div></div>
+    <div id="calSO" class="hidden">
+      <div class="field-group"><label class="label">Alignment</label><select class="input" id="calAl">${aligns.map(a => `<option value="${a.id}" ${al && a.id === al.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>
+      <div class="row2">
+        <div class="field-group"><label class="label">Station</label><input class="input" id="calSta" placeholder="145+32.00" inputmode="decimal"></div>
+        <div class="field-group"><label class="label">Offset (− Lt / + Rt)</label><input class="input" id="calOff" placeholder="0.00" inputmode="decimal"></div></div></div>
+    <button class="btn btn-green" onclick="applyCalibrate()">Set shift</button>`);
+}
+let calMode = 'ne';
+function calTab(m) { calMode = m; $('calTabNE').classList.toggle('active', m === 'ne'); $('calTabSO').classList.toggle('active', m === 'so'); $('calNE').classList.toggle('hidden', m !== 'ne'); $('calSO').classList.toggle('hidden', m !== 'so'); }
+function parseSta(t) { t = String(t).trim(); if (!t) return NaN; const neg = t.startsWith('-'); if (neg) t = t.slice(1); const m = t.match(/^(\d+)\+(\d+(?:\.\d*)?)$/); const v = m ? +m[1] * (S.units === 'm' ? 1000 : 100) + +m[2] : parseFloat(t); return neg ? -v : v; }
+function applyCalibrate() {
+  const raw = projectLL(fix.lat, fix.lon); // includes current shift
+  const gpsN = raw.N - S.shiftN, gpsE = raw.E - S.shiftE;
+  let kN, kE;
+  if (calMode === 'ne') { kN = parseFloat($('calN').value); kE = parseFloat($('calE').value); }
+  else {
+    const al = aligns.find(a => a.id === $('calAl').value); const ds = parseSta($('calSta').value); const off = parseFloat($('calOff').value) || 0;
+    if (!al || !isFinite(ds)) return toast('Enter a station');
+    const p = pointAt(al.poly, internalSta(al, ds), off); kN = p.y; kE = p.x;
+  }
+  if (!isFinite(kN) || !isFinite(kE)) return toast('Enter both values');
+  const dN = kN - gpsN, dE = kE - gpsE;
+  if (Math.hypot(dN, dE) * UNIT_M[S.units] > 500 && !confirm(`That's a ${Math.round(Math.hypot(dN, dE))} ${UNIT_LBL[S.units]} shift — usually a zone, unit or scale problem. Apply anyway?`)) return;
+  S.shiftN = dN; S.shiftE = dE; saveSettings(); closeSheet(); renderSetup();
+  pos = projectLL(fix.lat, fix.lon); computeAll(); renderLive();
+  toast(`Shift set: ΔN ${dN.toFixed(2)}, ΔE ${dE.toFixed(2)}`);
+}
+function clearShift() { S.shiftN = 0; S.shiftE = 0; saveSettings(); renderSetup(); if (fix) pos = projectLL(fix.lat, fix.lon); computeAll(); renderLive(); toast('Shift cleared'); }
+
+// ═════════ TABS / THEME / INIT ═════════
+function switchTab(t) {
+  document.querySelectorAll('.mode-tab[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  ['live', 'photos', 'setup'].forEach(k => $('tab-' + k).classList.toggle('hidden', k !== t));
+  if (t === 'live') drawPlan();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.mode-tab[data-tab]').forEach(b => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+$('compassChip').addEventListener('click', () => { if (!compassOn) enableCompass(); });
+const themeBtn = $('themeBtn');
+themeBtn.addEventListener('click', () => {
+  const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+  themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+  localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast'); ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+  drawPlan();
+});
+window.addEventListener('resize', drawPlan);
+// Plan view: drag to pan isn't needed — it follows you. Pinch-free zoom via buttons.
+
+(async function init() {
+  if (document.documentElement.getAttribute('data-theme') === 'high-contrast') themeBtn.textContent = '☀️ Light';
+  await loadSettings();
+  try { await loadAligns(); } catch (e) { console.error(e); toast('Could not load alignments'); }
+  renderSetup(); loadProjects(); await loadPhotos();
+  startGPS();
+  // Android/desktop can start the compass without a tap; iOS needs one.
+  if (!(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') && await ftGetSetting('stationPhotosCompass', false)) enableCompass();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+  renderLive();
+})();
+</script>
+</body>
+</html>
