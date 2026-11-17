@@ -934,7 +934,7 @@ async function uploadDetailAlignments(input) {
     const res = await FTAlign.importFiles(currentDetailProjectId, files, { updateSettings: true });
     await renderDetailAlignments(currentDetailProjectId);
     if (res.errors.length) alert(res.errors.join('\n'));
-    if (res.added) showToast(`Uploaded ${res.added} alignment${res.added > 1 ? 's' : ''}.`);
+    if (res.added) showToast(`Uploaded ${res.added} alignment${res.added > 1 ? 's' : ''}${res.converted ? ' (converted from ' + FTAlign.UNIT_NAME[res.converted] + ')' : ''}.`);
 }
 async function removeDetailAlignment(id) {
     showConfirm('Remove alignment?', 'It will be removed from this project in Station / Offset and Station Photos.', async () => {

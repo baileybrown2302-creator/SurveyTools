@@ -30,7 +30,7 @@ function openSheet(html, z = 200) { $('sheet').innerHTML = html; $('overlay').st
 function closeSheet() { $('overlay').classList.add('hidden'); $('sheet').innerHTML = ''; }
 
 // Alignment storage + LandXML parsing live in lib/alignments.js (also used by Project Manager)
-const { apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta } = FTAlign;
+const { apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta, convertAlign, UNIT_NAME } = FTAlign;
 
 // ───────── settings: global (G) + per project (PS()) ─────────
 const G_DEFAULTS = { projId: '', decl: 12.4, stampNE: false, stampLL: false, stampHdg: true, planWidth: 300, compass: false, mapLayer: '', mapPerp: true };
@@ -293,7 +293,7 @@ const unitsOf = () => PS().units;
 async function loadAligns() {
   const rows = G.projId ? (await apGetAll('alignments')).filter(r => r.projId === G.projId) : [];
   // keep each stored alignment's units in step with the project setting (Project Manager reads them)
-  for (const r of rows) if (r.units !== PS().units) { r.units = PS().units; await apPut('alignments', r); }
+  for (let i = 0; i < rows.length; i++) if (rows[i].units !== PS().units) { rows[i] = convertAlign(rows[i], PS().units); await apPut('alignments', rows[i]); }
   aligns = rows.map(r => ({ ...r, poly: buildPolyline(r, PS().units) }));
   aligns.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   if (PS().lockId && !aligns.find(a => a.id === PS().lockId)) { PS().lockId = ''; saveSettings(); }
@@ -425,7 +425,7 @@ function renderSetupPanel() {
     <div id="alignList">${aligns.length ? aligns.map(a => { const ss = a.poly.ss, u = unitsOf(a); return `<div class="al-item">
       <input type="checkbox" ${a.visible !== false ? 'checked' : ''} onchange="toggleAlign('${a.id}', this.checked)" style="width:20px;height:20px;">
       <div class="al-info"><div class="al-name">${esc(a.name)}</div>
-      <div class="al-meta">${fmtSta(displaySta(a, ss[0]), u)} → ${fmtSta(displaySta(a, ss[ss.length - 1]), u)} · ${a.els.length} el${a.eqs && a.eqs.length ? ` · <a href="#" onclick="event.preventDefault();showZones('${a.id}')">${a.eqs.length} eq — view</a>` : ''} · ${esc(a.file)}</div></div>
+      <div class="al-meta">${fmtSta(displaySta(a, ss[0]), u)} → ${fmtSta(displaySta(a, ss[ss.length - 1]), u)} · ${a.els.length} el${a.eqs && a.eqs.length ? ` · <a href="#" onclick="event.preventDefault();showZones('${a.id}')">${a.eqs.length} eq — view</a>` : ''} · ${esc(a.file)}${a.srcUnits ? ' · from ' + ({ m: 'meters', ift: 'intl ft', usft: 'US ft' })[a.srcUnits] : ''}</div></div>
       <button class="btn btn-secondary btn-sm" onclick="removeAlign('${a.id}')">✕</button></div>`; }).join('') : '<div class="hint" style="font-size:0.85em;padding:6px 0 10px;">No alignments for this project yet.</div>'}</div>
     <div class="hint">Lines, curves, spirals and station equations. Export from TBC or Civil 3D as LandXML. Uncheck an alignment to hide it.</div>
   </div>
@@ -446,7 +446,7 @@ function renderSetupPanel() {
     </div>
     <div class="field-group"><label class="label">Coordinate units</label>
       <select class="input" id="csUnits"><option value="usft">US survey feet</option><option value="ift">International feet</option><option value="m">Meters</option></select>
-      <div class="hint">${new Set(aligns.map(a => a.units)).size > 1 ? '⚠ Files have different units — check your exports.' : aligns.length ? 'Set from the LandXML file.' : 'Set automatically from the LandXML file.'}</div></div>
+      <div class="hint">Stations, offsets and coordinates are in these units. LandXML in other units (TBC often exports metric) is converted on import.</div></div>
     <div class="field-group"><label class="label">Combined factor (Ground = Grid ÷ CF)</label>
       <input class="input" id="csCF" inputmode="decimal" placeholder="1.00000000" value="${ps.cf === 1 ? '' : ps.cf}">
       <div class="hint">Leave blank if the alignment is in grid coordinates. For ground (surface) coordinates, enter the project combined factor.</div></div>
@@ -470,10 +470,19 @@ function renderSetupPanel() {
 function onSetupChange() {
   const num = (id, d) => { const v = $(id) ? parseFloat($(id).value) : NaN; return isFinite(v) ? v : d; };
   const ps = PS();
-  const unitsChanged = ps.units !== $('csUnits').value;
+  const oldUnits = ps.units, unitsChanged = oldUnits !== $('csUnits').value;
+  if (unitsChanged && aligns.length && !confirm(`Switch this project to ${UNIT_NAME[$('csUnits').value]}? Alignments, check-in shift and the point list are converted so they stay in the same place.`)) { $('csUnits').value = oldUnits; return; }
   ps.zone = $('csZone').value; ps.units = $('csUnits').value;
+  if (unitsChanged) {
+    const k = UNIT_M[oldUnits] / UNIT_M[ps.units];
+    ps.shiftN *= k; ps.shiftE *= k; ps.baseN *= k; ps.baseE *= k;
+    (ps.stakeList || []).forEach(p => { p.sta *= k; p.off *= k; });
+    if (ps.target) { ps.target.sta *= k; ps.target.off *= k; }
+    if ($('csBaseN')) { $('csBaseN').value = ps.baseN || ''; $('csBaseE').value = ps.baseE || ''; }
+  }
   const cf = num('csCF', 1); ps.cf = cf > 0.9 && cf < 1.1 ? cf : 1;
-  ps.baseN = num('csBaseN', 0); ps.baseE = num('csBaseE', 0); G.decl = num('decl', 12.4);
+  if (!unitsChanged) { ps.baseN = num('csBaseN', 0); ps.baseE = num('csBaseE', 0); }
+  G.decl = num('decl', 12.4);
   ps.custom = { lat0: num('cpLat0', ps.custom.lat0), lon0: num('cpLon0', ps.custom.lon0), k0: num('cpK0', ps.custom.k0), lat1: num('cpLat1', ps.custom.lat1), lat2: num('cpLat2', ps.custom.lat2), fe: num('cpFE', ps.custom.fe), fn: num('cpFN', ps.custom.fn) };
   saveSettings();
   if (unitsChanged) { loadAligns().then(() => { renderSetupPanel(); computeAll(); notify(); }); } else renderSetupPanel();
@@ -482,23 +491,15 @@ function onSetupChange() {
 }
 async function importLandXML(files) {
   if (!G.projId) return toast('Select a project first');
-  let added = 0;
-  for (const f of files) {
-    try {
-      const res = parseLandXML(await f.text(), f.name);
-      if (!aligns.length && !added) { if (res.units) PS().units = res.units; if (res.csHint) PS().zone = res.csHint; }
-      for (const a of res.alignments) {
-        const rec = { id: uid(), projId: G.projId, name: a.name, file: f.name, units: res.units || PS().units, staStart: a.staStart, els: a.els, eqs: a.eqs, visible: true, imported: Date.now() };
-        const dup = aligns.find(x => x.name === a.name && x.file === f.name);
-        if (dup) { rec.id = dup.id; rec.visible = dup.visible; }
-        await apPut('alignments', rec); added++;
-      }
-    } catch (e) { toast(`${f.name}: ${e.message}`, 4000); }
-  }
+  saveSettings();
+  const res = await FTAlign.importFiles(G.projId, files, { units: PS().units, updateSettings: !aligns.length });
+  res.errors.forEach(e => toast(e, 4000));
+  // pick up a zone hint the importer may have written for a brand-new project
+  const s = await ftGetSetting('ftStationing', null); if (s && s.p && s.p[G.projId] && s.p[G.projId].zone) PS().zone = s.p[G.projId].zone;
   saveSettings(); await loadAligns(); renderSetupPanel();
   if (fix) pos = projectLL(fix.lat, fix.lon);
   computeAll(); notify();
-  if (added) toast(`Imported ${added} alignment${added > 1 ? 's' : ''}`);
+  if (res.added) toast(`Imported ${res.added} alignment${res.added > 1 ? 's' : ''}${res.converted ? ` (converted from ${UNIT_NAME[res.converted]})` : ''}`, 3500);
 }
 async function toggleAlign(id, on) { const a = aligns.find(x => x.id === id); a.visible = on; const { poly, ...rec } = a; await apPut('alignments', rec); computeAll(); notify(); }
 async function removeAlign(id) {

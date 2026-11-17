@@ -169,18 +169,47 @@ function fmtSta(v, units) {
   return (neg ? '-' : '') + st + '+' + ip.padStart(w, '0') + '.' + dp;
 }
 
+// ── units: alignments are stored in the PROJECT's working units (stations, offsets, coordinates) ──
+const UNIT_M = { usft: 1200 / 3937, ift: 0.3048, m: 1 };
+const UNIT_NAME = { usft: 'US survey feet', ift: 'international feet', m: 'meters' };
+// Scale every length in an alignment record by k (coordinates, stations, radii, lengths, equations)
+function scaleAlign(rec, k) {
+  if (k === 1) return rec;
+  const P = p => p ? { x: p.x * k, y: p.y * k } : p;
+  const els = rec.els.map(e => {
+    const o = { ...e, s: P(e.s), e: P(e.e) };
+    if (e.c) o.c = P(e.c); if (e.pi) o.pi = P(e.pi);
+    if (e.sta != null) o.sta = e.sta * k;
+    if (isFinite(e.L)) o.L = e.L * k;
+    if (isFinite(e.rs)) o.rs = e.rs * k; if (isFinite(e.re)) o.re = e.re * k;
+    return o;
+  });
+  const eqs = (rec.eqs || []).map(q => ({ internal: q.internal * k, ahead: q.ahead * k, back: isFinite(q.back) ? q.back * k : q.back }));
+  return { ...rec, els, eqs, staStart: rec.staStart * k };
+}
+function convertAlign(rec, toUnits) {
+  const from = rec.units || toUnits;
+  if (from === toUnits) return { ...rec, units: toUnits };
+  return { ...scaleAlign(rec, UNIT_M[from] / UNIT_M[toUnits]), units: toUnits, srcUnits: rec.srcUnits || from };
+}
 async function getForProject(projId) { return (await apGetAll('alignments')).filter(a => a.projId === projId); }
 // Import LandXML files into a project. Returns { added, errors[] }.
 // opts.updateSettings: when the project has no alignments yet, set its units/zone in the shared stationing settings.
+// toUnits: the project's working units (default US survey feet). Metric LandXML (as TBC often writes) is converted.
 async function importFiles(projId, files, opts = {}) {
   const existing = await getForProject(projId);
-  let added = 0, first = null; const errors = [];
+  let toUnits = opts.units;
+  if (!toUnits && typeof ftGetSetting === 'function') { const s = await ftGetSetting('ftStationing', null); toUnits = s && s.p && s.p[projId] && s.p[projId].units; }
+  toUnits = toUnits || 'usft';
+  let added = 0, first = null, converted = ''; const errors = [];
   for (const f of files) {
     try {
       const res = parseLandXML(await f.text(), f.name);
       if (!first) first = res;
       for (const a of res.alignments) {
-        const rec = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), projId, name: a.name, file: f.name, units: res.units || 'usft', staStart: a.staStart, els: a.els, eqs: a.eqs, visible: true, imported: Date.now() };
+        const fileUnits = res.units || toUnits;
+        if (fileUnits !== toUnits) converted = fileUnits;
+        const rec = convertAlign({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), projId, name: a.name, file: f.name, units: fileUnits, staStart: a.staStart, els: a.els, eqs: a.eqs, visible: true, imported: Date.now() }, toUnits);
         const dup = existing.find(x => x.name === a.name && x.file === f.name);
         if (dup) { rec.id = dup.id; rec.visible = dup.visible; }
         await apPut('alignments', rec); added++;
@@ -191,12 +220,12 @@ async function importFiles(projId, files, opts = {}) {
     const s = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
     s.p = s.p || {};
     const ps = s.p[projId] || {};
-    if (first.units) ps.units = first.units;
+    ps.units = ps.units || toUnits;
     if (first.csHint) ps.zone = first.csHint;
     s.p[projId] = ps;
     await ftSetSetting('ftStationing', s);
   }
-  return { added, errors };
+  return { added, errors, converted, toUnits };
 }
 // Summary for lists: start/end display stations
 function summarize(rec) {
@@ -209,5 +238,5 @@ async function deleteProjectData(projId) {
     await apDel('photos', p.id); await apDel('blobs', p.id + ':orig'); await apDel('blobs', p.id + ':stamp');
   }
 }
-window.FTAlign = { apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta, getForProject, importFiles, summarize, deleteProjectData };
+window.FTAlign = { UNIT_M, UNIT_NAME, scaleAlign, convertAlign, apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta, getForProject, importFiles, summarize, deleteProjectData };
 })();
