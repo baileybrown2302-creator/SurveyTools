@@ -973,10 +973,11 @@ async function renderDetailAlignments(projectId) {
     let list = [];
     try { list = await FTAlign.getForProject(projectId); } catch (e) { el.innerHTML = '<div class="data-empty">Could not load alignments.</div>'; return; }
     list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+    const projSet = typeof ftGetStationingSettings === 'function' ? await ftGetStationingSettings(projectId) : null;
     if (!list.length) { el.innerHTML = '<div class="data-empty">No alignments yet. Upload a LandXML file exported from TBC or Civil 3D.</div>'; return; }
     el.innerHTML = list.map(a => {
         let range = '';
-        try { const s = FTAlign.summarize(a); range = FTAlign.fmtSta(s.start, a.units) + ' → ' + FTAlign.fmtSta(s.end, a.units); } catch (e) {}
+        try { const s = FTAlign.summarize(a), u = (projSet && projSet.units) || a.units; range = FTAlign.fmtSta(s.start, u) + ' → ' + FTAlign.fmtSta(s.end, u); } catch (e) {}
         const meta = [range, a.els.length + ' elements', a.eqs && a.eqs.length ? a.eqs.length + ' sta eq' : '', a.file].filter(Boolean).join(' \u00b7 ');
         return `<div class="data-item">
             <div class="data-item-info">

@@ -33,7 +33,7 @@ function closeSheet() { $('overlay').classList.add('hidden'); $('sheet').innerHT
 const { apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta } = FTAlign;
 
 // ───────── settings: global (G) + per project (PS()) ─────────
-const G_DEFAULTS = { projId: '', decl: 12.4, stampNE: false, stampLL: false, stampHdg: true, planWidth: 300, compass: false, mapLayer: '' };
+const G_DEFAULTS = { projId: '', decl: 12.4, stampNE: false, stampLL: false, stampHdg: true, planWidth: 300, compass: false, mapLayer: '', mapPerp: true };
 const P_DEFAULTS = { zone: 'NV_W', units: 'usft', cf: 1, baseN: 0, baseE: 0, shiftN: 0, shiftE: 0, lockId: '', target: null,
   custom: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, lat1: 0, lat2: 0, fe: 800000, fn: 4000000 } };
 let G = { ...G_DEFAULTS }, PSET = {};
@@ -288,10 +288,13 @@ function pointAt(poly, sta, off) {
 
 // ═════════ LIVE STATE ═════════
 let aligns = [], fix = null, pos = null, heading = null, gpsCourse = null, results = [], current = null, autoId = null;
-const unitsOf = al => (al && al.units) || PS().units;
+// The project's unit setting governs everything (stationing format, distances, projection).
+const unitsOf = () => PS().units;
 async function loadAligns() {
   const rows = G.projId ? (await apGetAll('alignments')).filter(r => r.projId === G.projId) : [];
-  aligns = rows.map(r => ({ ...r, poly: buildPolyline(r, r.units || PS().units) }));
+  // keep each stored alignment's units in step with the project setting (Project Manager reads them)
+  for (const r of rows) if (r.units !== PS().units) { r.units = PS().units; await apPut('alignments', r); }
+  aligns = rows.map(r => ({ ...r, poly: buildPolyline(r, PS().units) }));
   aligns.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   if (PS().lockId && !aligns.find(a => a.id === PS().lockId)) { PS().lockId = ''; saveSettings(); }
 }
@@ -467,11 +470,13 @@ function renderSetupPanel() {
 function onSetupChange() {
   const num = (id, d) => { const v = $(id) ? parseFloat($(id).value) : NaN; return isFinite(v) ? v : d; };
   const ps = PS();
+  const unitsChanged = ps.units !== $('csUnits').value;
   ps.zone = $('csZone').value; ps.units = $('csUnits').value;
   const cf = num('csCF', 1); ps.cf = cf > 0.9 && cf < 1.1 ? cf : 1;
   ps.baseN = num('csBaseN', 0); ps.baseE = num('csBaseE', 0); G.decl = num('decl', 12.4);
   ps.custom = { lat0: num('cpLat0', ps.custom.lat0), lon0: num('cpLon0', ps.custom.lon0), k0: num('cpK0', ps.custom.k0), lat1: num('cpLat1', ps.custom.lat1), lat2: num('cpLat2', ps.custom.lat2), fe: num('cpFE', ps.custom.fe), fn: num('cpFN', ps.custom.fn) };
-  saveSettings(); renderSetupPanel();
+  saveSettings();
+  if (unitsChanged) { loadAligns().then(() => { renderSetupPanel(); computeAll(); notify(); }); } else renderSetupPanel();
   if (fix) pos = projectLL(fix.lat, fix.lon);
   hx = hy = null; computeAll(); notify();
 }

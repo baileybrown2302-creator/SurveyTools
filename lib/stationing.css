@@ -127,3 +127,5 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .ftmap-tgt{color:#dc2626;font:900 26px/28px sans-serif;text-align:center;text-shadow:0 0 3px #fff,0 0 3px #fff;}
 .ftmap-photo{font-size:18px;line-height:26px;text-align:center;background:#fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.4);}
 .ftmap .leaflet-control-attribution{font-size:8px;line-height:1.2;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ftmap-perp span{display:inline-block;transform:translate(-50%,20px);font:800 11px/1 -apple-system,Segoe UI,sans-serif;color:#111827;background:#facc15;padding:3px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4);}
+.leaflet-bar.on a{background:#dbeafe;}
