@@ -129,3 +129,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .ftmap .leaflet-control-attribution{font-size:8px;line-height:1.2;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ftmap-perp span{display:inline-block;transform:translate(-50%,20px);font:800 11px/1 -apple-system,Segoe UI,sans-serif;color:#111827;background:#facc15;padding:3px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4);}
 .leaflet-bar.on a{background:#dbeafe;}
+/* full-screen map: keep controls clear of the status bar, notch / Dynamic Island and home indicator (any iPhone, either orientation) */
+.ftmap.ftmap-full .leaflet-top{top:calc(env(safe-area-inset-top, 0px) + 8px);}
+.ftmap.ftmap-full .leaflet-bottom{bottom:calc(env(safe-area-inset-bottom, 0px) + 4px);}
+.ftmap.ftmap-full .leaflet-left{left:calc(env(safe-area-inset-left, 0px) + 4px);}
+.ftmap.ftmap-full .leaflet-right{right:calc(env(safe-area-inset-right, 0px) + 4px);}
