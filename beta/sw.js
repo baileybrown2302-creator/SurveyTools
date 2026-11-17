@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v23';
+const CACHE_NAME = 'survey-tool-v24';
 const ASSETS = [
   './',
   './index.html',
@@ -42,36 +42,19 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: HTML + db.js = network-first (always fresh); everything else = cache-first
+// Fetch: everything from this site is network-first so updates show up right away.
+// If the network is slow (>3 s) or offline, the saved copy is used instead.
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return; // map tiles etc. go straight to the network
-  const isHtml = req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/') || url.pathname.endsWith('db.js');
-  if (isHtml) {
-    // Network-first for HTML so updates are always picked up
-    event.respondWith(
-      fetch(req).then(res => {
-        if (res.ok) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(c => c.put(req, clone));
-        }
-        return res;
-      }).catch(() => caches.match(req))
-    );
-  } else {
-    // Cache-first for JS, CSS, images, etc.
-    event.respondWith(
-      caches.match(req).then(cached => {
-        const networkFetch = fetch(req).then(res => {
-          if (res.ok) {
-            const clone = res.clone();
-            caches.open(CACHE_NAME).then(c => c.put(req, clone));
-          }
-          return res;
-        }).catch(() => cached);
-        return cached || networkFetch;
-      })
-    );
-  }
+  if (req.method !== 'GET') return;
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const net = fetch(req, { cache: 'no-cache' }).then(res => { if (res.ok) cache.put(req, res.clone()); return res; });
+    const cached = await cache.match(req, { ignoreSearch: true });
+    if (!cached) return net.catch(() => caches.match(req, { ignoreSearch: true }));
+    const timeout = new Promise(res => setTimeout(() => res(cached), 3000));
+    return Promise.race([net.catch(() => cached), timeout]);
+  })());
 });
