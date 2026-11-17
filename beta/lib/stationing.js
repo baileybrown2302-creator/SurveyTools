@@ -148,47 +148,53 @@ function staRegions(al) {
   eqs.forEach((q, k) => R.push({ from: q.internal, to: k + 1 < eqs.length ? eqs[k + 1].internal : Infinity, toInt: d => q.internal + (d - q.ahead), toDisp: i => q.ahead + (i - q.internal) }));
   return R;
 }
-// Resolve a display station (+ optional 'BK'/'AH') to internal stationing.
-// status: ok | ambiguous (exists on both sides of an overlap equation) | gap (inside a gap equation) | outside
+// Zones (Trimble Access style): zone 1 runs to the first equation, zone 2 to the next, …
+// A station that repeats (overlapping equations) is written 119+00:3. "BK"/"AH" also accepted
+// as input = first / last occurrence.  side: '' | 'BK' | 'AH' | '3'
+// status: ok | ambiguous | gap | outside | badzone
 function resolveSta(al, display, side) {
   const R = staRegions(al), ss = al.poly.ss, lo = ss[0] - 1e-6, hi = ss[ss.length - 1] + 1e-6;
   const cands = [];
-  R.forEach((r, k) => { const i = r.toInt(display); if (i >= r.from - 1e-6 && i <= r.to + 1e-6 && i >= lo && i <= hi) cands.push({ i, k }); });
-  if (cands.length) {
+  R.forEach((r, k) => { const i = r.toInt(display); if (i >= r.from - 1e-6 && i <= r.to + 1e-6 && i >= lo && i <= hi) cands.push({ i, zone: k + 1 }); });
+  const zones = cands.map(c => c.zone);
+  if (side && /^\d+$/.test(side)) {
+    const z = cands.find(c => c.zone === +side);
+    if (z) return { internal: z.i, status: 'ok', zones, zone: z.zone };
+    if (cands.length) return { internal: cands[0].i, status: 'badzone', zones, zone: cands[0].zone, asked: +side };
+  } else if (cands.length) {
     if (cands.length > 1) {
       const pick = side === 'AH' ? cands[cands.length - 1] : cands[0];
-      return { internal: pick.i, status: side ? 'ok' : 'ambiguous', count: cands.length };
+      return { internal: pick.i, status: side ? 'ok' : 'ambiguous', zones, zone: pick.zone };
     }
-    return { internal: cands[0].i, status: 'ok' };
+    return { internal: cands[0].i, status: 'ok', zones, zone: cands[0].zone };
   }
-  for (const q of al.eqs || []) if (q.ahead > (isFinite(q.back) ? q.back : q.internal) && display > (isFinite(q.back) ? q.back : q.internal) && display < q.ahead && q.internal >= lo && q.internal <= hi)
-    return { internal: q.internal, status: 'gap', eq: q };
-  // outside the alignment: extrapolate from the first / last region
-  const first = R[0], last = R[R.length - 1];
-  const iLast = last.toInt(display);
-  return { internal: iLast > hi ? iLast : first.toInt(display), status: 'outside' };
+  for (const q of al.eqs || []) { const bk = isFinite(q.back) ? q.back : q.internal;
+    if (q.ahead > bk && display > bk && display < q.ahead && q.internal >= lo && q.internal <= hi) return { internal: q.internal, status: 'gap', eq: q, zones: [] }; }
+  const first = R[0], last = R[R.length - 1], iLast = last.toInt(display);
+  return { internal: iLast > hi ? iLast : first.toInt(display), status: 'outside', zones: [] };
 }
 function internalSta(al, display, side) { return resolveSta(al, display, side).internal; }
-// Back/ahead label for a point, only where the displayed station also exists elsewhere (overlap equation).
+function zoneOf(al, internal) { const R = staRegions(al); for (let k = R.length - 1; k >= 0; k--) if (internal >= R[k].from - 1e-6) return k + 1; return 1; }
+// Zone tag only where the displayed station also exists elsewhere.
 function staSide(al, internal) {
   if (!(al.eqs || []).length) return '';
-  const d = displaySta(al, internal), r = resolveSta(al, d);
-  if (r.status !== 'ambiguous') return '';
-  return Math.abs(r.internal - internal) < 1e-4 ? 'BK' : 'AH';
+  const r = resolveSta(al, displaySta(al, internal));
+  return r.zones.length > 1 ? String(zoneOf(al, internal)) : '';
 }
-const fmtStaEq = (al, internal) => { const sd = staSide(al, internal); return fmtSta(displaySta(al, internal), unitsOf(al)) + (sd ? ' ' + sd : ''); };
+const sideTxt = side => !side ? '' : /^\d+$/.test(side) ? ':' + side : ' ' + side;
+const fmtStaEq = (al, internal) => fmtSta(displaySta(al, internal), unitsOf(al)) + sideTxt(staSide(al, internal));
 function fmtOff(off, units) {
   if (off == null || !isFinite(off)) return '—';
   const u = units === 'm' ? ' m' : "'";
   if (Math.abs(off) < 0.05) return '0.0' + u + ' CL';
   return Math.abs(off).toFixed(1) + u + (off > 0 ? ' RT' : ' LT');
 }
-// Parse "145+32.1", "14532.1", "145+32 AH", "145+32BK" → value (NaN if bad); side in parseStaSide.
+// Parse "145+32.1", "14532.1", "119+00:3", "119+00 zone 3", "119+00 Z3", "145+32 AH" → { v, side }
 function parseStaSide(t, units) {
   t = String(t ?? '').trim().replace(/^sta\.?\s*/i, '');
-  let side = '';
-  const m2 = t.match(/\s*(ahead|back|ah|bk)\.?$/i);
-  if (m2) { side = /^a/i.test(m2[1]) ? 'AH' : 'BK'; t = t.slice(0, m2.index).trim(); }
+  let side = '', m2 = t.match(/\s*(?::|\(?\s*(?:zone|z)\s*)(\d+)\)?$/i);
+  if (m2) { side = String(+m2[1]); t = t.slice(0, m2.index).trim(); }
+  else if ((m2 = t.match(/\s*(ahead|back|ah|bk)\.?$/i))) { side = /^a/i.test(m2[1]) ? 'AH' : 'BK'; t = t.slice(0, m2.index).trim(); }
   if (!t) return { v: NaN, side };
   const neg = t.startsWith('-'); if (neg) t = t.slice(1);
   const m = t.match(/^(\d+)\+(\d+(?:\.\d*)?)$/);
@@ -196,6 +202,25 @@ function parseStaSide(t, units) {
   return { v: neg ? -v : v, side };
 }
 function parseSta(t, units) { return parseStaSide(t, units).v; }
+// Equation / zone table for an alignment
+function zoneTableHtml(al) {
+  const u = unitsOf(al), R = staRegions(al), ss = al.poly.ss, lo = ss[0], hi = ss[ss.length - 1];
+  let h = '<div class="kv">';
+  R.forEach((r, k) => {
+    const a = Math.max(r.from, lo), b = Math.min(r.to, hi);
+    if (b >= a) h += `<span>Zone ${k + 1}</span><span>${fmtSta(r.toDisp(a), u)} → ${fmtSta(r.toDisp(b), u)}</span>`;
+    const q = (al.eqs || [])[k];
+    if (q && q.internal >= lo && q.internal <= hi) { const bk = isFinite(q.back) ? q.back : q.internal;
+      h += `<span style="font-weight:500;color:var(--text-muted)">&nbsp;Eq ${k + 1}</span><span style="color:var(--text-muted)">${fmtSta(bk, u)} BK = ${fmtSta(q.ahead, u)} AH${q.ahead < bk ? ' (overlap)' : q.ahead > bk ? ' (gap)' : ''}</span>`; }
+  });
+  return h + '</div>';
+}
+function showZones(id) {
+  const al = aligns.find(a => a.id === id); if (!al) return;
+  openSheet(`<div class="sheet-title">${esc(al.name)} — station equations <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    ${zoneTableHtml(al)}
+    <div class="hint" style="margin-top:12px;">Where a station exists more than once (overlapping equations) it's shown with its zone, like <b>119+00:3</b>. Type stations the same way to pick a zone — same notation as Trimble Access.</div>`);
+}
 // Point onto polyline → {sta internal, off (+right), dist, inRange}
 function stationOffset(poly, px, py) {
   const { xs, ys, ss } = poly, n = xs.length;
@@ -422,7 +447,7 @@ function renderSetupPanel() {
     <div id="alignList">${aligns.length ? aligns.map(a => { const ss = a.poly.ss, u = unitsOf(a); return `<div class="al-item">
       <input type="checkbox" ${a.visible !== false ? 'checked' : ''} onchange="toggleAlign('${a.id}', this.checked)" style="width:20px;height:20px;">
       <div class="al-info"><div class="al-name">${esc(a.name)}</div>
-      <div class="al-meta">${fmtSta(displaySta(a, ss[0]), u)} → ${fmtSta(displaySta(a, ss[ss.length - 1]), u)} · ${a.els.length} el${a.eqs && a.eqs.length ? ' · ' + a.eqs.length + ' eq' : ''} · ${esc(a.file)}</div></div>
+      <div class="al-meta">${fmtSta(displaySta(a, ss[0]), u)} → ${fmtSta(displaySta(a, ss[ss.length - 1]), u)} · ${a.els.length} el${a.eqs && a.eqs.length ? ` · <a href="#" onclick="event.preventDefault();showZones('${a.id}')">${a.eqs.length} eq — view</a>` : ''} · ${esc(a.file)}</div></div>
       <button class="btn btn-secondary btn-sm" onclick="removeAlign('${a.id}')">✕</button></div>`; }).join('') : '<div class="hint" style="font-size:0.85em;padding:6px 0 10px;">No alignments for this project yet.</div>'}</div>
     <div class="hint">Lines, curves, spirals and station equations. Export from TBC or Civil 3D as LandXML. Uncheck an alignment to hide it.</div>
   </div>

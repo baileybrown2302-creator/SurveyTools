@@ -113,7 +113,8 @@
       <div class="hidden" id="stakeCtl" style="width:100%;margin-top:12px;">
         <div class="btn-row" style="margin-top:0;">
           <button class="btn btn-secondary" style="flex:0 0 22%;" onclick="stakeStep(-1)">‹ Prev</button>
-          <button class="btn btn-green" id="markBtn" onclick="markStaked()">✓ Mark staked</button>
+          <button class="btn btn-secondary" style="flex:0 0 16%;" onclick="photoHere()" title="Take a photo here">📸</button>
+          <button class="btn btn-green" id="markBtn" onclick="markStaked()">✓ Mark done</button>
           <button class="btn btn-secondary" style="flex:0 0 22%;" onclick="stakeStep(1)">Next ›</button>
         </div>
       </div>
@@ -183,8 +184,8 @@ function renderCurrent() {
 }
 
 // ───────── navigate ─────────
-const DEF_HINT = 'Type the station as 145+32 or 14532 (add AH / BK at an overlapping station equation). Offset 0 = on the alignment.';
-const staInputText = (al, sta, side) => fmtSta(sta, unitsOf(al)).replace(/\.0$/, '') + (side ? ' ' + side : '');
+const DEF_HINT = 'Type the station as 145+32 or 14532. Where an equation repeats stations, add the zone: 119+00:3. Offset 0 = on the alignment.';
+const staInputText = (al, sta, side) => fmtSta(sta, unitsOf(al)).replace(/\.0$/, '') + sideTxt(side);
 function fillTargetForm() {
   const t = PS().target || {};
   $('tAl').innerHTML = aligns.filter(a => a.visible !== false).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') || '<option value="">No alignments</option>';
@@ -216,6 +217,11 @@ function stepSta(d) {
   else { const m = Math.abs(d); s = Math.abs(s / m - Math.round(s / m)) < 1e-6 ? s + d : (d > 0 ? Math.ceil(s / m) * m : Math.floor(s / m) * m); }
   $('tSta').value = staInputText(al, s, ''); saveTarget();
 }
+function pickZone(z) {
+  const t = PS().target; if (!t) return;
+  t.side = z; const a = activeStake(); if (a) a.side = z;
+  saveSettings(); fillTargetForm(); notify();
+}
 function navHere() {
   if (current) PS().target = { alignId: current.al.id, sta: Math.round(displaySta(current.al, current.r.sta)), side: staSide(current.al, current.r.sta), off: 0 };
   PS().stakeActive = ''; saveSettings(); fillTargetForm(); switchTab('nav');
@@ -240,19 +246,21 @@ function renderNav() {
   const active = activeStake();
   $('stakeCtl').classList.toggle('hidden', !active);
   const tag = $('activeStakeTag');
-  if (active) { const L = PS().stakeList, i = L.indexOf(active); tag.textContent = `${esc(active.name || 'Point')} · ${i + 1} of ${L.length}`; tag.className = 'badge auto'; $('markBtn').textContent = active.done ? '↺ Re-stake' : '✓ Mark staked'; }
+  if (active) { const L = PS().stakeList, i = L.indexOf(active); tag.textContent = `${esc(active.name || 'Point')} · ${i + 1} of ${L.length}`; tag.className = 'badge auto'; $('markBtn').textContent = active.done ? '↺ Redo' : '✓ Mark done'; }
   else tag.className = 'badge hidden';
   const blank = msg => { $('navTarget').textContent = msg; $('navDist').textContent = '—'; $('navBrg').textContent = ''; $('navAhead').textContent = '—'; $('navSide').textContent = '—'; $('navThere').classList.add('hidden'); $('navRef').textContent = '—'; $('navRef').className = 'badge'; };
   if (!n) { $('tHint').textContent = DEF_HINT; return blank('Enter a station or pick a point from the list'); }
   const { t, al, res, u } = n, ss = al.poly.ss;
-  const label = `${fmtSta(t.sta, u)}${t.side ? ' ' + t.side : ''} · ${fmtOff(t.off, u)} · ${al.name}`;
+  const label = `${fmtSta(t.sta, u)}${sideTxt(t.side)} · ${fmtOff(t.off, u)} · ${al.name}`;
   $('navTarget').textContent = label;
   const hint = {
     outside: `⚠ That station is outside ${al.name} (${fmtStaEq(al, ss[0])} → ${fmtStaEq(al, ss[ss.length - 1])}).`,
     gap: `⚠ That station falls inside a station equation gap (${res.eq && fmtSta(res.eq.back, u)} BK = ${res.eq && fmtSta(res.eq.ahead, u)} AH) — it doesn't exist on the ground. Pointing to the equation.`,
-    ambiguous: `⚠ This station exists on both sides of a station equation. Using the BACK side — type "AH" after the station for the ahead side.`,
-  }[res.status] || DEF_HINT;
-  $('tHint').textContent = hint;
+  }[res.status];
+  if (res.status === 'ambiguous' || res.status === 'badzone') {
+    const zb = res.zones.map(z => `<button class="btn btn-sm ${z === res.zone ? 'btn-primary' : 'btn-secondary'}" style="margin:4px 4px 0 0;" onclick="pickZone('${z}')">Zone ${z}</button>`).join('');
+    $('tHint').innerHTML = `⚠ ${fmtSta(t.sta, u)} ${res.status === 'badzone' ? `isn't in zone ${res.asked} — it's in` : 'exists more than once (station equations) — in'} zones ${res.zones.join(', ')}. Using zone ${res.zone}:<br>${zb} <a href="#" onclick="event.preventDefault();showZones('${al.id}')">view equations</a>`;
+  } else $('tHint').textContent = hint || DEF_HINT;
   if (!pos) { blank('Waiting for GPS…'); $('navTarget').textContent = label; return; }
   const gridAz = (Math.atan2(n.dE, n.dN) * R2D + 360) % 360, trueAz = (gridAz - gridNorthOffset(fix.lat, fix.lon) + 360) % 360;
   const h = headingNow(), ref = h != null ? h : gpsCourse;
@@ -279,14 +287,14 @@ function stakeMarks(al) {
 function renderStakeList() {
   const L = SL(), el = $('stakeList');
   const done = L.filter(p => p.done).length;
-  $('stakeProgress').textContent = L.length ? `${done} of ${L.length} staked` : '';
+  $('stakeProgress').textContent = L.length ? `${done} of ${L.length} done` : '';
   if (!L.length) { el.innerHTML = '<div class="hint" style="font-size:0.85em;">No points yet. Add the current target, import a CSV, or generate stations at an interval.</div>'; return; }
   el.innerHTML = L.map(p => {
     const al = aligns.find(a => a.id === p.alignId), u = unitsOf(al);
-    const st = p.done && p.staked ? `<span style="color:#16a34a">✓ ${p.staked.dist != null ? '±' + p.staked.dist.toFixed(1) + ' ' + UNIT_LBL[u] : 'staked'}</span>` : '';
+    const st = p.done && p.staked ? `<span style="color:#16a34a">✓ ${new Date(p.staked.t).toLocaleString('en-US', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>` : '';
     return `<div class="al-item" style="cursor:pointer;${p.id === PS().stakeActive ? 'background:var(--result-bg);border-radius:8px;padding-left:6px;' : ''}" onclick="goStake('${p.id}')">
       <span class="ph-check" style="${p.done ? 'background:#16a34a;border-color:#16a34a;' : ''}" onclick="event.stopPropagation();toggleDone('${p.id}')">${p.done ? '✓' : ''}</span>
-      <div class="al-info"><div class="al-name">${esc(p.name || '—')} <span style="font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums;">· ${fmtSta(p.sta, u)}${p.side ? ' ' + p.side : ''} · ${fmtOff(p.off, u)}</span></div>
+      <div class="al-info"><div class="al-name">${esc(p.name || '—')} <span style="font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums;">· ${fmtSta(p.sta, u)}${sideTxt(p.side)} · ${fmtOff(p.off, u)}</span></div>
       <div class="al-meta">${esc([al ? al.name : '⚠ alignment missing', p.desc].filter(Boolean).join(' · '))} ${st}</div></div>
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')">✕</button></div>`;
   }).join('');
@@ -303,14 +311,19 @@ function stakeStep(d) {
   const j = i + d; if (j < 0 || j >= L.length) return toast(d > 0 ? 'End of list' : 'Start of list');
   goStake(L[j].id);
 }
+function photoHere() {
+  const p = activeStake(), t = PS().target, al = t && aligns.find(a => a.id === t.alignId);
+  const desc = p ? [p.name, p.desc].filter(Boolean).join(' — ') : (al ? `STA ${fmtSta(t.sta, unitsOf(al))}${sideTxt(t.side)} ${fmtOff(t.off, unitsOf(al))}` : '');
+  location.href = `alignment_photo.html?project=${encodeURIComponent(G.projId)}&desc=${encodeURIComponent(desc)}&back=1`;
+}
 function markStaked() {
   const p = activeStake(); if (!p) return;
   const n = navNumbers(); if (!n || !pos) return toast('Waiting for GPS…');
   p.done = true; p.staked = { t: Date.now(), N: pos.N, E: pos.E, acc: fix.acc, dist: n.dist, dSta: n.dSta, dOff: n.dOff };
   saveSettings();
   const L = SL(), i = L.indexOf(p), next = L.slice(i + 1).find(x => !x.done) || L.find(x => !x.done);
-  toast(`${p.name || 'Point'} staked (±${n.dist.toFixed(1)} ${UNIT_LBL[n.u]})`);
-  if (next) goStake(next.id); else { renderStakeList(); notify(); toast('All points staked 🎉', 3000); }
+  toast(`${p.name || 'Point'} done`);
+  if (next) goStake(next.id); else { renderStakeList(); notify(); toast('All points done 🎉', 3000); }
 }
 function toggleDone(id) { const p = SL().find(x => x.id === id); p.done = !p.done; if (!p.done) delete p.staked; saveSettings(); renderStakeList(); notify(); }
 function removeStake(id) { const L = SL(), i = L.findIndex(x => x.id === id); L.splice(i, 1); if (PS().stakeActive === id) PS().stakeActive = ''; saveSettings(); renderStakeList(); notify(); }
@@ -322,11 +335,11 @@ function addTargetToList() {
 }
 function stakeMenu() {
   openSheet(`<div class="sheet-title">Stakeout List <button class="sheet-close" onclick="closeSheet()">×</button></div>
-    <button class="btn btn-secondary" onclick="closeSheet();exportStakeCSV()">⬇ Export list + staked results (CSV)</button>
+    <button class="btn btn-secondary" onclick="closeSheet();exportStakeCSV()">⬇ Export list with done / not done (CSV)</button>
     <button class="btn btn-secondary" style="margin-top:10px;" onclick="sortStakes()">↕ Sort by alignment, station, offset</button>
     <button class="btn btn-secondary" style="margin-top:10px;" onclick="resetStakes()">↺ Clear all check marks</button>
     <button class="btn btn-red" style="margin-top:10px;" onclick="clearStakes()">🗑 Delete all points</button>
-    <div class="hint" style="margin-top:12px;">CSV columns (header optional): <b>Name, Station, Offset, Description, Alignment</b>. Offsets: negative = left, or write 12.5 LT / 12.5 RT. Stations: 145+32.10 or 14532.10, add AH/BK at an overlapping equation.</div>`);
+    <div class="hint" style="margin-top:12px;">CSV columns (header optional): <b>Name, Station, Offset, Description, Alignment</b>. Offsets: negative = left, or write 12.5 LT / 12.5 RT. Stations: 145+32.10 or 14532.10; where an equation repeats stations add the zone, e.g. 119+00:3.</div>`);
 }
 function sortStakes() { const order = a => aligns.findIndex(x => x.id === a.alignId); SL().sort((a, b) => order(a) - order(b) || a.sta - b.sta || a.off - b.off); saveSettings(); closeSheet(); renderStakeList(); }
 function resetStakes() { SL().forEach(p => { p.done = false; delete p.staked; }); saveSettings(); closeSheet(); renderStakeList(); notify(); }
@@ -420,30 +433,42 @@ function doGenerate(replace) {
   const a = parseStaSide($('gFrom').value, u), b = parseStaSide($('gTo').value, u), step = Math.abs(parseFloat($('gInt').value));
   const offs = $('gOffs').value.split(',').map(parseOffset).filter(isFinite);
   if (!isFinite(a.v) || !isFinite(b.v) || !(step > 0) || !offs.length) return toast('Check the stations, interval and offsets');
-  const n = Math.floor(Math.abs(b.v - a.v) / step + 1e-9) + 1;
-  if (n * offs.length > 2000) return toast('That would make over 2,000 points — use a larger interval');
+  // Walk the alignment in internal stationing so equations are handled; within each zone use round display stations.
+  let i0 = internalSta(al, a.v, a.side), i1 = internalSta(al, b.v, b.side);
+  const rev = i1 < i0; if (rev) [i0, i1] = [i1, i0];
+  const ss = al.poly.ss; i0 = Math.max(i0, ss[0]); i1 = Math.min(i1, ss[ss.length - 1]);
+  const stations = [];
+  staRegions(al).forEach((r, k) => {
+    const lo = Math.max(i0, r.from), hi = Math.min(i1, r.to); if (hi < lo - 1e-6) return;
+    const dLo = r.toDisp(lo), dHi = r.toDisp(hi);
+    const startD = Math.abs(lo - i0) < 1e-6 ? dLo : Math.ceil((dLo - 1e-6) / step) * step;
+    for (let d = startD; d <= dHi + 1e-6; d += step) { const i = r.toInt(d); if (!stations.some(x => Math.abs(x.i - i) < 1e-3)) stations.push({ d, i, zone: String(k + 1) }); }
+  });
+  if (rev) stations.reverse();
+  if (stations.length * offs.length > 2000) return toast('That would make over 2,000 points — use a larger interval');
+  if (!stations.length) return toast('No stations in that range');
   if (replace && SL().length && !confirm(`Replace the ${SL().length} points already in the list?`)) return;
-  const L = replace ? (PS().stakeList = []) : SL(), start = L.length, dir = b.v >= a.v ? 1 : -1, pre = $('gPre').value.trim();
-  for (let i = 0; i < n; i++) {
-    const sta = a.v + dir * step * i;
-    for (const off of offs) L.push({ id: uid(), name: (pre ? pre + ' ' : '') + fmtSta(sta, u).replace(/\.0$/, '') + (off ? ' ' + (off < 0 ? 'L' : 'R') + Math.abs(off) : ' CL'), alignId: al.id, sta, side: '', off, desc: '', done: false });
+  const L = replace ? (PS().stakeList = []) : SL(), start = L.length, pre = $('gPre').value.trim();
+  for (const st of stations) {
+    const side = resolveSta(al, st.d).zones.length > 1 ? st.zone : '';
+    for (const off of offs) L.push({ id: uid(), name: (pre ? pre + ' ' : '') + fmtSta(st.d, u).replace(/\.0$/, '') + sideTxt(side) + (off ? ' ' + (off < 0 ? 'L' : 'R') + Math.abs(off) : ' CL'), alignId: al.id, sta: st.d, side, off, desc: '', done: false });
   }
-  PS().stakeActive = ''; saveSettings(); closeSheet(); renderStakeList(); goStake(L[start].id); toast(`Added ${n * offs.length} points`);
+  PS().stakeActive = ''; saveSettings(); closeSheet(); renderStakeList(); goStake(L[start].id); toast(`Added ${stations.length * offs.length} points`);
 }
 
 // Export with staked results
 function exportStakeCSV() {
   const L = SL(); if (!L.length) return toast('List is empty');
   const cell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  const head = ['Name', 'Alignment', 'Station', 'Offset', 'Side', 'Description', 'Design N', 'Design E', 'Staked', 'Staked Time', 'Staked N', 'Staked E', 'Miss Dist', 'Miss Sta (+ahead)', 'Miss Off (+right)', 'GPS Acc (m)'];
+  const head = ['Name', 'Alignment', 'Station', 'Offset', 'Side', 'Description', 'Design N', 'Design E', 'Done', 'Done Time', 'Done at N', 'Done at E', 'Dist from point', 'Along (+ahead)', 'Across (+right)', 'GPS Acc (m)'];
   const rows = L.map(p => {
     const al = aligns.find(a => a.id === p.alignId), u = unitsOf(al);
     const d = al ? pointAt(al.poly, resolveSta(al, p.sta, p.side).internal, p.off) : null, s = p.staked;
-    return [p.name, al ? al.name : '', fmtSta(p.sta, u) + (p.side ? ' ' + p.side : ''), Math.abs(p.off).toFixed(2), p.off < 0 ? 'LT' : p.off > 0 ? 'RT' : 'CL', p.desc,
+    return [p.name, al ? al.name : '', fmtSta(p.sta, u) + sideTxt(p.side), Math.abs(p.off).toFixed(2), p.off < 0 ? 'LT' : p.off > 0 ? 'RT' : 'CL', p.desc,
       d ? d.y.toFixed(3) : '', d ? d.x.toFixed(3) : '', p.done ? 'Y' : '', s ? new Date(s.t).toLocaleString('en-US') : '', s ? s.N.toFixed(3) : '', s ? s.E.toFixed(3) : '',
       s ? s.dist.toFixed(2) : '', s ? (-s.dSta).toFixed(2) : '', s ? (-s.dOff).toFixed(2) : '', s && s.acc != null ? s.acc.toFixed(1) : ''].map(cell).join(',');
   });
-  const name = `Stakeout_${(projectTitle() || 'list').replace(/[^A-Za-z0-9]+/g, '-')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  const name = `PointList_${(projectTitle() || 'list').replace(/[^A-Za-z0-9]+/g, '-')}_${new Date().toISOString().slice(0, 10)}.csv`;
   const f = new File([[head.join(','), ...rows].join('\r\n')], name, { type: 'text/csv' });
   if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: name }).catch(() => {});
   else { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = name; a.click(); }
@@ -454,7 +479,7 @@ initTabs(['cur', 'nav', 'setup']);
 const _sw = window.switchTab;
 window.switchTab = t => { tab = t; if (t === 'nav') fillTargetForm(); _sw(t); };
 document.querySelectorAll('.mode-tab[data-tab]').forEach(b => b.addEventListener('click', () => { if (b.dataset.tab === 'nav') fillTargetForm(); }, true));
-stationingInit();
+stationingInit().then(() => { if (new URLSearchParams(location.search).get('tab') === 'nav') switchTab('nav'); });
 </script>
 </body>
 </html>

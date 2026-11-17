@@ -20,7 +20,7 @@
 </head>
 <body>
 <div class="top-nav">
-  <a href="index.html" class="nav-back">‹ Menu</a>
+  <a href="index.html" class="nav-back" id="backLink">‹ Menu</a>
   <span class="nav-title">📸 Station Photos</span>
   <span class="nav-actions">
     <a href="stationing.html" class="nav-icon" title="Station / Offset" aria-label="Station / Offset">🧭</a>
@@ -318,6 +318,7 @@ function fileNameFor(rec) {
 
 // ───────── review sheet ─────────
 let review = null, lastDesc = '';
+const _qs = new URLSearchParams(location.search), presetDesc = _qs.get('desc') || '';
 function buildRecord(snap, forceId, desc, name, base) {
   const a = resolveAlign(snap, forceId) || {};
   return Object.assign({}, base || {}, {
@@ -330,7 +331,7 @@ function buildRecord(snap, forceId, desc, name, base) {
 async function openReview(src, snap, edit, opts = {}) {
   const forceId = 'forceId' in opts ? opts.forceId : (edit ? (edit.locked ? edit.alignId : '') : undefined);
   review = { src, snap, forceId, editId: edit ? edit.id : null, base: edit || null };
-  const desc = 'desc' in opts ? opts.desc : (edit ? edit.desc : '');
+  const desc = 'desc' in opts ? opts.desc : (edit ? edit.desc : presetDesc);
   const name = 'name' in opts ? opts.name : (edit ? edit.name || '' : '');
   openSheet(`
     <div class="sheet-title">${edit ? 'Edit Photo' : 'New Photo'} <button class="sheet-close" onclick="cancelReview()">×</button></div>
@@ -537,6 +538,7 @@ function renderStampSettings() { $('keepPhotos').checked = !!G.keepPhotos; $('st
 function onProjectChange() { selectMode = false; $('selBar').classList.add('hidden'); $('selModeBtn').textContent = 'Select'; loadPhotos(); }
 
 initTabs(['live', 'photos', 'setup']);
+if (_qs.get('back')) { $('backLink').textContent = '‹ Navigate'; $('backLink').href = 'stationing.html?tab=nav'; }
 stationingInit().then(renderStampSettings);
 </script>
 </body>
