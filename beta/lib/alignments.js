@@ -37,7 +37,8 @@ const apPut = (s, v, k) => apTx(s, 'readwrite', os => k !== undefined ? os.put(v
 const apDel = (s, k) => apTx(s, 'readwrite', os => os.delete(k));
 
 // ═════════ LANDXML ═════════
-const LX_UNITS = { usSurveyFoot: 'usft', USSurveyFoot: 'usft', foot: 'ift', InternationalFoot: 'ift', internationalFoot: 'ift', meter: 'm', metre: 'm' };
+// "foot" is written by most exporters (Civil 3D included) for US survey feet projects — Nevada SPCS is US survey feet.
+const LX_UNITS = { usSurveyFoot: 'usft', USSurveyFoot: 'usft', foot: 'usft', Foot: 'usft', InternationalFoot: 'ift', internationalFoot: 'ift', meter: 'm', metre: 'm' };
 const lxChildren = (el, name) => [...el.children].filter(c => c.localName === name);
 const lxFirst = (el, name) => [...el.children].find(c => c.localName === name);
 function parseLandXML(text, fileName) {
