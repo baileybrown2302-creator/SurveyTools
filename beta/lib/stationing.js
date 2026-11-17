@@ -244,20 +244,34 @@ function feedHeading(mag) {
 }
 const onOrientIOS = e => { if (e.webkitCompassHeading != null && e.webkitCompassHeading >= 0) feedHeading(e.webkitCompassHeading); };
 const onOrientAbs = e => { if (e.alpha != null && e.beta != null) feedHeading(headingFromEuler(e.alpha, e.beta, e.gamma || 0)); };
-const needsCompassTap = () => typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+// iOS Safari: needs a tap + requestPermission, gives webkitCompassHeading.
+// Android Chrome: has deviceorientationabsolute and needs no prompt (newer Chrome also exposes
+// requestPermission but may answer "denied" without asking — so it is never used there).
+const hasAbsolute = () => 'ondeviceorientationabsolute' in window;
+const needsCompassTap = () => !hasAbsolute() && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
 async function enableCompass() {
   if (compassOn) return;
   try {
-    if (needsCompassTap()) {
+    if (hasAbsolute()) window.addEventListener('deviceorientationabsolute', onOrientAbs);
+    else if (needsCompassTap()) {
       const r = await DeviceOrientationEvent.requestPermission();
-      if (r !== 'granted') { toast('Compass permission denied'); return; }
+      if (r !== 'granted') { compassHelp(true); return; }
       window.addEventListener('deviceorientation', onOrientIOS);
-    } else if ('ondeviceorientationabsolute' in window) window.addEventListener('deviceorientationabsolute', onOrientAbs);
-    else window.addEventListener('deviceorientation', e => { if (e.absolute) onOrientAbs(e); else onOrientIOS(e); });
+    } else window.addEventListener('deviceorientation', e => { if (e.webkitCompassHeading != null) onOrientIOS(e); else if (e.absolute) onOrientAbs(e); });
     compassOn = true; G.compass = true; saveSettings();
-    setTimeout(() => { if (!lastHeadingAt) toast('No compass data from this device'); notify(); }, 2500);
+    setTimeout(() => { if (!lastHeadingAt) compassHelp(false); notify(); }, 3000);
     notify();
-  } catch (err) { toast('Compass unavailable: ' + err.message); }
+  } catch (err) { compassHelp(true, err.message); }
+}
+function compassHelp(denied, msg) {
+  const android = /Android/i.test(navigator.userAgent);
+  openSheet(`<div class="sheet-title">Compass not available <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:12px;">${denied ? 'The phone blocked access to the motion sensors.' : 'No compass readings are coming from this phone.'}${msg ? ' (' + esc(msg) + ')' : ''}</div>
+    <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:14px;">${android
+      ? '<b>Android (Chrome):</b> tap ⋮ → <b>Settings</b> → <b>Site settings</b> → <b>Motion sensors</b>, and make sure it is <b>allowed</b> (and this site is not in the Blocked list). Then close and reopen the app.'
+      : '<b>iPhone:</b> close the app fully, reopen it, tap <b>Enable compass</b> and choose <b>Allow</b>. If it never asks, check Settings → Privacy &amp; Security → Location Services → Safari Websites / Field Tools.'}
+    <br><br>Without a compass, Navigate still points the arrow using your GPS direction once you start walking.</div>
+    <button class="btn btn-primary" onclick="closeSheet()">OK</button>`);
 }
 const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const fmtHdg = h => h == null ? '—' : DIRS[Math.round(h / 45) % 8] + ' ' + Math.round(h) + '°';
@@ -514,7 +528,7 @@ async function stationingInit() {
   try { await loadAligns(); } catch (e) { console.error(e); toast('Could not load alignments'); }
   renderSetupPanel();
   startGPS();
-  if (!needsCompassTap() && G.compass) enableCompass();
+  if ((hasAbsolute() || !needsCompassTap()) && G.compass) enableCompass();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   window.addEventListener('resize', notify);
   window.addEventListener('pageshow', e => { if (e.persisted) { loadProjects().then(() => { renderProjectBar(); switchProject(); }); } });

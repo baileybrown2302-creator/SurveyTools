@@ -334,6 +334,7 @@ function buildProjectTreeHtml(proj, manifest, sfx) {
     html += buildCatHtml(projId, 'soilTests', 'Soil Tests (T103G)', m.soilTests,
         t => t.nuclearSetNo ? 'Gauge Set #' + t.nuclearSetNo : 'Soil Test', null, sfx);
     html += buildCatHtml(projId, 'bidContracts', 'Bid Items', m.bidContracts, b => b.contractNo || b.id, null, sfx);
+    html += buildCatHtml(projId, 'alignments', 'Alignments (LandXML)', m.alignments || [], a => a.name || 'Alignment', null, sfx);
     return html + '</div></div>';
 }
 
@@ -378,7 +379,7 @@ function getSelectionFromScope(scopeId) {
         const pid = projCb.dataset.pid;
         const checked = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
         if (checked.length === 0) return;
-        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [] };
+        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [], alignments: [] };
         checked.forEach(cb => {
             const cat = cb.dataset.cat, id = cb.dataset.id;
             if (cat === 'materials') sel.materialIndices.push(parseInt(id));
@@ -420,6 +421,7 @@ function buildRecvTree(pkg) {
             stakeSessions: pd.stakeSessions || [], materials: pd.materials || null,
             compactionTests: pd.compactionTests || [], soilTests: pd.soilTests || [],
             bidContracts: pd.bidContracts || [],
+            alignments: pd.alignments || [],
         };
         html += buildProjectTreeHtml(pd.project, manifest, 'recv');
     }

@@ -780,13 +780,15 @@ async function startExport(projectId) {
     const levelLoops = await ftGetLoopsForProject(projectId);
     const stakeSessions = await ftGetStakeSessions(projectId);
     const materialsData = await ftGetMaterials(projectId);
+    const alignments = await ftGetAlignmentsForProject(projectId);
 
     const out = {
         exportedAt: new Date().toISOString(),
         project: proj,
         leveling: levelProj ? { project: levelProj, loops: levelLoops } : null,
         materials: materialsData || null,
-        slopeStaking: stakeSessions.length > 0 ? { sessions: stakeSessions } : null
+        slopeStaking: stakeSessions.length > 0 ? { sessions: stakeSessions } : null,
+        alignments: alignments.length > 0 ? { alignments, settings: await ftGetStationingSettings(projectId) } : null
     };
 
     exportJSON = JSON.stringify(out, null, 2);
@@ -861,7 +863,8 @@ async function previewImport() {
     if (data.leveling) lines.push(`Leveling: ${(data.leveling.loops || []).length} loop(s)`);
     if (data.materials) lines.push(`Materials: ${(data.materials.materials || []).length} material(s)`);
     if (data.slopeStaking) lines.push(`Stake sessions: ${(data.slopeStaking.sessions || []).length}`);
-    if (!data.leveling && !data.materials && !data.slopeStaking) lines.push(`No tool data included.`);
+    if (data.alignments) lines.push(`Alignments: ${(data.alignments.alignments || []).map(a => escHtml(a.name)).join(', ')}`);
+    if (!data.leveling && !data.materials && !data.slopeStaking && !data.alignments) lines.push(`No tool data included.`);
 
     previewEl.innerHTML = lines.join('<br>');
     previewEl.classList.add('show');
@@ -914,6 +917,13 @@ async function doImport() {
                 await ftSaveStakeSession({ ...sess, projectId });
             }
         }
+    }
+
+    if (data.alignments && data.alignments.alignments) {
+        for (const a of data.alignments.alignments) {
+            if (!(await ftGetAlignment(a.id))) await ftSaveAlignment({ ...a, projId: projectId });
+        }
+        await ftSaveStationingSettingsIfMissing(projectId, data.alignments.settings);
     }
 
     closeModal('importModal');
@@ -1069,6 +1079,7 @@ function buildProjectTreeHtml(proj, manifest, sfx = '') {
     html += buildCatHtml(projId, 'soilTests', 'Soil Tests (T103G)', m.soilTests,
         t => t.nuclearSetNo ? 'Gauge Set #' + t.nuclearSetNo : 'Soil Test', null, sfx);
     html += buildCatHtml(projId, 'bidContracts', 'Bid Items', m.bidContracts, b => b.contractNo || b.id, null, sfx);
+    html += buildCatHtml(projId, 'alignments', 'Alignments (LandXML)', m.alignments || [], a => a.name || 'Alignment', null, sfx);
     return html + '</div></div>';
 }
 
@@ -1096,6 +1107,7 @@ async function buildSelectionTreeFromPkg(pkg) {
             compactionTests: pd.compactionTests || [],
             soilTests: pd.soilTests || [],
             bidContracts: pd.bidContracts || [],
+            alignments: pd.alignments || [],
         };
         html += buildProjectTreeHtml(pd.project, manifest, 'Restore');
     }
@@ -1159,7 +1171,7 @@ function getSelectionFromContainer(containerId) {
         const pid = projCb.dataset.pid;
         const checked = scope.querySelectorAll(`.tree-item-cb[data-pid="${pid}"]:checked`);
         if (checked.length === 0) return;
-        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [] };
+        const sel = { projectId: pid, levelLoops: [], controlPoints: [], stakeSessions: [], materialIndices: [], compactionTests: [], soilTests: [], bidContracts: [], alignments: [] };
         checked.forEach(cb => {
             const cat = cb.dataset.cat;
             const id = cb.dataset.id;

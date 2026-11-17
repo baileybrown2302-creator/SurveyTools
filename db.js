@@ -286,12 +286,51 @@ async function ftDeleteBidContract(id) { return ftDelete('bidContracts', id); }
 async function ftGetStakeContext() { return ftGet('stakeContext', 'active'); }
 async function ftSetStakeContext(ctx) { return ftPut('stakeContext', ctx, 'active'); }
 
+// --- Alignments (stored by Station / Offset & Station Photos in their own IndexedDB) ---
+function _ftAlignDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('FieldToolsStationPhotos', 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      ['alignments', 'photos'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'id' }); });
+      if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function _ftAlignTx(mode, fn) {
+  const db = await _ftAlignDB();
+  return new Promise((res, rej) => { const tx = db.transaction('alignments', mode); const q = fn(tx.objectStore('alignments')); tx.oncomplete = () => res(q ? q.result : undefined); tx.onerror = () => rej(tx.error); });
+}
+async function ftGetAlignmentsForProject(projectId) {
+  try { return (await _ftAlignTx('readonly', os => os.getAll())).filter(a => a.projId === projectId); } catch (e) { return []; }
+}
+const ftGetAlignment = id => _ftAlignTx('readonly', os => os.get(id));
+const ftSaveAlignment = rec => _ftAlignTx('readwrite', os => os.put(rec));
+// Per-project coordinate settings used by Station / Offset (zone, units, combined factor, check-in shift)
+async function ftGetStationingSettings(projectId) {
+  const s = await ftGetSetting('ftStationing', null);
+  const ps = s && s.p && s.p[projectId];
+  if (!ps) return null;
+  const { lockId, target, ...keep } = ps;
+  return keep;
+}
+async function ftSaveStationingSettingsIfMissing(projectId, ps) {
+  if (!ps) return false;
+  const s = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
+  s.p = s.p || {};
+  if (s.p[projectId] && Object.keys(s.p[projectId]).length > 2) return false;
+  s.p[projectId] = Object.assign(s.p[projectId] || {}, ps);
+  await ftSetSetting('ftStationing', s);
+  return true;
+}
+
 // --- Backup / Transfer helpers ---
 
 // Load all data associated with a project across every store
 async function ftGetProjectManifest(projectId) {
   const [levelProject, controlProject, materials, allBidContracts,
-         loops, controlPts, sessions, sList, sRanges, compTests, soilTests
+         loops, controlPts, sessions, sList, sRanges, compTests, soilTests, alignments
         ] = await Promise.all([
     ftGetLevelProject(projectId),
     ftGetControlProject(projectId),
@@ -304,6 +343,7 @@ async function ftGetProjectManifest(projectId) {
     ftGetByIndex('stakeRanges', 'projectId', projectId),
     ftGetCompactionTestsByProject(projectId),
     ftGetSoilTestsByProject(projectId),
+    ftGetAlignmentsForProject(projectId),
   ]);
   return {
     projectId,
@@ -318,6 +358,7 @@ async function ftGetProjectManifest(projectId) {
     stakeRanges: sRanges,
     compactionTests: compTests,
     soilTests: soilTests,
+    alignments: alignments,
   };
 }
 
@@ -364,6 +405,8 @@ async function ftExportSelected(selProjects) {
       compactionTests: pick(m.compactionTests, sel.compactionTests),
       soilTests: pick(m.soilTests, sel.soilTests),
       bidContracts: pick(m.bidContracts, sel.bidContracts),
+      alignments: pick(m.alignments, sel.alignments || []),
+      stationingSettings: pick(m.alignments, sel.alignments || []).length ? await ftGetStationingSettings(sel.projectId) : null,
     });
   }
   return result;
@@ -458,6 +501,13 @@ async function ftImportSelected(pkg, selProjects) {
       const ex = await ftGetBidContract(bid.id);
       if (!ex) { await ftSaveBidContract(bid); added++; } else skipped++;
     }
+
+    const alignsIn = pick(pd.alignments, sel?.alignments);
+    for (const a of alignsIn) {
+      const ex = await ftGetAlignment(a.id);
+      if (!ex) { await ftSaveAlignment({ ...a, projId }); added++; } else skipped++;
+    }
+    if (alignsIn.length && pd.stationingSettings) await ftSaveStationingSettingsIfMissing(projId, pd.stationingSettings);
 
     summary.push({ projectId: projId, added, skipped });
   }

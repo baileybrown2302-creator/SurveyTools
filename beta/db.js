@@ -286,6 +286,45 @@ async function ftDeleteBidContract(id) { return ftDelete('bidContracts', id); }
 async function ftGetStakeContext() { return ftGet('stakeContext', 'active'); }
 async function ftSetStakeContext(ctx) { return ftPut('stakeContext', ctx, 'active'); }
 
+// --- Alignments (stored by Station / Offset & Station Photos in their own IndexedDB) ---
+function _ftAlignDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('FieldToolsStationPhotos', 1);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      ['alignments', 'photos'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'id' }); });
+      if (!db.objectStoreNames.contains('blobs')) db.createObjectStore('blobs');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function _ftAlignTx(mode, fn) {
+  const db = await _ftAlignDB();
+  return new Promise((res, rej) => { const tx = db.transaction('alignments', mode); const q = fn(tx.objectStore('alignments')); tx.oncomplete = () => res(q ? q.result : undefined); tx.onerror = () => rej(tx.error); });
+}
+async function ftGetAlignmentsForProject(projectId) {
+  try { return (await _ftAlignTx('readonly', os => os.getAll())).filter(a => a.projId === projectId); } catch (e) { return []; }
+}
+const ftGetAlignment = id => _ftAlignTx('readonly', os => os.get(id));
+const ftSaveAlignment = rec => _ftAlignTx('readwrite', os => os.put(rec));
+// Per-project coordinate settings used by Station / Offset (zone, units, combined factor, check-in shift)
+async function ftGetStationingSettings(projectId) {
+  const s = await ftGetSetting('ftStationing', null);
+  const ps = s && s.p && s.p[projectId];
+  if (!ps) return null;
+  const { lockId, target, ...keep } = ps;
+  return keep;
+}
+async function ftSaveStationingSettingsIfMissing(projectId, ps) {
+  if (!ps) return false;
+  const s = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
+  s.p = s.p || {};
+  if (s.p[projectId] && Object.keys(s.p[projectId]).length > 2) return false;
+  s.p[projectId] = Object.assign(s.p[projectId] || {}, ps);
+  await ftSetSetting('ftStationing', s);
+  return true;
+}
+
 // --- Persistent storage request ---
 async function ftRequestPersistentStorage() {
   if (navigator.storage && navigator.storage.persist) {
