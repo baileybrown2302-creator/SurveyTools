@@ -293,7 +293,10 @@ const unitsOf = () => PS().units;
 async function loadAligns() {
   const rows = G.projId ? (await apGetAll('alignments')).filter(r => r.projId === G.projId) : [];
   // keep each stored alignment's units in step with the project setting (Project Manager reads them)
-  for (let i = 0; i < rows.length; i++) if (rows[i].units !== PS().units) { rows[i] = convertAlign(rows[i], PS().units); await apPut('alignments', rows[i]); }
+  for (let i = 0; i < rows.length; i++) {
+    const fixed = FTAlign.fixUnitLabel(rows[i], PS().zone);   // repair metric values stored with a feet label (or vice versa)
+    if (fixed !== rows[i] || fixed.units !== PS().units) { rows[i] = convertAlign(fixed, PS().units); await apPut('alignments', rows[i]); }
+  }
   aligns = rows.map(r => ({ ...r, poly: buildPolyline(r, PS().units) }));
   aligns.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   if (PS().lockId && !aligns.find(a => a.id === PS().lockId)) { PS().lockId = ''; saveSettings(); }
@@ -492,7 +495,7 @@ function onSetupChange() {
 async function importLandXML(files) {
   if (!G.projId) return toast('Select a project first');
   saveSettings();
-  const res = await FTAlign.importFiles(G.projId, files, { units: PS().units, updateSettings: !aligns.length });
+  const res = await FTAlign.importFiles(G.projId, files, { units: PS().units, zone: PS().zone, updateSettings: !aligns.length });
   res.errors.forEach(e => toast(e, 4000));
   // pick up a zone hint the importer may have written for a brand-new project
   const s = await ftGetSetting('ftStationing', null); if (s && s.p && s.p[G.projId] && s.p[G.projId].zone) PS().zone = s.p[G.projId].zone;

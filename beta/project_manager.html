@@ -200,7 +200,12 @@
         <div class="section-card">
             <div class="section-card-title" style="display:flex;align-items:center;justify-content:space-between;">
                 <span>Alignments</span>
-                <button class="btn btn-primary btn-xs" onclick="document.getElementById('detailAlignInput').click()">＋ Upload LandXML</button>
+                <span style="display:flex;gap:6px;align-items:center;">
+                    <select id="detailAlignUnits" onchange="changeDetailUnits(this.value)" style="font-size:0.72em;padding:5px 6px;border-radius:7px;border:1.5px solid var(--border-secondary);background:var(--bg-tertiary);color:var(--text-primary);font-family:inherit;font-weight:700;">
+                        <option value="usft">US ft</option><option value="ift">Intl ft</option><option value="m">Meters</option>
+                    </select>
+                    <button class="btn btn-primary btn-xs" onclick="document.getElementById('detailAlignInput').click()">＋ Upload LandXML</button>
+                </span>
             </div>
             <input type="file" id="detailAlignInput" accept=".xml,.landxml,text/xml,application/xml" multiple style="display:none" onchange="uploadDetailAlignments(this)">
             <div id="detailAlignments"><div class="data-empty">Loading…</div></div>
@@ -910,7 +915,13 @@ async function renderDetailAlignments(projectId) {
     let list = [];
     try { list = await FTAlign.getForProject(projectId); } catch (e) { el.innerHTML = '<div class="data-empty">Could not load alignments.</div>'; return; }
     list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-    const projSet = typeof ftGetStationingSettings === 'function' ? await ftGetStationingSettings(projectId) : null;
+    // repair any alignments whose numbers don't match their unit label, then sync to the project's units
+    let projSet = typeof ftGetStationingSettings === 'function' ? await ftGetStationingSettings(projectId) : null;
+    const pu = (projSet && projSet.units) || 'usft';
+    let fixedAny = false;
+    for (const a of list) { const f = FTAlign.convertAlign(FTAlign.fixUnitLabel(a, (projSet && projSet.zone) || 'NV_W'), pu); if (f.units !== a.units || f.staStart !== a.staStart) { await FTAlign.apPut('alignments', f); fixedAny = true; } }
+    if (fixedAny) { list = await FTAlign.getForProject(projectId); list.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })); }
+    const uSel = document.getElementById('detailAlignUnits'); if (uSel) uSel.value = pu;
     if (!list.length) { el.innerHTML = '<div class="data-empty">No alignments yet. Upload a LandXML file exported from TBC or Civil 3D.</div>'; return; }
     el.innerHTML = list.map(a => {
         let range = '';
@@ -927,6 +938,12 @@ async function renderDetailAlignments(projectId) {
             </div>
         </div>`;
     }).join('');
+}
+async function changeDetailUnits(units) {
+    if (!currentDetailProjectId) return;
+    await FTAlign.setProjectUnits(currentDetailProjectId, units);
+    await renderDetailAlignments(currentDetailProjectId);
+    showToast('Project units: ' + FTAlign.UNIT_NAME[units]);
 }
 async function uploadDetailAlignments(input) {
     const files = [...input.files]; input.value = '';
