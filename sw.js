@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v28';
+const CACHE_NAME = 'survey-tool-v29';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,11 @@ const ASSETS = [
   './stationing.html',
   './alignment_photo.html',
   './lib/alignments.js',
+  './lib/stationmap.js',
+  './lib/leaflet/leaflet.js',
+  './lib/leaflet/leaflet.css',
+  './lib/leaflet/images/layers.png',
+  './lib/leaflet/images/layers-2x.png',
   './lib/stationing.js',
   './lib/stationing.css',
   './lib/piexif.js'
@@ -43,6 +48,7 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
+  if (url.origin !== self.location.origin) return; // map tiles etc. go straight to the network
   const isHtml = req.destination === 'document' || url.pathname.endsWith('.html') || url.pathname.endsWith('/') || url.pathname.endsWith('db.js');
   if (isHtml) {
     // Network-first for HTML so updates are always picked up

@@ -11,10 +11,13 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="./icon.png">
 <link rel="apple-touch-icon" href="./icon.png">
+<link rel="stylesheet" href="lib/leaflet/leaflet.css">
 <link rel="stylesheet" href="lib/stationing.css">
 <script src="db.js"></script>
 <script src="lib/alignments.js"></script>
 <script src="lib/stationing.js"></script>
+<script src="lib/leaflet/leaflet.js"></script>
+<script src="lib/stationmap.js"></script>
 <title>Station / Offset — Field Tools</title>
 </head>
 <body>
@@ -66,8 +69,8 @@
     <button class="btn btn-secondary" onclick="navHere()">➤ Navigate from here…</button>
   </div>
   <div class="card">
-    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
-    <canvas id="planCur"></canvas>
+    <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
+    <div id="planCur" class="ftmap"></div>
   </div>
   <div class="card" id="otherCard">
     <div class="card-title">All Alignments</div>
@@ -134,8 +137,8 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
-    <canvas id="planNav"></canvas>
+    <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
+    <div id="planNav" class="ftmap"></div>
   </div>
 </div>
 
@@ -242,7 +245,7 @@ function navNumbers() {
 }
 function renderNav() {
   const n = navNumbers();
-  drawPlan($('planNav'), { target: n && n.tgt, fitTarget: true, highlight: n && n.al, marks: stakeMarks(n && n.al) });
+  drawPlan($('planNav'), { target: n && n.tgt, highlight: n && n.al, marks: stakeMarks(n && n.al), onMark: goStake });
   const active = activeStake();
   $('stakeCtl').classList.toggle('hidden', !active);
   const tag = $('activeStakeTag');
@@ -282,7 +285,7 @@ const SL = () => (PS().stakeList = PS().stakeList || []);
 const activeStake = () => PS().stakeActive && SL().find(p => p.id === PS().stakeActive);
 function stakeMarks(al) {
   if (!al) return null;
-  return SL().filter(p => p.alignId === al.id).map(p => { const pt = pointAt(al.poly, resolveSta(al, p.sta, p.side).internal, p.off); return { x: pt.x, y: pt.y, done: p.done, active: p.id === PS().stakeActive }; });
+  return SL().filter(p => p.alignId === al.id).map(p => { const pt = pointAt(al.poly, resolveSta(al, p.sta, p.side).internal, p.off); return { id: p.id, label: `${p.name || ''} · ${fmtSta(p.sta, unitsOf(al))}${sideTxt(p.side)} ${fmtOff(p.off, unitsOf(al))}`, x: pt.x, y: pt.y, done: p.done, active: p.id === PS().stakeActive }; });
 }
 function renderStakeList() {
   const L = SL(), el = $('stakeList');

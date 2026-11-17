@@ -11,11 +11,14 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="./icon.png">
 <link rel="apple-touch-icon" href="./icon.png">
+<link rel="stylesheet" href="lib/leaflet/leaflet.css">
 <link rel="stylesheet" href="lib/stationing.css">
 <script src="db.js"></script>
 <script src="lib/piexif.js"></script>
 <script src="lib/alignments.js"></script>
 <script src="lib/stationing.js"></script>
+<script src="lib/leaflet/leaflet.js"></script>
+<script src="lib/stationmap.js"></script>
 <title>Station Photos — Field Tools</title>
 </head>
 <body>
@@ -69,8 +72,8 @@
   </div>
 
   <div class="card">
-    <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
-    <canvas id="planCanvas"></canvas>
+    <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
+    <div id="planCanvas" class="ftmap"></div>
   </div>
 </div>
 
@@ -149,7 +152,7 @@ function onStationUpdate() {
     $('hudMain').textContent = current ? `STA ${fmtStaEq(current.al, current.r.sta)}  ${fmtOff(current.r.off, unitsOf(current.al))}` : (pos ? 'No alignment' : 'Waiting for GPS…');
     $('hudSub').textContent = [current && current.al.name + (PS().lockId ? ' 🔒' : ''), headingNow() != null && 'Facing ' + fmtHdg(headingNow()), fix && `GPS ±${Math.round(fix.acc / UNIT_M[PS().units])} ${uLbl()}`].filter(Boolean).join('  ·  ');
   }
-  drawPlan($('planCanvas'));
+  drawPlan($('planCanvas'), { photos });
 }
 
 // ───────── capture ─────────
