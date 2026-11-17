@@ -52,8 +52,9 @@ function parseLandXML(text, fileName) {
   const cs = lxFirst(root, 'CoordinateSystem');
   if (cs) {
     const txt = [cs.getAttribute('name'), cs.getAttribute('desc'), cs.getAttribute('horizontalCoordinateSystemName'), cs.getAttribute('epsgCode')].filter(Boolean).join(' ');
-    if (/nevada/i.test(txt) || /\b(2701|2702|2703|3421|3422|3423|32107|32108|32109)\b/.test(txt)) {
-      if (/west|2703|3423|32109/i.test(txt)) csHint = 'NV_W'; else if (/central|2702|3422|32108/i.test(txt)) csHint = 'NV_C'; else if (/east|2701|3421|32107/i.test(txt)) csHint = 'NV_E';
+    if (/nevada/i.test(txt) || /\b(2701|2702|2703|3421|3422|3423|32107|32108|32109|2822|3431)\b/.test(txt)) {
+      if (/harn|\/\s*94|\(1994\)|\b(2822|3431)\b/i.test(txt) && /west|2822|3431/i.test(txt)) csHint = 'NV_W94';
+      else if (/west|2703|3423|32109/i.test(txt)) csHint = 'NV_W'; else if (/central|2702|3422|32108/i.test(txt)) csHint = 'NV_C'; else if (/east|2701|3421|32107/i.test(txt)) csHint = 'NV_E';
     }
   }
   const cg = {};

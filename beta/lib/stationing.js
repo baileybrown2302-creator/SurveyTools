@@ -96,6 +96,7 @@ const ZONES = {
   NV_E: { lat0: 34.75, lon0: -115.5833333333, k0: 0.9999, fe: 200000, fn: 8000000 },
   NV_C: { lat0: 34.75, lon0: -116.6666666667, k0: 0.9999, fe: 500000, fn: 6000000 },
   NV_W: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, fe: 800000, fn: 4000000 },
+  NV_W94: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, fe: 800000, fn: 4000000 }, // NAD83/94 (HARN) — same projection, HARN datum adjustment
 };
 function meridionalArc(phi) {
   const e2 = ELL.e2, e4 = e2 * e2, e6 = e4 * e2;
@@ -429,7 +430,7 @@ function renderSetupPanel() {
     <div class="card-title">Coordinate System — this project</div>
     <div class="field-group"><label class="label">Projection</label>
       <select class="input" id="csZone">
-        <option value="NV_W">NAD83 Nevada West (2703)</option><option value="NV_C">NAD83 Nevada Central (2702)</option><option value="NV_E">NAD83 Nevada East (2701)</option>
+        <option value="NV_W">NAD83 Nevada West (2703)</option><option value="NV_W94">NAD83/94 (HARN) Nevada West</option><option value="NV_C">NAD83 Nevada Central (2702)</option><option value="NV_E">NAD83 Nevada East (2701)</option>
         <option value="TM">Custom Transverse Mercator</option><option value="LCC">Custom Lambert Conformal (2SP)</option></select></div>
     <div id="customProj" class="${ps.zone === 'TM' || ps.zone === 'LCC' ? '' : 'hidden'}">
       <div class="row2"><div class="field-group"><label class="label">Origin lat (°)</label><input class="input" id="cpLat0" inputmode="decimal" value="${c.lat0}"></div>
