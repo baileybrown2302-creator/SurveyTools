@@ -141,27 +141,61 @@ function gridNorthOffset(lat, lon) {
   return Math.atan2(b.E - a.E, b.N - a.N) * R2D;
 }
 
-function internalSta(al, display) {
-  const eqs = al.eqs || [], ss = al.poly.ss;
-  const regions = [{ from: -Infinity, to: eqs.length ? eqs[0].internal : Infinity, map: d => d }];
-  eqs.forEach((q, i) => regions.push({ from: q.internal, to: i + 1 < eqs.length ? eqs[i + 1].internal : Infinity, map: d => q.internal + (d - q.ahead) }));
-  for (const r of regions) { const s = r.map(display); if (s >= r.from - 1e-6 && s <= r.to + 1e-6 && s >= ss[0] - 1e-6 && s <= ss[ss.length - 1] + 1e-6) return s; }
-  for (const r of regions) { const s = r.map(display); if (s >= r.from - 1e-6 && s <= r.to + 1e-6) return s; }
-  return display;
+// Station equations: regions of continuous internal stationing, each with its own display stationing.
+function staRegions(al) {
+  const eqs = al.eqs || [];
+  const R = [{ from: -Infinity, to: eqs.length ? eqs[0].internal : Infinity, toInt: d => d, toDisp: i => i }];
+  eqs.forEach((q, k) => R.push({ from: q.internal, to: k + 1 < eqs.length ? eqs[k + 1].internal : Infinity, toInt: d => q.internal + (d - q.ahead), toDisp: i => q.ahead + (i - q.internal) }));
+  return R;
 }
+// Resolve a display station (+ optional 'BK'/'AH') to internal stationing.
+// status: ok | ambiguous (exists on both sides of an overlap equation) | gap (inside a gap equation) | outside
+function resolveSta(al, display, side) {
+  const R = staRegions(al), ss = al.poly.ss, lo = ss[0] - 1e-6, hi = ss[ss.length - 1] + 1e-6;
+  const cands = [];
+  R.forEach((r, k) => { const i = r.toInt(display); if (i >= r.from - 1e-6 && i <= r.to + 1e-6 && i >= lo && i <= hi) cands.push({ i, k }); });
+  if (cands.length) {
+    if (cands.length > 1) {
+      const pick = side === 'AH' ? cands[cands.length - 1] : cands[0];
+      return { internal: pick.i, status: side ? 'ok' : 'ambiguous', count: cands.length };
+    }
+    return { internal: cands[0].i, status: 'ok' };
+  }
+  for (const q of al.eqs || []) if (q.ahead > (isFinite(q.back) ? q.back : q.internal) && display > (isFinite(q.back) ? q.back : q.internal) && display < q.ahead && q.internal >= lo && q.internal <= hi)
+    return { internal: q.internal, status: 'gap', eq: q };
+  // outside the alignment: extrapolate from the first / last region
+  const first = R[0], last = R[R.length - 1];
+  const iLast = last.toInt(display);
+  return { internal: iLast > hi ? iLast : first.toInt(display), status: 'outside' };
+}
+function internalSta(al, display, side) { return resolveSta(al, display, side).internal; }
+// Back/ahead label for a point, only where the displayed station also exists elsewhere (overlap equation).
+function staSide(al, internal) {
+  if (!(al.eqs || []).length) return '';
+  const d = displaySta(al, internal), r = resolveSta(al, d);
+  if (r.status !== 'ambiguous') return '';
+  return Math.abs(r.internal - internal) < 1e-4 ? 'BK' : 'AH';
+}
+const fmtStaEq = (al, internal) => { const sd = staSide(al, internal); return fmtSta(displaySta(al, internal), unitsOf(al)) + (sd ? ' ' + sd : ''); };
 function fmtOff(off, units) {
   if (off == null || !isFinite(off)) return '—';
   const u = units === 'm' ? ' m' : "'";
   if (Math.abs(off) < 0.05) return '0.0' + u + ' CL';
   return Math.abs(off).toFixed(1) + u + (off > 0 ? ' RT' : ' LT');
 }
-function parseSta(t, units) {
-  t = String(t).trim().replace(/^sta\.?\s*/i, ''); if (!t) return NaN;
+// Parse "145+32.1", "14532.1", "145+32 AH", "145+32BK" → value (NaN if bad); side in parseStaSide.
+function parseStaSide(t, units) {
+  t = String(t ?? '').trim().replace(/^sta\.?\s*/i, '');
+  let side = '';
+  const m2 = t.match(/\s*(ahead|back|ah|bk)\.?$/i);
+  if (m2) { side = /^a/i.test(m2[1]) ? 'AH' : 'BK'; t = t.slice(0, m2.index).trim(); }
+  if (!t) return { v: NaN, side };
   const neg = t.startsWith('-'); if (neg) t = t.slice(1);
   const m = t.match(/^(\d+)\+(\d+(?:\.\d*)?)$/);
-  const v = m ? +m[1] * (units === 'm' ? 1000 : 100) + +m[2] : parseFloat(t);
-  return neg ? -v : v;
+  const v = m ? +m[1] * (units === 'm' ? 1000 : 100) + +m[2] : (/^\d*\.?\d+$/.test(t) ? parseFloat(t) : NaN);
+  return { v: neg ? -v : v, side };
 }
+function parseSta(t, units) { return parseStaSide(t, units).v; }
 // Point onto polyline → {sta internal, off (+right), dist, inRange}
 function stationOffset(poly, px, py) {
   const { xs, ys, ss } = poly, n = xs.length;
@@ -329,6 +363,12 @@ function drawPlan(cv, opts = {}) {
       }
     }
   }
+  for (const m of opts.marks || []) {
+    if (m.active) continue;
+    const X = tx(m.x), Y = ty(m.y); if (X < -10 || X > W + 10 || Y < -10 || Y > H + 10) continue;
+    ctx.fillStyle = m.done ? '#16a34a' : '#f59e0b'; ctx.strokeStyle = 'white'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(X, Y, 4.5, 0, 7); ctx.fill(); ctx.stroke();
+  }
   if (tgt) {
     const X = tx(tgt.x), Y = ty(tgt.y);
     if (pos) { ctx.strokeStyle = '#dc2626'; ctx.setLineDash([6, 5]); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(W / 2, H / 2); ctx.lineTo(X, Y); ctx.stroke(); ctx.setLineDash([]); }
@@ -354,7 +394,7 @@ function openAlignPicker(cb, curId, z) {
   let html = `<div class="sheet-title">Alignment <button class="sheet-close" onclick="closeSheet()">×</button></div>`;
   html += row('', '🎯 Auto — nearest alignment', !cb && current && !PS().lockId ? esc(current.al.name) : '');
   const list = aligns.filter(a => a.visible !== false).map(al => ({ al, r: pos ? stationOffset(al.poly, pos.E, pos.N) : null })).sort((a, b) => (a.r ? a.r.dist : 0) - (b.r ? b.r.dist : 0));
-  for (const { al, r } of list) html += row(al.id, esc(al.name), r ? `${fmtSta(displaySta(al, r.sta), unitsOf(al))} · ${fmtOff(r.off, unitsOf(al))}` : '');
+  for (const { al, r } of list) html += row(al.id, esc(al.name), r ? `${fmtStaEq(al, r.sta)} · ${fmtOff(r.off, unitsOf(al))}` : '');
   if (!aligns.length) html += '<div class="empty">No alignments loaded for this project.</div>';
   openSheet(html, z || 200);
 }
@@ -486,9 +526,9 @@ function applyCalibrate() {
   let kN, kE;
   if (_calMode === 'ne') { kN = parseFloat($('calN').value); kE = parseFloat($('calE').value); }
   else {
-    const al = aligns.find(a => a.id === $('calAl').value), ds = parseSta($('calSta').value, unitsOf(al)), off = parseFloat($('calOff').value) || 0;
+    const al = aligns.find(a => a.id === $('calAl').value), ps2 = parseStaSide($('calSta').value, unitsOf(al)), ds = ps2.v, off = parseFloat($('calOff').value) || 0;
     if (!al || !isFinite(ds)) return toast('Enter a station');
-    const p = pointAt(al.poly, internalSta(al, ds), off); kN = p.y; kE = p.x;
+    const p = pointAt(al.poly, internalSta(al, ds, ps2.side), off); kN = p.y; kE = p.x;
   }
   if (!isFinite(kN) || !isFinite(kE)) return toast('Enter both values');
   const dN = kN - gpsN, dE = kE - gpsE, d = Math.hypot(dN, dE);

@@ -78,10 +78,10 @@
 <!-- ═════════ NAVIGATE ═════════ -->
 <div id="tab-nav" class="hidden">
   <div class="card">
-    <div class="card-title">Go to</div>
+    <div class="card-title">Go to <span id="activeStakeTag" class="badge hidden"></span></div>
     <div class="field-group"><label class="label">Alignment</label><select class="input" id="tAl"></select></div>
     <div class="row2">
-      <div class="field-group"><label class="label">Station</label><input class="input" id="tSta" inputmode="decimal" placeholder="145+32 or 14532"></div>
+      <div class="field-group"><label class="label">Station</label><input class="input" id="tSta" placeholder="145+32 or 14532"></div>
       <div class="field-group"><label class="label">Offset</label><input class="input" id="tOff" inputmode="decimal" placeholder="0.0"></div>
     </div>
     <div class="row2">
@@ -110,8 +110,28 @@
         <div class="nav-move"><div class="ro-label" id="navSideLbl">Left / Right</div><div class="v" id="navSide">—</div></div>
       </div>
       <div class="nav-there hidden" id="navThere">✅ You're on it</div>
+      <div class="hidden" id="stakeCtl" style="width:100%;margin-top:12px;">
+        <div class="btn-row" style="margin-top:0;">
+          <button class="btn btn-secondary" style="flex:0 0 22%;" onclick="stakeStep(-1)">‹ Prev</button>
+          <button class="btn btn-green" id="markBtn" onclick="markStaked()">✓ Mark staked</button>
+          <button class="btn btn-secondary" style="flex:0 0 22%;" onclick="stakeStep(1)">Next ›</button>
+        </div>
+      </div>
     </div>
   </div>
+
+  <div class="card">
+    <div class="card-title">Stakeout List <span id="stakeProgress" style="text-transform:none;letter-spacing:0;"></span></div>
+    <div class="btn-row" style="margin-top:0;flex-wrap:wrap;">
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="addTargetToList()">＋ Add target</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="$('stakeCsv').click()">⬆ CSV</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="openGenerate()">⚙ Generate</button>
+      <button class="btn btn-secondary btn-sm" style="flex:1" onclick="stakeMenu()">⋯</button>
+    </div>
+    <input type="file" id="stakeCsv" accept=".csv,.txt,text/csv,text/plain" class="hidden">
+    <div id="stakeList" style="margin-top:10px;"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">Plan View <span style="display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1/1.6)">＋</button><button class="btn btn-secondary btn-sm" onclick="zoomPlan(1.6)">－</button></span></div>
     <canvas id="planNav"></canvas>
@@ -148,7 +168,7 @@ function renderCurrent() {
     const { al, r } = current, u = unitsOf(al);
     $('roAlign').textContent = al.name;
     $('roMode').textContent = PS().lockId ? '🔒 Locked' : 'Auto'; $('roMode').className = 'badge ' + (PS().lockId ? 'lock' : 'auto');
-    $('roSta').textContent = fmtSta(displaySta(al, r.sta), u); $('roOff').textContent = fmtOff(r.off, u);
+    $('roSta').textContent = fmtStaEq(al, r.sta); $('roOff').textContent = fmtOff(r.off, u);
     if (!r.inRange) w = r.sta < al.poly.ss[0] ? 'Before the start of this alignment.' : 'Past the end of this alignment.';
     if (r.dist * UNIT_M[u] > 1500) w = `You're ${(r.dist * UNIT_M[u] / 1609.344).toFixed(1)} mi from this alignment — check projection zone, units and combined factor in Setup.`;
   } else {
@@ -158,76 +178,275 @@ function renderCurrent() {
   $('roWarn').textContent = w; $('roWarn').classList.toggle('hidden', !w);
   $('otherCard').classList.toggle('hidden', results.length < 2);
   $('otherList').innerHTML = results.slice().sort((a, b) => Math.abs(a.r.off) - Math.abs(b.r.off)).map(x =>
-    `<div><span>${x === current ? '▶ ' : ''}${esc(x.al.name)}</span><span>${fmtSta(displaySta(x.al, x.r.sta), unitsOf(x.al))} &nbsp; ${fmtOff(x.r.off, unitsOf(x.al))}${x.r.inRange ? '' : ' *'}</span></div>`).join('');
+    `<div><span>${x === current ? '▶ ' : ''}${esc(x.al.name)}</span><span>${fmtStaEq(x.al, x.r.sta)} &nbsp; ${fmtOff(x.r.off, unitsOf(x.al))}${x.r.inRange ? '' : ' *'}</span></div>`).join('');
   drawPlan($('planCur'));
 }
 
 // ───────── navigate ─────────
+const DEF_HINT = 'Type the station as 145+32 or 14532 (add AH / BK at an overlapping station equation). Offset 0 = on the alignment.';
+const staInputText = (al, sta, side) => fmtSta(sta, unitsOf(al)).replace(/\.0$/, '') + (side ? ' ' + side : '');
 function fillTargetForm() {
   const t = PS().target || {};
   $('tAl').innerHTML = aligns.filter(a => a.visible !== false).map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('') || '<option value="">No alignments</option>';
   const alId = (t.alignId && aligns.find(a => a.id === t.alignId)) ? t.alignId : (current ? current.al.id : (aligns[0] && aligns[0].id) || '');
   $('tAl').value = alId;
   const al = aligns.find(a => a.id === alId);
-  $('tSta').value = t.sta != null && al ? fmtSta(t.sta, unitsOf(al)).replace(/\.0$/, '') : '';
+  $('tSta').value = t.sta != null && al ? staInputText(al, t.sta, t.side) : '';
   $('tOff').value = t.off != null && t.off !== 0 ? Math.abs(t.off) : '';
   setSide(t.off != null && t.off < 0 ? -1 : 1, false);
+  renderStakeList();
 }
 function setSide(s, save = true) { [...$('tSide').children].forEach(b => b.classList.toggle('on', +b.dataset.s === s)); if (save) saveTarget(); }
 const getSide = () => +$('tSide').querySelector('.on').dataset.s;
 $('tSide').addEventListener('click', e => { if (e.target.dataset.s) setSide(+e.target.dataset.s); });
+// Typing a target by hand detaches it from the stakeout list.
 function saveTarget() {
   const al = aligns.find(a => a.id === $('tAl').value);
-  const sta = al ? parseSta($('tSta').value, unitsOf(al)) : NaN;
+  const ps = al ? parseStaSide($('tSta').value, unitsOf(al)) : { v: NaN };
   const offAbs = parseFloat($('tOff').value);
-  PS().target = (al && isFinite(sta)) ? { alignId: al.id, sta, off: (isFinite(offAbs) ? Math.abs(offAbs) : 0) * getSide() } : null;
-  saveSettings(); notify();
+  PS().target = (al && isFinite(ps.v)) ? { alignId: al.id, sta: ps.v, side: ps.side, off: (isFinite(offAbs) ? Math.abs(offAbs) : 0) * getSide() } : null;
+  PS().stakeActive = ''; saveSettings(); renderStakeList(); notify();
 }
 ['tAl', 'tSta', 'tOff'].forEach(id => $(id).addEventListener('change', saveTarget));
-$('tSta').addEventListener('keyup', e => { if (e.key === 'Enter') { $('tSta').blur(); } });
+$('tSta').addEventListener('keyup', e => { if (e.key === 'Enter') $('tSta').blur(); });
 function stepSta(d) {
   const al = aligns.find(a => a.id === $('tAl').value); if (!al) return;
   let s = parseSta($('tSta').value, unitsOf(al));
   if (!isFinite(s)) s = current && current.al === al ? Math.round(displaySta(al, current.r.sta) / Math.abs(d)) * Math.abs(d) : displaySta(al, al.poly.ss[0]);
   else { const m = Math.abs(d); s = Math.abs(s / m - Math.round(s / m)) < 1e-6 ? s + d : (d > 0 ? Math.ceil(s / m) * m : Math.floor(s / m) * m); }
-  $('tSta').value = fmtSta(s, unitsOf(al)).replace(/\.0$/, ''); saveTarget();
+  $('tSta').value = staInputText(al, s, ''); saveTarget();
 }
 function navHere() {
-  if (current) PS().target = { alignId: current.al.id, sta: Math.round(displaySta(current.al, current.r.sta)), off: 0 };
-  saveSettings(); fillTargetForm(); switchTab('nav');
+  if (current) PS().target = { alignId: current.al.id, sta: Math.round(displaySta(current.al, current.r.sta)), side: staSide(current.al, current.r.sta), off: 0 };
+  PS().stakeActive = ''; saveSettings(); fillTargetForm(); switchTab('nav');
 }
 let arrowRot = 0;
-function setArrow(deg) {
-  let d = ((deg - arrowRot) % 360 + 540) % 360 - 180; // shortest turn
-  arrowRot += d; $('navArrow').style.transform = `rotate(${arrowRot}deg)`;
+function setArrow(deg) { const d = ((deg - arrowRot) % 360 + 540) % 360 - 180; arrowRot += d; $('navArrow').style.transform = `rotate(${arrowRot}deg)`; }
+// Live distances to the target — also used when marking a point staked
+function navNumbers() {
+  const t = PS().target, al = t && aligns.find(a => a.id === t.alignId);
+  if (!al) return null;
+  const res = resolveSta(al, t.sta, t.side), tgt = pointAt(al.poly, res.internal, t.off);
+  const out = { t, al, res, tgt, u: unitsOf(al) };
+  if (pos) {
+    out.dE = tgt.x - pos.E; out.dN = tgt.y - pos.N; out.dist = Math.hypot(out.dE, out.dN);
+    const rr = stationOffset(al.poly, pos.E, pos.N); out.dSta = res.internal - rr.sta; out.dOff = t.off - rr.off;
+  }
+  return out;
 }
 function renderNav() {
-  const t = PS().target, al = t && aligns.find(a => a.id === t.alignId);
-  const tgtPt = al ? pointAt(al.poly, internalSta(al, t.sta), t.off) : null;
-  drawPlan($('planNav'), { target: tgtPt, fitTarget: true, highlight: al });
+  const n = navNumbers();
+  drawPlan($('planNav'), { target: n && n.tgt, fitTarget: true, highlight: n && n.al, marks: stakeMarks(n && n.al) });
+  const active = activeStake();
+  $('stakeCtl').classList.toggle('hidden', !active);
+  const tag = $('activeStakeTag');
+  if (active) { const L = PS().stakeList, i = L.indexOf(active); tag.textContent = `${esc(active.name || 'Point')} · ${i + 1} of ${L.length}`; tag.className = 'badge auto'; $('markBtn').textContent = active.done ? '↺ Re-stake' : '✓ Mark staked'; }
+  else tag.className = 'badge hidden';
   const blank = msg => { $('navTarget').textContent = msg; $('navDist').textContent = '—'; $('navBrg').textContent = ''; $('navAhead').textContent = '—'; $('navSide').textContent = '—'; $('navThere').classList.add('hidden'); $('navRef').textContent = '—'; $('navRef').className = 'badge'; };
-  if (!al) return blank('Enter a station to navigate to');
-  const u = unitsOf(al);
-  $('navTarget').textContent = `${fmtSta(t.sta, u)} · ${fmtOff(t.off, u)} · ${al.name}`;
-  const ss = al.poly.ss, internal = internalSta(al, t.sta);
-  $('tHint').textContent = (internal < ss[0] - 0.01 || internal > ss[ss.length - 1] + 0.01) ? `⚠ That station is outside ${al.name} (${fmtSta(displaySta(al, ss[0]), u)} → ${fmtSta(displaySta(al, ss[ss.length - 1]), u)}).` : 'Type the station as 145+32 or 14532. Offset 0 = on the alignment.';
-  if (!pos) { blank('Waiting for GPS…'); $('navTarget').textContent = `${fmtSta(t.sta, u)} · ${fmtOff(t.off, u)} · ${al.name}`; return; }
-  const dE = tgtPt.x - pos.E, dN = tgtPt.y - pos.N, dist = Math.hypot(dE, dN);
-  const gridAz = (Math.atan2(dE, dN) * R2D + 360) % 360, trueAz = (gridAz - gridNorthOffset(fix.lat, fix.lon) + 360) % 360;
+  if (!n) { $('tHint').textContent = DEF_HINT; return blank('Enter a station or pick a point from the list'); }
+  const { t, al, res, u } = n, ss = al.poly.ss;
+  const label = `${fmtSta(t.sta, u)}${t.side ? ' ' + t.side : ''} · ${fmtOff(t.off, u)} · ${al.name}`;
+  $('navTarget').textContent = label;
+  const hint = {
+    outside: `⚠ That station is outside ${al.name} (${fmtStaEq(al, ss[0])} → ${fmtStaEq(al, ss[ss.length - 1])}).`,
+    gap: `⚠ That station falls inside a station equation gap (${res.eq && fmtSta(res.eq.back, u)} BK = ${res.eq && fmtSta(res.eq.ahead, u)} AH) — it doesn't exist on the ground. Pointing to the equation.`,
+    ambiguous: `⚠ This station exists on both sides of a station equation. Using the BACK side — type "AH" after the station for the ahead side.`,
+  }[res.status] || DEF_HINT;
+  $('tHint').textContent = hint;
+  if (!pos) { blank('Waiting for GPS…'); $('navTarget').textContent = label; return; }
+  const gridAz = (Math.atan2(n.dE, n.dN) * R2D + 360) % 360, trueAz = (gridAz - gridNorthOffset(fix.lat, fix.lon) + 360) % 360;
   const h = headingNow(), ref = h != null ? h : gpsCourse;
   if (ref != null) { setArrow(trueAz - ref); $('navRef').textContent = h != null ? 'Compass' : 'GPS course'; $('navRef').className = 'badge auto'; }
   else { setArrow(gridAz); $('navRef').textContent = 'North-up'; $('navRef').className = 'badge lock'; }
-  $('navDist').textContent = `${dist < 1000 ? dist.toFixed(1) : Math.round(dist).toLocaleString()} ${UNIT_LBL[u]}`;
+  $('navDist').textContent = `${n.dist < 1000 ? n.dist.toFixed(1) : Math.round(n.dist).toLocaleString()} ${UNIT_LBL[u]}`;
   $('navBrg').textContent = `Bearing ${fmtHdg(trueAz)} true` + (ref == null ? ' · enable compass or start walking to point the arrow' : '');
-  const rr = stationOffset(al.poly, pos.E, pos.N);
-  const dSta = internal - rr.sta, dOff = t.off - rr.off;
-  $('navAheadLbl').textContent = dSta >= 0 ? 'Go ahead (up-station)' : 'Go back (down-station)';
-  $('navAhead').textContent = `${Math.abs(dSta).toFixed(1)} ${UNIT_LBL[u]}`;
-  $('navSideLbl').textContent = dOff >= 0 ? 'Move right' : 'Move left';
-  $('navSide').textContent = `${Math.abs(dOff).toFixed(1)} ${UNIT_LBL[u]}`;
+  $('navAheadLbl').textContent = n.dSta >= 0 ? 'Go ahead (up-station)' : 'Go back (down-station)';
+  $('navAhead').textContent = `${Math.abs(n.dSta).toFixed(1)} ${UNIT_LBL[u]}`;
+  $('navSideLbl').textContent = n.dOff >= 0 ? 'Move right' : 'Move left';
+  $('navSide').textContent = `${Math.abs(n.dOff).toFixed(1)} ${UNIT_LBL[u]}`;
   const tol = Math.max(1 / UNIT_M[u], (fix.acc || 0) * 0.5 / UNIT_M[u]);
-  $('navThere').classList.toggle('hidden', dist > tol);
+  $('navThere').classList.toggle('hidden', n.dist > tol);
   $('navThere').textContent = `✅ You're on it (within ±${tol.toFixed(1)} ${UNIT_LBL[u]})`;
+}
+
+// ───────── stakeout list (saved per project) ─────────
+const SL = () => (PS().stakeList = PS().stakeList || []);
+const activeStake = () => PS().stakeActive && SL().find(p => p.id === PS().stakeActive);
+function stakeMarks(al) {
+  if (!al) return null;
+  return SL().filter(p => p.alignId === al.id).map(p => { const pt = pointAt(al.poly, resolveSta(al, p.sta, p.side).internal, p.off); return { x: pt.x, y: pt.y, done: p.done, active: p.id === PS().stakeActive }; });
+}
+function renderStakeList() {
+  const L = SL(), el = $('stakeList');
+  const done = L.filter(p => p.done).length;
+  $('stakeProgress').textContent = L.length ? `${done} of ${L.length} staked` : '';
+  if (!L.length) { el.innerHTML = '<div class="hint" style="font-size:0.85em;">No points yet. Add the current target, import a CSV, or generate stations at an interval.</div>'; return; }
+  el.innerHTML = L.map(p => {
+    const al = aligns.find(a => a.id === p.alignId), u = unitsOf(al);
+    const st = p.done && p.staked ? `<span style="color:#16a34a">✓ ${p.staked.dist != null ? '±' + p.staked.dist.toFixed(1) + ' ' + UNIT_LBL[u] : 'staked'}</span>` : '';
+    return `<div class="al-item" style="cursor:pointer;${p.id === PS().stakeActive ? 'background:var(--result-bg);border-radius:8px;padding-left:6px;' : ''}" onclick="goStake('${p.id}')">
+      <span class="ph-check" style="${p.done ? 'background:#16a34a;border-color:#16a34a;' : ''}" onclick="event.stopPropagation();toggleDone('${p.id}')">${p.done ? '✓' : ''}</span>
+      <div class="al-info"><div class="al-name">${esc(p.name || '—')} <span style="font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums;">· ${fmtSta(p.sta, u)}${p.side ? ' ' + p.side : ''} · ${fmtOff(p.off, u)}</span></div>
+      <div class="al-meta">${esc([al ? al.name : '⚠ alignment missing', p.desc].filter(Boolean).join(' · '))} ${st}</div></div>
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')">✕</button></div>`;
+  }).join('');
+}
+function goStake(id) {
+  const p = SL().find(x => x.id === id); if (!p) return;
+  if (!aligns.find(a => a.id === p.alignId)) return toast('That alignment is not loaded for this project');
+  PS().target = { alignId: p.alignId, sta: p.sta, side: p.side || '', off: p.off }; PS().stakeActive = id;
+  saveSettings(); fillTargetForm(); PS().stakeActive = id; saveSettings(); renderStakeList(); notify();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function stakeStep(d) {
+  const L = SL(), i = L.indexOf(activeStake()); if (i < 0) return;
+  const j = i + d; if (j < 0 || j >= L.length) return toast(d > 0 ? 'End of list' : 'Start of list');
+  goStake(L[j].id);
+}
+function markStaked() {
+  const p = activeStake(); if (!p) return;
+  const n = navNumbers(); if (!n || !pos) return toast('Waiting for GPS…');
+  p.done = true; p.staked = { t: Date.now(), N: pos.N, E: pos.E, acc: fix.acc, dist: n.dist, dSta: n.dSta, dOff: n.dOff };
+  saveSettings();
+  const L = SL(), i = L.indexOf(p), next = L.slice(i + 1).find(x => !x.done) || L.find(x => !x.done);
+  toast(`${p.name || 'Point'} staked (±${n.dist.toFixed(1)} ${UNIT_LBL[n.u]})`);
+  if (next) goStake(next.id); else { renderStakeList(); notify(); toast('All points staked 🎉', 3000); }
+}
+function toggleDone(id) { const p = SL().find(x => x.id === id); p.done = !p.done; if (!p.done) delete p.staked; saveSettings(); renderStakeList(); notify(); }
+function removeStake(id) { const L = SL(), i = L.findIndex(x => x.id === id); L.splice(i, 1); if (PS().stakeActive === id) PS().stakeActive = ''; saveSettings(); renderStakeList(); notify(); }
+function addTargetToList() {
+  const t = PS().target; if (!t) return toast('Enter a target station first');
+  const L = SL(), name = 'P' + (L.length + 1);
+  const p = { id: uid(), name, alignId: t.alignId, sta: t.sta, side: t.side || '', off: t.off, desc: '', done: false };
+  L.push(p); PS().stakeActive = p.id; saveSettings(); renderStakeList(); notify(); toast('Added ' + name);
+}
+function stakeMenu() {
+  openSheet(`<div class="sheet-title">Stakeout List <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <button class="btn btn-secondary" onclick="closeSheet();exportStakeCSV()">⬇ Export list + staked results (CSV)</button>
+    <button class="btn btn-secondary" style="margin-top:10px;" onclick="sortStakes()">↕ Sort by alignment, station, offset</button>
+    <button class="btn btn-secondary" style="margin-top:10px;" onclick="resetStakes()">↺ Clear all check marks</button>
+    <button class="btn btn-red" style="margin-top:10px;" onclick="clearStakes()">🗑 Delete all points</button>
+    <div class="hint" style="margin-top:12px;">CSV columns (header optional): <b>Name, Station, Offset, Description, Alignment</b>. Offsets: negative = left, or write 12.5 LT / 12.5 RT. Stations: 145+32.10 or 14532.10, add AH/BK at an overlapping equation.</div>`);
+}
+function sortStakes() { const order = a => aligns.findIndex(x => x.id === a.alignId); SL().sort((a, b) => order(a) - order(b) || a.sta - b.sta || a.off - b.off); saveSettings(); closeSheet(); renderStakeList(); }
+function resetStakes() { SL().forEach(p => { p.done = false; delete p.staked; }); saveSettings(); closeSheet(); renderStakeList(); notify(); }
+function clearStakes() { if (!confirm(`Delete all ${SL().length} points from the stakeout list?`)) return; PS().stakeList = []; PS().stakeActive = ''; saveSettings(); closeSheet(); renderStakeList(); notify(); }
+
+// CSV import
+function splitCSVLine(line) {
+  const out = []; let cur = '', q = false;
+  for (let i = 0; i < line.length; i++) { const c = line[i];
+    if (q) { if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; }
+    else if (c === '"') q = true; else if (c === ',' || c === '\t' || c === ';') { out.push(cur.trim()); cur = ''; } else cur += c; }
+  out.push(cur.trim()); return out;
+}
+function parseOffset(t) {
+  t = String(t ?? '').trim().toUpperCase(); if (!t) return 0;
+  const m = t.match(/^([LR])?\s*(-?\d*\.?\d+)\s*'?\s*(LT|RT|L|R|LEFT|RIGHT)?$/) || t.match(/^(LT|RT|LEFT|RIGHT)\s*(-?\d*\.?\d+)$/);
+  if (!m) return NaN;
+  let v, side;
+  if (/^(LT|RT|LEFT|RIGHT)$/.test(m[1] || '') && m[3] === undefined && m.length === 3) { side = m[1]; v = parseFloat(m[2]); }
+  else { v = parseFloat(m[2]); side = m[3] || m[1]; }
+  if (side) return /^L/.test(side) ? -Math.abs(v) : Math.abs(v);
+  return v;
+}
+let csvPending = null;
+$('stakeCsv').addEventListener('change', async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const lines = (await f.text()).split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
+  if (!lines.length) return toast('File is empty');
+  let rows = lines.map(splitCSVLine), cols;
+  const H = rows[0].map(h => h.toLowerCase().replace(/[^a-z]/g, ''));
+  const find = (...names) => H.findIndex(h => names.some(n => h === n || h.startsWith(n)));
+  const hasHeader = H.some(h => /^(sta|station|off|offset|name|point|pt|desc|description|align|alignment|code|note)/.test(h)) && isNaN(parseSta(rows[0][find('sta', 'station')] ?? '', 'usft'));
+  if (hasHeader) {
+    cols = { name: find('name', 'point', 'pt', 'pnt', 'id'), sta: find('station', 'sta'), off: find('offset', 'off', 'dist'), side: find('side', 'lr'), desc: find('description', 'desc', 'code', 'note', 'remark'), align: find('alignment', 'align', 'cl') };
+    rows = rows.slice(1);
+  } else {
+    const n = rows[0].length, staFirst = isFinite(parseSta(rows[0][0], 'usft'));
+    cols = staFirst ? { sta: 0, off: n > 1 ? 1 : -1, desc: n > 2 ? 2 : -1, name: -1, side: -1, align: -1 }
+                    : { name: 0, sta: 1, off: n > 2 ? 2 : -1, desc: n > 3 ? 3 : -1, side: -1, align: n > 4 ? 4 : -1 };
+  }
+  if (cols.sta < 0) return toast('Could not find a Station column');
+  const pts = [], bad = [];
+  rows.forEach((r, i) => {
+    const ps = parseStaSide(r[cols.sta], 'usft');
+    let off = cols.off >= 0 ? parseOffset(r[cols.off]) : 0;
+    if (cols.side >= 0 && isFinite(off) && /^\s*l/i.test(r[cols.side] || '')) off = -Math.abs(off);
+    if (cols.side >= 0 && isFinite(off) && /^\s*r/i.test(r[cols.side] || '')) off = Math.abs(off);
+    if (!isFinite(ps.v) || !isFinite(off)) { bad.push(i + 1 + (hasHeader ? 1 : 0)); return; }
+    pts.push({ name: cols.name >= 0 ? r[cols.name] : '', staTxt: r[cols.sta], side: ps.side, off, desc: cols.desc >= 0 ? r[cols.desc] : '', alignName: cols.align >= 0 ? r[cols.align] : '' });
+  });
+  if (!pts.length) return toast('No valid rows found');
+  csvPending = pts;
+  const named = pts.some(p => p.alignName), matched = pts.filter(p => p.alignName && aligns.find(a => a.name.toLowerCase() === p.alignName.toLowerCase())).length;
+  openSheet(`<div class="sheet-title">Import ${pts.length} point${pts.length > 1 ? 's' : ''} <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    ${bad.length ? `<div class="ro-warn" style="margin:0 0 10px;">Skipped ${bad.length} row${bad.length > 1 ? 's' : ''} that couldn't be read (line ${bad.slice(0, 8).join(', ')}${bad.length > 8 ? '…' : ''}).</div>` : ''}
+    <div class="kv" style="margin-bottom:12px;">${pts.slice(0, 5).map(p => `<span>${esc(p.name || '—')}</span><span>${esc(p.staTxt)} · ${fmtOff(p.off, 'usft')}${p.desc ? ' · ' + esc(p.desc) : ''}</span>`).join('')}${pts.length > 5 ? `<span></span><span>…and ${pts.length - 5} more</span>` : ''}</div>
+    <div class="field-group"><label class="label">${named ? `Alignment for rows without a match (${matched} of ${pts.length} matched by name)` : 'Alignment'}</label>
+      <select class="input" id="csvAl">${aligns.map(a => `<option value="${a.id}" ${$('tAl').value === a.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="applyCsv(false)">Add to list</button><button class="btn btn-primary" onclick="applyCsv(true)">Replace list</button></div>`);
+});
+function applyCsv(replace) {
+  if (!csvPending) return;
+  const defAl = aligns.find(a => a.id === $('csvAl').value);
+  if (!defAl) return toast('Load an alignment first');
+  if (replace && SL().length && !confirm(`Replace the ${SL().length} points already in the list?`)) return;
+  const L = replace ? (PS().stakeList = []) : SL(), start = L.length;
+  csvPending.forEach((p, i) => {
+    const al = (p.alignName && aligns.find(a => a.name.toLowerCase() === p.alignName.toLowerCase())) || defAl;
+    L.push({ id: uid(), name: p.name || 'P' + (start + i + 1), alignId: al.id, sta: parseStaSide(p.staTxt, unitsOf(al)).v, side: p.side, off: p.off, desc: p.desc || '', done: false });
+  });
+  const n = csvPending.length; csvPending = null;
+  PS().stakeActive = ''; saveSettings(); closeSheet(); renderStakeList(); goStake(L[start].id); toast(`Imported ${n} points`);
+}
+
+// Generate stations at an interval
+function openGenerate() {
+  if (!aligns.length) return toast('Load an alignment first');
+  const al = aligns.find(a => a.id === $('tAl').value) || aligns[0], ss = al.poly.ss;
+  openSheet(`<div class="sheet-title">Generate points <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="field-group"><label class="label">Alignment</label><select class="input" id="gAl">${aligns.map(a => `<option value="${a.id}" ${a.id === al.id ? 'selected' : ''}>${esc(a.name)}</option>`).join('')}</select></div>
+    <div class="row2"><div class="field-group"><label class="label">From station</label><input class="input" id="gFrom" value="${staInputText(al, Math.ceil(displaySta(al, ss[0]) / 50) * 50, '')}"></div>
+      <div class="field-group"><label class="label">To station</label><input class="input" id="gTo" value="${staInputText(al, Math.floor(displaySta(al, ss[ss.length - 1]) / 50) * 50, '')}"></div></div>
+    <div class="row2"><div class="field-group"><label class="label">Every</label><input class="input" id="gInt" inputmode="decimal" value="50"></div>
+      <div class="field-group"><label class="label">Name prefix</label><input class="input" id="gPre" placeholder="optional"></div></div>
+    <div class="field-group"><label class="label">Offsets</label><input class="input" id="gOffs" value="0" placeholder="e.g. 12 LT, 0, 12 RT">
+      <div class="hint">Comma-separated. Negative or LT = left, positive or RT = right. Each station gets a point at every offset.</div></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="doGenerate(false)">Add to list</button><button class="btn btn-primary" onclick="doGenerate(true)">Replace list</button></div>`);
+}
+function doGenerate(replace) {
+  const al = aligns.find(a => a.id === $('gAl').value), u = unitsOf(al);
+  const a = parseStaSide($('gFrom').value, u), b = parseStaSide($('gTo').value, u), step = Math.abs(parseFloat($('gInt').value));
+  const offs = $('gOffs').value.split(',').map(parseOffset).filter(isFinite);
+  if (!isFinite(a.v) || !isFinite(b.v) || !(step > 0) || !offs.length) return toast('Check the stations, interval and offsets');
+  const n = Math.floor(Math.abs(b.v - a.v) / step + 1e-9) + 1;
+  if (n * offs.length > 2000) return toast('That would make over 2,000 points — use a larger interval');
+  if (replace && SL().length && !confirm(`Replace the ${SL().length} points already in the list?`)) return;
+  const L = replace ? (PS().stakeList = []) : SL(), start = L.length, dir = b.v >= a.v ? 1 : -1, pre = $('gPre').value.trim();
+  for (let i = 0; i < n; i++) {
+    const sta = a.v + dir * step * i;
+    for (const off of offs) L.push({ id: uid(), name: (pre ? pre + ' ' : '') + fmtSta(sta, u).replace(/\.0$/, '') + (off ? ' ' + (off < 0 ? 'L' : 'R') + Math.abs(off) : ' CL'), alignId: al.id, sta, side: '', off, desc: '', done: false });
+  }
+  PS().stakeActive = ''; saveSettings(); closeSheet(); renderStakeList(); goStake(L[start].id); toast(`Added ${n * offs.length} points`);
+}
+
+// Export with staked results
+function exportStakeCSV() {
+  const L = SL(); if (!L.length) return toast('List is empty');
+  const cell = v => { const s = v == null ? '' : String(v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const head = ['Name', 'Alignment', 'Station', 'Offset', 'Side', 'Description', 'Design N', 'Design E', 'Staked', 'Staked Time', 'Staked N', 'Staked E', 'Miss Dist', 'Miss Sta (+ahead)', 'Miss Off (+right)', 'GPS Acc (m)'];
+  const rows = L.map(p => {
+    const al = aligns.find(a => a.id === p.alignId), u = unitsOf(al);
+    const d = al ? pointAt(al.poly, resolveSta(al, p.sta, p.side).internal, p.off) : null, s = p.staked;
+    return [p.name, al ? al.name : '', fmtSta(p.sta, u) + (p.side ? ' ' + p.side : ''), Math.abs(p.off).toFixed(2), p.off < 0 ? 'LT' : p.off > 0 ? 'RT' : 'CL', p.desc,
+      d ? d.y.toFixed(3) : '', d ? d.x.toFixed(3) : '', p.done ? 'Y' : '', s ? new Date(s.t).toLocaleString('en-US') : '', s ? s.N.toFixed(3) : '', s ? s.E.toFixed(3) : '',
+      s ? s.dist.toFixed(2) : '', s ? (-s.dSta).toFixed(2) : '', s ? (-s.dOff).toFixed(2) : '', s && s.acc != null ? s.acc.toFixed(1) : ''].map(cell).join(',');
+  });
+  const name = `Stakeout_${(projectTitle() || 'list').replace(/[^A-Za-z0-9]+/g, '-')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  const f = new File([[head.join(','), ...rows].join('\r\n')], name, { type: 'text/csv' });
+  if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: name }).catch(() => {});
+  else { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = name; a.click(); }
 }
 function onProjectChange() { fillTargetForm(); }
 

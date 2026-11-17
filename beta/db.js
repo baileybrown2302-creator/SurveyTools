@@ -312,7 +312,7 @@ async function ftGetStationingSettings(projectId) {
   const s = await ftGetSetting('ftStationing', null);
   const ps = s && s.p && s.p[projectId];
   if (!ps) return null;
-  const { lockId, target, ...keep } = ps;
+  const { lockId, target, stakeActive, ...keep } = ps;
   return keep;
 }
 async function ftSaveStationingSettingsIfMissing(projectId, ps) {

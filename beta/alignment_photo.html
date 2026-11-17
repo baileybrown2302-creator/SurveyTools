@@ -137,7 +137,7 @@ function onStationUpdate() {
     const { al, r } = current, u = unitsOf(al);
     $('roAlign').textContent = al.name;
     $('roMode').textContent = PS().lockId ? '🔒 Locked' : 'Auto'; $('roMode').className = 'badge ' + (PS().lockId ? 'lock' : 'auto');
-    $('roSta').textContent = fmtSta(displaySta(al, r.sta), u); $('roOff').textContent = fmtOff(r.off, u);
+    $('roSta').textContent = fmtStaEq(al, r.sta); $('roOff').textContent = fmtOff(r.off, u);
     if (!r.inRange) w = r.sta < al.poly.ss[0] ? 'Before the start of this alignment.' : 'Past the end of this alignment.';
     if (r.dist * UNIT_M[u] > 1500) w = `You're ${(r.dist * UNIT_M[u] / 1609.344).toFixed(1)} mi from this alignment — check projection zone, units and combined factor in Setup.`;
   } else {
@@ -146,7 +146,7 @@ function onStationUpdate() {
   }
   $('roWarn').textContent = w; $('roWarn').classList.toggle('hidden', !w);
   if (camOpen()) {
-    $('hudMain').textContent = current ? `STA ${fmtSta(displaySta(current.al, current.r.sta), unitsOf(current.al))}  ${fmtOff(current.r.off, unitsOf(current.al))}` : (pos ? 'No alignment' : 'Waiting for GPS…');
+    $('hudMain').textContent = current ? `STA ${fmtStaEq(current.al, current.r.sta)}  ${fmtOff(current.r.off, unitsOf(current.al))}` : (pos ? 'No alignment' : 'Waiting for GPS…');
     $('hudSub').textContent = [current && current.al.name + (PS().lockId ? ' 🔒' : ''), headingNow() != null && 'Facing ' + fmtHdg(headingNow()), fix && `GPS ±${Math.round(fix.acc / UNIT_M[PS().units])} ${uLbl()}`].filter(Boolean).join('  ·  ');
   }
   drawPlan($('planCanvas'));
@@ -170,7 +170,7 @@ function resolveAlign(snap, forceId) {
     else pick = cands.reduce((a, b) => ((b.r.inRange ? 0 : 1e6) + b.r.dist < (a.r.inRange ? 0 : 1e6) + a.r.dist ? b : a));
   }
   const u = unitsOf(pick.al), ds = displaySta(pick.al, pick.r.sta);
-  return { N: p.N, E: p.E, alignId: pick.al.id, alignName: pick.al.name, locked: !!id, units: u, sta: ds, staText: fmtSta(ds, u), off: pick.r.off, offText: fmtOff(pick.r.off, u), inRange: pick.r.inRange };
+  return { N: p.N, E: p.E, alignId: pick.al.id, alignName: pick.al.name, locked: !!id, units: u, sta: ds, staText: fmtStaEq(pick.al, pick.r.sta), off: pick.r.off, offText: fmtOff(pick.r.off, u), inRange: pick.r.inRange };
 }
 function requireProject() { if (!G.projId) { toast('Select a project first'); return false; } return true; }
 
