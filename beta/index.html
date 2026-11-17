@@ -56,6 +56,10 @@
         .sections { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
         /* ── Footer / changelog ── */
         .home-footer { width: 100%; max-width: 420px; margin-top: 36px; }
+        .update-row { display:flex; gap:8px; justify-content:center; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
+        .update-btn { background:var(--bg-secondary); border:1.5px solid var(--border-secondary); color:var(--text-secondary); border-radius:9px; padding:7px 12px; font-weight:700; font-size:0.78em; cursor:pointer; font-family:inherit; }
+        .update-ver { font-size:0.7em; color:var(--text-muted); }
+        .update-banner { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#2563eb; color:#fff; border:none; border-radius:12px; padding:12px 18px; font-weight:800; font-size:0.9em; box-shadow:0 6px 20px rgba(0,0,0,0.3); z-index:999; cursor:pointer; font-family:inherit; }
         .footer-meta { font-size: 0.72em; color: var(--text-muted); text-align: center; margin-bottom: 10px; }
         .changelog-toggle {
             display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -202,6 +206,11 @@
         <!-- Footer + changelog -->
         <div class="home-footer">
             <div class="footer-meta">Last updated Nov 16, 2026</div>
+            <div class="update-row">
+                <button class="update-btn" id="updBtn" onclick="checkForUpdates()">⟳ Check for updates</button>
+                <span class="update-ver" id="updVer"></span>
+                <a href="#" class="update-ver" style="color:var(--text-muted);" onclick="event.preventDefault();forceRefresh()">force refresh</a>
+            </div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
             </button>
@@ -425,5 +434,53 @@
             label.textContent = open ? '▾ Hide Changelog' : '▸ View Changelog';
         }
     </script>
+<script>
+// ---- App updates ----
+async function appVersion() {
+    try { const k = (await caches.keys()).filter(n => /^survey-tool-v\d+/.test(n)).sort((a, b) => +b.match(/\d+$/) - +a.match(/\d+$/))[0]; return k ? 'v' + k.match(/\d+$/)[0] : ''; } catch (e) { return ''; }
+}
+async function showVersion() { const v = await appVersion(); document.getElementById('updVer').textContent = v ? 'App ' + v : ''; }
+function updBtn(t, dis) { const b = document.getElementById('updBtn'); b.textContent = t; b.disabled = !!dis; }
+async function checkForUpdates() {
+    if (!('serviceWorker' in navigator)) { location.reload(); return; }
+    updBtn('Checking…', true);
+    try {
+        let reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) reg = await navigator.serviceWorker.register('sw.js');
+        const before = await appVersion();
+        await reg.update();
+        const sw = reg.installing || reg.waiting;
+        if (sw) {
+            updBtn('Downloading update…', true);
+            await new Promise(res => { if (sw.state === 'activated') return res(); sw.addEventListener('statechange', () => { if (sw.state === 'activated' || sw.state === 'redundant') res(); }); setTimeout(res, 20000); });
+            updBtn('Updated — reloading…', true); location.reload(); return;
+        }
+        // No new version on the server: make sure this phone's copy matches it
+        const live = await fetch('sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => (t.match(/survey-tool-v(\d+)/) || [])[1]).catch(() => null);
+        if (live && before && 'v' + live !== before) { await forceRefresh(true); return; }
+        updBtn(live ? '✓ Up to date' : '✓ Up to date (offline?)', false);
+        setTimeout(() => updBtn('⟳ Check for updates'), 3000);
+    } catch (e) { updBtn('⟳ Check for updates'); if (confirm('Could not check for updates (' + e.message + '). Force a full refresh?')) forceRefresh(true); }
+}
+// Last resort: drop the cached app files (your projects and data are NOT touched) and reload
+async function forceRefresh(skipAsk) {
+    if (!skipAsk && !confirm('Reload a fresh copy of the app? Your projects and data stay on this phone.')) return;
+    updBtn('Refreshing…', true);
+    try { for (const k of await caches.keys()) if (/^survey-tool-v/.test(k)) await caches.delete(k); } catch (e) {}
+    try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.unregister(); } catch (e) {}
+    location.reload();
+}
+// Tell the user when a newer version has just been installed in the background
+if ('serviceWorker' in navigator) {
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController) { hadController = true; showVersion(); return; }
+        if (document.getElementById('updBanner')) return;
+        const b = document.createElement('button'); b.id = 'updBanner'; b.className = 'update-banner'; b.textContent = '⟳ Update ready — tap to reload';
+        b.onclick = () => location.reload(); document.body.appendChild(b);
+    });
+}
+showVersion();
+</script>
 </body>
 </html>

@@ -526,3 +526,8 @@ async function ftRequestPersistentStorage() {
 
 // Init: request persistent storage on first load
 ftOpenDB().then(() => ftRequestPersistentStorage()).catch(console.error);
+
+// --- App updates: register the service worker on every page (db.js is loaded everywhere) ---
+if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+  navigator.serviceWorker.register('sw.js').then(r => r.update().catch(() => {})).catch(() => {});
+}
