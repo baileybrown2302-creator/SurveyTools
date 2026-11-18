@@ -80,6 +80,16 @@
 
 <!-- ═════════ NAVIGATE ═════════ -->
 <div id="tab-nav" class="hidden">
+  <div class="tbar hidden" id="tbar">
+    <button class="tbar-step" onclick="stakeStep(-1)" aria-label="Previous point">‹</button>
+    <svg class="tbar-arrow" id="tbarArrow" viewBox="-100 -100 200 200" aria-hidden="true"><path d="M0,-82 L46,30 L0,10 L-46,30 Z" fill="currentColor"/></svg>
+    <div class="tbar-info">
+      <div class="tbar-name" id="tbarName">—</div>
+      <div class="tbar-sub" id="tbarSub">—</div>
+    </div>
+    <div class="tbar-dist" id="tbarDist">—</div>
+    <button class="tbar-step" onclick="stakeStep(1)" aria-label="Next point">›</button>
+  </div>
   <div class="card">
     <div class="card-title">Go to <span id="activeStakeTag" class="badge hidden"></span></div>
     <div class="field-group"><label class="label">Alignment</label><select class="input" id="tAl"></select></div>
@@ -100,7 +110,8 @@
   </div>
 
   <div class="readout" id="navOut">
-    <div class="ro-align"><span class="ro-align-name" id="navTarget">No target</span><span class="badge" id="navRef">—</span></div>
+    <div class="ro-align"><span class="ro-align-name" id="navName" style="font-size:1.25em;">No target</span><span class="badge" id="navRef">—</span></div>
+    <div class="nav-sub" id="navTarget" style="text-align:left;margin:-4px 0 4px;"></div>
     <div class="nav-wrap">
       <svg class="nav-arrow" id="navArrow" viewBox="-100 -100 200 200" aria-hidden="true">
         <circle r="92" fill="none" stroke="currentColor" stroke-width="3" opacity="0.18"/>
@@ -230,6 +241,18 @@ function navHere() {
   PS().stakeActive = ''; saveSettings(); fillTargetForm(); switchTab('nav');
 }
 let arrowRot = 0;
+// Pinned bar at the top of Navigate: selected point, sta/off, live arrow & distance
+function updateTbar(info) {
+  const bar = $('tbar'); if (!bar) return;
+  bar.classList.toggle('hidden', !info);
+  if (!info) return;
+  const nav = document.querySelector('.top-nav'); if (nav) bar.style.top = nav.offsetHeight + 'px';
+  $('tbarName').textContent = info.name; $('tbarSub').textContent = info.sub; $('tbarDist').textContent = info.dist;
+  $('tbarArrow').style.transform = `rotate(${arrowRot}deg)`;
+  const L = SL(), a = activeStake(), i = a ? L.indexOf(a) : -1;
+  bar.querySelectorAll('.tbar-step').forEach(b => b.style.visibility = a ? 'visible' : 'hidden');
+  if (a) $('tbarName').innerHTML = `${esc(info.name)} <span style="font-weight:700;font-size:0.78em;opacity:0.75;">${i + 1}/${L.length}</span>`;
+}
 function setArrow(deg) { const d = ((deg - arrowRot) % 360 + 540) % 360 - 180; arrowRot += d; $('navArrow').style.transform = `rotate(${arrowRot}deg)`; }
 // Live distances to the target — also used when marking a point staked
 function navNumbers() {
@@ -251,11 +274,13 @@ function renderNav() {
   const tag = $('activeStakeTag');
   if (active) { const L = PS().stakeList, i = L.indexOf(active); tag.textContent = `${esc(active.name || 'Point')} · ${i + 1} of ${L.length}`; tag.className = 'badge auto'; $('markBtn').textContent = active.done ? '↺ Redo' : '✓ Mark done'; }
   else tag.className = 'badge hidden';
-  const blank = msg => { $('navTarget').textContent = msg; $('navDist').textContent = '—'; $('navBrg').textContent = ''; $('navAhead').textContent = '—'; $('navSide').textContent = '—'; $('navThere').classList.add('hidden'); $('navRef').textContent = '—'; $('navRef').className = 'badge'; };
+  const blank = msg => { $('navName').textContent = msg; $('navTarget').textContent = ''; updateTbar(null); $('navDist').textContent = '—'; $('navBrg').textContent = ''; $('navAhead').textContent = '—'; $('navSide').textContent = '—'; $('navThere').classList.add('hidden'); $('navRef').textContent = '—'; $('navRef').className = 'badge'; };
   if (!n) { $('tHint').textContent = DEF_HINT; return blank('Enter a station or pick a point from the list'); }
   const { t, al, res, u } = n, ss = al.poly.ss;
   const label = `${fmtSta(t.sta, u)}${sideTxt(t.side)} · ${fmtOff(t.off, u)} · ${al.name}`;
-  $('navTarget').textContent = label;
+  const pName = active ? (active.name || 'Point') : 'Target';
+  $('navName').textContent = pName;
+  $('navTarget').textContent = label + (active && active.desc ? ' — ' + active.desc : '');
   const hint = {
     outside: `⚠ That station is outside ${al.name} (${fmtStaEq(al, ss[0])} → ${fmtStaEq(al, ss[ss.length - 1])}).`,
     gap: `⚠ That station falls inside a station equation gap (${res.eq && fmtSta(res.eq.back, u)} BK = ${res.eq && fmtSta(res.eq.ahead, u)} AH) — it doesn't exist on the ground. Pointing to the equation.`,
@@ -264,7 +289,7 @@ function renderNav() {
     const zb = res.zones.map(z => `<button class="btn btn-sm ${z === res.zone ? 'btn-primary' : 'btn-secondary'}" style="margin:4px 4px 0 0;" onclick="pickZone('${z}')">Zone ${z}</button>`).join('');
     $('tHint').innerHTML = `⚠ ${fmtSta(t.sta, u)} ${res.status === 'badzone' ? `isn't in zone ${res.asked} — it's in` : 'exists more than once (station equations) — in'} zones ${res.zones.join(', ')}. Using zone ${res.zone}:<br>${zb} <a href="#" onclick="event.preventDefault();showZones('${al.id}')">view equations</a>`;
   } else $('tHint').textContent = hint || DEF_HINT;
-  if (!pos) { blank('Waiting for GPS…'); $('navTarget').textContent = label; return; }
+  if (!pos) { blank(pName); $('navTarget').textContent = label + ' · waiting for GPS…'; updateTbar({ name: pName, sub: `${fmtSta(t.sta, u)}${sideTxt(t.side)} · ${fmtOff(t.off, u)}`, dist: '—' }); return; }
   const gridAz = (Math.atan2(n.dE, n.dN) * R2D + 360) % 360, trueAz = (gridAz - gridNorthOffset(fix.lat, fix.lon) + 360) % 360;
   const h = headingNow(), ref = h != null ? h : gpsCourse;
   if (ref != null) { setArrow(trueAz - ref); $('navRef').textContent = h != null ? 'Compass' : 'GPS course'; $('navRef').className = 'badge auto'; }
@@ -277,6 +302,10 @@ function renderNav() {
   $('navSide').textContent = `${Math.abs(n.dOff).toFixed(1)} ${UNIT_LBL[u]}`;
   const tol = Math.max(1 / UNIT_M[u], (fix.acc || 0) * 0.5 / UNIT_M[u]);
   $('navThere').classList.toggle('hidden', n.dist > tol);
+  const distTxt = n.dist <= tol ? '✓ here' : `${n.dist < 1000 ? n.dist.toFixed(0) : Math.round(n.dist).toLocaleString()} ${UNIT_LBL[u]}`;
+  updateTbar({ name: pName, sub: `${fmtSta(t.sta, u)}${sideTxt(t.side)} · ${fmtOff(t.off, u)}`, dist: distTxt });
+  const rowLive = document.getElementById('stakeLive');
+  if (rowLive) rowLive.innerHTML = `<svg viewBox="-100 -100 200 200" style="width:18px;height:18px;vertical-align:-4px;transform:rotate(${arrowRot}deg)"><path d="M0,-82 L46,30 L0,10 L-46,30 Z" fill="currentColor"/></svg> ${distTxt}`;
   $('navThere').textContent = `✅ You're on it (within ±${tol.toFixed(1)} ${UNIT_LBL[u]})`;
 }
 
@@ -298,7 +327,8 @@ function renderStakeList() {
     return `<div class="al-item" style="cursor:pointer;${p.id === PS().stakeActive ? 'background:var(--result-bg);border-radius:8px;padding-left:6px;' : ''}" onclick="goStake('${p.id}')">
       <span class="ph-check" style="${p.done ? 'background:#16a34a;border-color:#16a34a;' : ''}" onclick="event.stopPropagation();toggleDone('${p.id}')">${p.done ? '✓' : ''}</span>
       <div class="al-info"><div class="al-name">${esc(p.name || '—')} <span style="font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums;">· ${fmtSta(p.sta, u)}${sideTxt(p.side)} · ${fmtOff(p.off, u)}</span></div>
-      <div class="al-meta">${esc([al ? al.name : '⚠ alignment missing', p.desc].filter(Boolean).join(' · '))} ${st}</div></div>
+      <div class="al-meta">${esc([al ? al.name : '⚠ alignment missing', p.desc].filter(Boolean).join(' · '))} ${st}</div>
+      ${p.id === PS().stakeActive ? '<div id="stakeLive" style="font-weight:800;color:var(--result-text);font-variant-numeric:tabular-nums;margin-top:2px;"></div>' : ''}</div>
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')">✕</button></div>`;
   }).join('');
 }
@@ -307,7 +337,6 @@ function goStake(id) {
   if (!aligns.find(a => a.id === p.alignId)) return toast('That alignment is not loaded for this project');
   PS().target = { alignId: p.alignId, sta: p.sta, side: p.side || '', off: p.off }; PS().stakeActive = id;
   saveSettings(); fillTargetForm(); PS().stakeActive = id; saveSettings(); renderStakeList(); notify();
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function stakeStep(d) {
   const L = SL(), i = L.indexOf(activeStake()); if (i < 0) return;
