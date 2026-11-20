@@ -12,6 +12,8 @@
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
     <script src="db.js"></script>
+    <script src="lib/alignments.js"></script>
+    <script src="lib/stationfield.js"></script>
     <title>Soil Compaction (T103G) — Field Tools</title>
     <style>
         :root {
@@ -397,7 +399,7 @@
                 <div class="field-row">
                     <div class="field-group" style="margin-bottom:0;">
                         <label class="label">Station</label>
-                        <input class="input input-sm" id="f_station" type="text" placeholder="e.g. STA 10+50" autocomplete="off">
+                        <input class="input input-sm" id="f_station" type="text" placeholder="e.g. 10+50" autocomplete="off">
                     </div>
                     <div class="field-group" style="margin-bottom:0;">
                         <label class="label">Dist to Centerline</label>
@@ -1584,5 +1586,10 @@ ${[0,1,2,3].map(i => `<tr><td class="pf-row-label">Dry Density #${i+1} Mg/m³ (l
 
     init();
     </script>
+<script>
+// Station field: tidy/check on leaving it; 📍 fills Station + Dist to Centerline from GPS using the project's alignments
+FTSta.watch('#f_station');
+FTSta.gpsButton(document.getElementById('f_station'), { getProjectId: () => currentRecord && currentRecord.projectId, offsetInput: document.getElementById('f_distToCL'), decimals: 0 });
+</script>
 </body>
 </html>

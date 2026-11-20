@@ -210,6 +210,191 @@ function convertAlign(rec, toUnits) {
   if (from === toUnits) return { ...rec, units: toUnits };
   return { ...scaleAlign(rec, UNIT_M[from] / UNIT_M[toUnits]), units: toUnits, srcUnits: rec.srcUnits || from };
 }
+
+// ── geometry & projection (shared with Station / Offset, Station Photos, test forms) ──
+const R2D = 180 / Math.PI;
+const ELL = { a: 6378137, f: 1 / 298.257222101 };
+ELL.e2 = ELL.f * (2 - ELL.f); ELL.e = Math.sqrt(ELL.e2); ELL.ep2 = ELL.e2 / (1 - ELL.e2);
+const ZONES = {
+  NV_E: { lat0: 34.75, lon0: -115.5833333333, k0: 0.9999, fe: 200000, fn: 8000000 },
+  NV_C: { lat0: 34.75, lon0: -116.6666666667, k0: 0.9999, fe: 500000, fn: 6000000 },
+  NV_W: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, fe: 800000, fn: 4000000 },
+  NV_W94: { lat0: 34.75, lon0: -118.5833333333, k0: 0.9999, fe: 800000, fn: 4000000 }, // NAD83/94 (HARN) — same projection, HARN datum adjustment
+};
+function meridionalArc(phi) {
+  const e2 = ELL.e2, e4 = e2 * e2, e6 = e4 * e2;
+  return ELL.a * ((1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256) * phi - (3 * e2 / 8 + 3 * e4 / 32 + 45 * e6 / 1024) * Math.sin(2 * phi)
+    + (15 * e4 / 256 + 45 * e6 / 1024) * Math.sin(4 * phi) - (35 * e6 / 3072) * Math.sin(6 * phi));
+}
+function tmForward(latDeg, lonDeg, p) {
+  const phi = latDeg * D2R, lam = lonDeg * D2R, lam0 = p.lon0 * D2R;
+  const sin = Math.sin(phi), cos = Math.cos(phi), tan = Math.tan(phi);
+  const N = ELL.a / Math.sqrt(1 - ELL.e2 * sin * sin);
+  const T = tan * tan, C = ELL.ep2 * cos * cos, A = (lam - lam0) * cos;
+  const M = meridionalArc(phi), M0 = meridionalArc(p.lat0 * D2R);
+  const x = p.k0 * N * (A + (1 - T + C) * A ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ELL.ep2) * A ** 5 / 120);
+  const y = p.k0 * (M - M0 + N * tan * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A ** 4 / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ELL.ep2) * A ** 6 / 720));
+  return { E: x + p.fe, N: y + p.fn };
+}
+function lccForward(latDeg, lonDeg, p) {
+  const e = ELL.e;
+  const m = f => Math.cos(f) / Math.sqrt(1 - ELL.e2 * Math.sin(f) ** 2);
+  const t = f => Math.tan(Math.PI / 4 - f / 2) / Math.pow((1 - e * Math.sin(f)) / (1 + e * Math.sin(f)), e / 2);
+  const p1 = p.lat1 * D2R, p2 = p.lat2 * D2R, p0 = p.lat0 * D2R;
+  const n = Math.abs(p1 - p2) < 1e-10 ? Math.sin(p1) : (Math.log(m(p1)) - Math.log(m(p2))) / (Math.log(t(p1)) - Math.log(t(p2)));
+  const F = m(p1) / (n * Math.pow(t(p1), n));
+  const rho = ELL.a * F * Math.pow(t(latDeg * D2R), n), rho0 = ELL.a * F * Math.pow(t(p0), n);
+  const th = n * (lonDeg - p.lon0) * D2R;
+  return { E: p.fe + rho * Math.sin(th), N: p.fn + rho0 - rho * Math.cos(th) };
+}
+function tmInverse(E, N, p) {
+  const x = E - p.fe, y = N - p.fn, e2 = ELL.e2, ep2 = ELL.ep2, a = ELL.a;
+  const M = meridionalArc(p.lat0 * D2R) + y / p.k0;
+  const mu = M / (a * (1 - e2 / 4 - 3 * e2 * e2 / 64 - 5 * e2 ** 3 / 256));
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const phi1 = mu + (3 * e1 / 2 - 27 * e1 ** 3 / 32) * Math.sin(2 * mu) + (21 * e1 * e1 / 16 - 55 * e1 ** 4 / 32) * Math.sin(4 * mu)
+    + (151 * e1 ** 3 / 96) * Math.sin(6 * mu) + (1097 * e1 ** 4 / 512) * Math.sin(8 * mu);
+  const s1 = Math.sin(phi1), c1 = Math.cos(phi1), t1 = Math.tan(phi1);
+  const C1 = ep2 * c1 * c1, T1 = t1 * t1, N1 = a / Math.sqrt(1 - e2 * s1 * s1), R1 = a * (1 - e2) / Math.pow(1 - e2 * s1 * s1, 1.5), D = x / (N1 * p.k0);
+  const lat = phi1 - (N1 * t1 / R1) * (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * ep2) * D ** 4 / 24 + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * ep2 - 3 * C1 * C1) * D ** 6 / 720);
+  const lon = p.lon0 * D2R + (D - (1 + 2 * T1 + C1) * D ** 3 / 6 + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * ep2 + 24 * T1 * T1) * D ** 5 / 120) / c1;
+  return { lat: lat * R2D, lon: lon * R2D };
+}
+function lccInverse(E, N, p) {
+  const e = ELL.e, a = ELL.a;
+  const m = f => Math.cos(f) / Math.sqrt(1 - ELL.e2 * Math.sin(f) ** 2);
+  const t = f => Math.tan(Math.PI / 4 - f / 2) / Math.pow((1 - e * Math.sin(f)) / (1 + e * Math.sin(f)), e / 2);
+  const p1 = p.lat1 * D2R, p2 = p.lat2 * D2R, p0 = p.lat0 * D2R;
+  const n = Math.abs(p1 - p2) < 1e-10 ? Math.sin(p1) : (Math.log(m(p1)) - Math.log(m(p2))) / (Math.log(t(p1)) - Math.log(t(p2)));
+  const F = m(p1) / (n * Math.pow(t(p1), n)), rho0 = a * F * Math.pow(t(p0), n);
+  const x = E - p.fe, y = rho0 - (N - p.fn), rho = Math.sign(n) * Math.hypot(x, y), th = Math.atan2(Math.sign(n) * x, Math.sign(n) * y);
+  const tt = Math.pow(rho / (a * F), 1 / n);
+  let phi = Math.PI / 2 - 2 * Math.atan(tt);
+  for (let i = 0; i < 10; i++) phi = Math.PI / 2 - 2 * Math.atan(tt * Math.pow((1 - e * Math.sin(phi)) / (1 + e * Math.sin(phi)), e / 2));
+  return { lat: phi * R2D, lon: (th / n) * R2D + p.lon0 };
+}
+function staRegions(al) {
+  const eqs = al.eqs || [];
+  const R = [{ from: -Infinity, to: eqs.length ? eqs[0].internal : Infinity, toInt: d => d, toDisp: i => i }];
+  eqs.forEach((q, k) => R.push({ from: q.internal, to: k + 1 < eqs.length ? eqs[k + 1].internal : Infinity, toInt: d => q.internal + (d - q.ahead), toDisp: i => q.ahead + (i - q.internal) }));
+  return R;
+}
+// Zones (Trimble Access style): zone 1 runs to the first equation, zone 2 to the next, …
+// A station that repeats (overlapping equations) is written 119+00:3. "BK"/"AH" also accepted
+// as input = first / last occurrence.  side: '' | 'BK' | 'AH' | '3'
+// status: ok | ambiguous | gap | outside | badzone
+function resolveSta(al, display, side) {
+  const R = staRegions(al), ss = al.poly.ss, lo = ss[0] - 1e-6, hi = ss[ss.length - 1] + 1e-6;
+  const cands = [];
+  R.forEach((r, k) => { const i = r.toInt(display); if (i >= r.from - 1e-6 && i <= r.to + 1e-6 && i >= lo && i <= hi) cands.push({ i, zone: k + 1 }); });
+  const zones = cands.map(c => c.zone);
+  if (side && /^\d+$/.test(side)) {
+    const z = cands.find(c => c.zone === +side);
+    if (z) return { internal: z.i, status: 'ok', zones, zone: z.zone };
+    if (cands.length) return { internal: cands[0].i, status: 'badzone', zones, zone: cands[0].zone, asked: +side };
+  } else if (cands.length) {
+    if (cands.length > 1) {
+      const pick = side === 'AH' ? cands[cands.length - 1] : cands[0];
+      return { internal: pick.i, status: side ? 'ok' : 'ambiguous', zones, zone: pick.zone };
+    }
+    return { internal: cands[0].i, status: 'ok', zones, zone: cands[0].zone };
+  }
+  for (const q of al.eqs || []) { const bk = isFinite(q.back) ? q.back : q.internal;
+    if (q.ahead > bk && display > bk && display < q.ahead && q.internal >= lo && q.internal <= hi) return { internal: q.internal, status: 'gap', eq: q, zones: [] }; }
+  const first = R[0], last = R[R.length - 1], iLast = last.toInt(display);
+  return { internal: iLast > hi ? iLast : first.toInt(display), status: 'outside', zones: [] };
+}
+function internalSta(al, display, side) { return resolveSta(al, display, side).internal; }
+function zoneOf(al, internal) { const R = staRegions(al); for (let k = R.length - 1; k >= 0; k--) if (internal >= R[k].from - 1e-6) return k + 1; return 1; }
+// Zone tag only where the displayed station also exists elsewhere.
+function staSide(al, internal) {
+  if (!(al.eqs || []).length) return '';
+  const r = resolveSta(al, displaySta(al, internal));
+  return r.zones.length > 1 ? String(zoneOf(al, internal)) : '';
+}
+function fmtOff(off, units) {
+  if (off == null || !isFinite(off)) return '—';
+  const u = units === 'm' ? ' m' : "'";
+  if (Math.abs(off) < 0.05) return '0.0' + u + ' CL';
+  return Math.abs(off).toFixed(1) + u + (off > 0 ? ' RT' : ' LT');
+}
+// Parse "145+32.1", "14532.1", "119+00:3", "119+00 zone 3", "119+00 Z3", "145+32 AH" → { v, side }
+function parseStaSide(t, units) {
+  t = String(t ?? '').trim().replace(/^sta\.?\s*/i, '');
+  let side = '', m2 = t.match(/\s*(?::|\(?\s*(?:zone|z)\s*)(\d+)\)?$/i);
+  if (m2) { side = String(+m2[1]); t = t.slice(0, m2.index).trim(); }
+  else if ((m2 = t.match(/\s*(ahead|back|ah|bk)\.?$/i))) { side = /^a/i.test(m2[1]) ? 'AH' : 'BK'; t = t.slice(0, m2.index).trim(); }
+  if (!t) return { v: NaN, side };
+  const neg = t.startsWith('-'); if (neg) t = t.slice(1);
+  const m = t.match(/^(\d+)\+(\d+(?:\.\d*)?)$/);
+  const v = m ? +m[1] * (units === 'm' ? 1000 : 100) + +m[2] : (/^\d*\.?\d+$/.test(t) ? parseFloat(t) : NaN);
+  return { v: neg ? -v : v, side };
+}
+function parseSta(t, units) { return parseStaSide(t, units).v; }
+// Point onto polyline → {sta internal, off (+right), dist, inRange}
+function stationOffset(poly, px, py) {
+  const { xs, ys, ss } = poly, n = xs.length;
+  let best = null, bestD2 = Infinity;
+  for (let i = 0; i < n - 1; i++) {
+    const ax = xs[i], ay = ys[i], dx = xs[i + 1] - ax, dy = ys[i + 1] - ay, L2 = dx * dx + dy * dy;
+    if (L2 === 0) continue;
+    const t = ((px - ax) * dx + (py - ay) * dy) / L2, tc = t < 0 ? 0 : t > 1 ? 1 : t;
+    const d2 = (px - ax - tc * dx) ** 2 + (py - ay - tc * dy) ** 2;
+    if (d2 < bestD2 - 1e-9) { bestD2 = d2; best = { i, t, tc }; }
+  }
+  if (!best) return null;
+  const { i } = best, ax = xs[i], ay = ys[i], dx = xs[i + 1] - ax, dy = ys[i + 1] - ay, L = Math.hypot(dx, dy);
+  let t = best.tc, inRange = true;
+  if (i === 0 && best.t < 0) { t = best.t; inRange = false; }
+  if (i === n - 2 && best.t > 1) { t = best.t; inRange = false; }
+  return { sta: ss[i] + t * (ss[i + 1] - ss[i]), off: -(dx * (py - ay) - dy * (px - ax)) / L, dist: Math.sqrt(bestD2), inRange };
+}
+// Point at internal station + offset (+right)
+function pointAt(poly, sta, off) {
+  const { xs, ys, ss } = poly, n = xs.length;
+  let i;
+  if (sta <= ss[0]) i = 0; else if (sta >= ss[n - 1]) i = n - 2;
+  else { let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (ss[m] <= sta) lo = m; else hi = m; } i = lo; }
+  const dx = xs[i + 1] - xs[i], dy = ys[i + 1] - ys[i], L = Math.hypot(dx, dy), ds = ss[i + 1] - ss[i];
+  const t = ds ? (sta - ss[i]) / ds : 0;
+  return { x: xs[i] + t * dx + off * dy / L, y: ys[i] + t * dy - off * dx / L };
+}
+
+// lat/lon → project N/E for a project's settings ps (grid → ground → check-in shift), in project units
+function projectWith(ps, lat, lon) {
+  const g = (ps.zone === 'TM') ? tmForward(lat, lon, ps.custom) : (ps.zone === 'LCC') ? lccForward(lat, lon, ps.custom) : tmForward(lat, lon, ZONES[ps.zone] || ZONES.NV_W);
+  const u = UNIT_M[ps.units || 'usft'], cf = +ps.cf || 1, bN = +ps.baseN || 0, bE = +ps.baseE || 0;
+  let N = g.N / u, E = g.E / u;
+  N = bN + (N - bN) / cf; E = bE + (E - bE) / cf;
+  return { N: N + (+ps.shiftN || 0), E: E + (+ps.shiftE || 0) };
+}
+// Where am I? Nearest (or locked) alignment of a project for a lat/lon → station/offset text, or null
+const _polyCache = new Map();
+async function locate(projId, lat, lon) {
+  if (!projId || typeof ftGetSetting !== 'function') return null;
+  const s = await ftGetSetting('ftStationing', null);
+  const ps = Object.assign({ zone: 'NV_W', units: 'usft', cf: 1, baseN: 0, baseE: 0, shiftN: 0, shiftE: 0, lockId: '' }, (s && s.p && s.p[projId]) || {});
+  const list = (await getForProject(projId)).filter(a => a.visible !== false);
+  if (!list.length) return null;
+  const p = projectWith(ps, lat, lon), u = ps.units;
+  let best = null;
+  for (const a0 of list) {
+    const a = convertAlign(fixUnitLabel(a0, ps.zone), u);
+    const key = a.id + ':' + a.imported + ':' + u;
+    if (!_polyCache.has(key)) _polyCache.set(key, buildPolyline(a, u));
+    a.poly = _polyCache.get(key);
+    const r = stationOffset(a.poly, p.E, p.N); if (!r) continue;
+    const score = (ps.lockId === a.id ? -1e9 : 0) + (r.inRange ? 0 : 1e6) + r.dist;
+    if (!best || score < best.score) best = { a, r, score };
+  }
+  if (!best) return null;
+  const { a, r } = best, disp = displaySta(a, r.sta);
+  let zone = '';
+  if ((a.eqs || []).length && resolveSta(a, disp).zones.length > 1) zone = String(zoneOf(a, r.sta));
+  return { alignName: a.name, units: u, sta: disp, zone, staText: fmtSta(disp, u) + (zone ? ':' + zone : ''), off: r.off, offText: fmtOff(r.off, u),
+    inRange: r.inRange, dist: r.dist, N: p.N, E: p.E };
+}
+
 async function getForProject(projId) { return (await apGetAll('alignments')).filter(a => a.projId === projId); }
 // Import LandXML files into a project. Returns { added, errors[] }.
 // opts.updateSettings: when the project has no alignments yet, set its units/zone in the shared stationing settings.
@@ -276,5 +461,5 @@ async function deleteProjectData(projId) {
     await apDel('photos', p.id); await apDel('blobs', p.id + ':orig'); await apDel('blobs', p.id + ':stamp');
   }
 }
-window.FTAlign = { UNIT_M, UNIT_NAME, scaleAlign, convertAlign, guessUnits, fixUnitLabel, setProjectUnits, apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta, getForProject, importFiles, summarize, deleteProjectData };
+window.FTAlign = { ELL, ZONES, fmtOff, internalSta, lccForward, lccInverse, meridionalArc, parseSta, parseStaSide, pointAt, resolveSta, staRegions, staSide, stationOffset, tmForward, tmInverse, zoneOf, projectWith, locate, UNIT_M, UNIT_NAME, scaleAlign, convertAlign, guessUnits, fixUnitLabel, setProjectUnits, apDB, apGetAll, apGet, apPut, apDel, parseLandXML, buildPolyline, displaySta, fmtSta, getForProject, importFiles, summarize, deleteProjectData };
 })();

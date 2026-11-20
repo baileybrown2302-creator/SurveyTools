@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v43';
+const CACHE_NAME = 'survey-tool-v44';
 const ASSETS = [
   './',
   './index.html',
@@ -22,6 +22,7 @@ const ASSETS = [
   './stationing.html',
   './alignment_photo.html',
   './lib/alignments.js',
+  './lib/stationfield.js',
   './lib/stationmap.js',
   './lib/leaflet/leaflet.js',
   './lib/leaflet/leaflet.css',

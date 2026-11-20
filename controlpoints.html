@@ -204,7 +204,7 @@
   <div class="content">
     <div class="section-header">
       <span class="section-title">Projects</span>
-      <button class="btn btn-primary btn-small" onclick="openNewProjectModal()">+ New Project</button>
+      <a class="btn btn-secondary btn-small" href="project_manager.html" style="text-decoration:none;">📁 Manage projects</a>
     </div>
     <div id="projectList"></div>
   </div>
@@ -672,7 +672,7 @@ function renderProjectList() {
       <div class="record-meta" id="projMeta_${escHtml(p.id)}">Loading…</div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
         <span></span>
-        <button class="btn btn-secondary btn-small" onclick="event.stopPropagation();openEditProjectModal('${escHtml(p.id)}')">Edit</button>
+
       </div>
     </div>`).join('');
   // Load counts async

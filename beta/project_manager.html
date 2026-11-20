@@ -948,9 +948,12 @@ async function confirmDelete(projectId) {
     const loopCount = levelLoops.length;
     const sessCount = stakeSessions.length;
     const matCount = materialsData && materialsData.materials ? materialsData.materials.length : 0;
+    const cpCount = (await ftGetControlPointsByProject(projectId)).length;
+    const testCount = (await ftGetCompactionTestsByProject(projectId)).length + (await ftGetSoilTestsByProject(projectId)).length;
+    const alCount = (await FTAlign.getForProject(projectId)).length;
 
-    const dataWarning = (loopCount + matCount + sessCount) > 0
-        ? `This will also remove ${[loopCount?loopCount+' level loop(s)':'', matCount?matCount+' material(s)':'', sessCount?sessCount+' session(s)':''].filter(Boolean).join(', ')}.`
+    const dataWarning = (loopCount + matCount + sessCount + cpCount + testCount + alCount) > 0
+        ? `This will also remove ${[loopCount?loopCount+' level loop(s)':'', matCount?matCount+' material(s)':'', sessCount?sessCount+' session(s)':'', cpCount?cpCount+' control point(s)':'', testCount?testCount+' compaction test(s)':'', alCount?alCount+' alignment(s) and station photos':''].filter(Boolean).join(', ')}.`
         : 'No associated data found.';
 
     showConfirm(
@@ -967,6 +970,9 @@ async function deleteProject(id) {
     await ftDeleteLoopsForProject(id);
     await ftDeleteStakeSessionsForProject(id);
     await ftDeleteMaterials(id);
+    await ftDeleteControlPointsForProject(id);
+    for (const t of await ftGetCompactionTestsByProject(id)) await ftDeleteCompactionTest(t.id);
+    for (const t of await ftGetSoilTestsByProject(id)) await ftDeleteSoilTest(t.id);
     if (currentDetailProjectId === id) closeDetailView();
     await renderProjectList();
     showToast('Project deleted.');

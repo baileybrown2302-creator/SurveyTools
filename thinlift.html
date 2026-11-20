@@ -12,6 +12,8 @@
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
     <script src="db.js"></script>
+    <script src="lib/alignments.js"></script>
+    <script src="lib/stationfield.js"></script>
     <title>Thinlift Compaction (T335) — Field Tools</title>
     <style>
         :root{
@@ -629,20 +631,14 @@ function fmtN(n, d=1) { return n == null ? '—' : parseFloat(n).toFixed(d); }
 
 // Parse station string "X+XX.X" or plain number → decimal feet
 function parseSta(str) {
-    if (!str || String(str).trim() === '') return null;
-    str = String(str).trim();
-    const m = str.match(/^(\d+)\+(\d+(?:\.\d+)?)$/);
-    if (m) return parseFloat(m[1]) * 100 + parseFloat(m[2]);
-    const v = parseFloat(str);
-    return isNaN(v) ? null : v;
+    // shared reader: accepts 1+00, 100, STA 1+00, 10+5 (= 10+05); unreadable → null
+    const p = FTSta.parse(str);
+    return p && isFinite(p.v) ? p.v : null;
 }
 // Format decimal feet → "X+XX.X" notation
 function fmtSta(ft, decimals=0) {
     if (ft == null) return '—';
-    const h = Math.floor(ft / 100);
-    const r = ft - h * 100;
-    const rStr = decimals > 0 ? r.toFixed(decimals) : Math.round(r).toString().padStart(2,'0');
-    return `${h}+${rStr}`;
+    return FTSta.fmt(ft, decimals);   // carries correctly: 199.6 → 2+00, not 1+100
 }
 // Format mile marker
 function fmtMM(ft) {
@@ -1902,6 +1898,12 @@ function fallbackDownload(text, filename) {
         showEditor();
     }
 })();
+</script>
+<script>
+// Station fields: tidy/check on leaving the field; 📍 fills Begin/End from GPS using the project's alignments
+FTSta.watch('#f_beginStation, #f_endStation, #f_eqBeginStation, #f_eqEndStation, #f_eqBack, #f_eqAhead, [id^="tc_sta_"]',
+    el => el.id.startsWith('tc_sta_') && currentRecord && currentRecord.stationType === 'milemarker');
+['f_beginStation', 'f_endStation'].forEach(id => FTSta.gpsButton(document.getElementById(id), { getProjectId: () => currentRecord && currentRecord.projectId, decimals: 0 }));
 </script>
 </body>
 </html>

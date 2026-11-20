@@ -173,6 +173,7 @@
         <div class="section-header">
             <span class="section-title">Projects</span>
             <div style="display:flex;gap:6px;">
+                <a class="btn btn-secondary btn-small" href="project_manager.html" style="text-decoration:none;">📁 Manage</a>
                 <button class="btn btn-secondary btn-small" onclick="document.getElementById('multiFileInput').click()">&#8595; Import</button>
             </div>
         </div>
@@ -186,7 +187,7 @@
         <div id="emptyState" class="empty-state">
             <div class="empty-icon">🔭</div>
             <div class="empty-title">No projects yet</div>
-            <div class="empty-sub">Use "Start New Loop" above to begin, or create projects in the Project Manager and they'll appear here automatically.</div>
+            <div class="empty-sub">Create projects in Project Manager — they appear here automatically. Or use "Start New Loop" for a loop without a project.</div>
         </div>
     </div>
 
@@ -296,6 +297,7 @@
         applyTheme();
         try { await loadProjects(); } catch(e) { console.error('[init] loadProjects', e); }
         try { await syncFromRegistry(); } catch(e) { console.error('[init] syncFromRegistry', e); }
+        try { await loadProjects(); } catch(e) {}   // pick up Project Manager titles for newly synced projects
         try { await migrateLegacyData(); } catch(e) { console.error('[init] migrateLegacyData', e); }
         try { await renderAll(); } catch(e) { console.error('[init] renderAll', e); }
     }
@@ -317,7 +319,7 @@
             const reg = await ftGetAllProjects();
             for (const p of projects) {
                 const r = reg.find(r => r.id === p.id);
-                if (r) { p.contractNumber = r.contractNumber || ''; p.projectId = r.projectId || ''; }
+                if (r) { p.contractNumber = r.contractNumber || ''; p.projectId = r.projectId || ''; p.title = ftProjectTitle(r); p.archived = !!r.archived; }
             }
         } catch(e) {}
     }
@@ -335,6 +337,7 @@
             let changed = false;
             for (const p of projects) {
                 const existing = reg.find(r => r.id === p.id);
+                if (p.id === UNASSIGNED_ID) continue;
                 if (!existing) {
                     await ftSaveProject({
                         id: p.id,
@@ -347,10 +350,6 @@
                         archived: p.archived || false,
                         created: new Date(p.created || Date.now()).toISOString()
                     });
-                    changed = true;
-                } else if (existing.projectNumber !== p.number) {
-                    existing.projectNumber = p.number;
-                    await ftSaveProject(existing);
                     changed = true;
                 }
             }
@@ -791,13 +790,12 @@
             <div class="project-header">
                 <div class="project-header-left">
                     <div class="project-number">
-                        ${escHtml(p.contractNumber || p.projectId || p.number || p.id)}
+                        ${escHtml(p.title || p.contractNumber || p.projectId || p.number || p.id)}
                         <span class="status-badge ${p.archived?'badge-archived':'badge-active'}">${p.archived?'Archived':'Active'}</span>
                     </div>
                     ${p.desc?`<div class="project-desc">${escHtml(p.desc)}</div>`:''}
                 </div>
                 <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:10px;">
-                    <button class="btn btn-secondary btn-small" data-action="edit-project" data-pid="${p.id}">Edit</button>
                     <span style="font-size:1.2em;color:var(--text-muted);display:inline-block;transform:rotate(${isExpanded?'90':'0'}deg);transition:transform 0.2s;">›</span>
                 </div>
             </div>
@@ -820,8 +818,6 @@
                 </div>
                 <div style="height:4px;"></div>
                 <div style="padding:0 12px 12px;display:flex;gap:8px;flex-wrap:wrap;">
-                    <button class="btn btn-secondary btn-small" data-action="archive-project" data-pid="${p.id}">${p.archived?'↩ Unarchive':'📦 Archive'}</button>
-                    <button class="btn btn-danger btn-small"    data-action="delete-project"  data-pid="${p.id}">Delete Project</button>
                     <button class="btn btn-secondary btn-small" onclick="event.stopPropagation();exportProjectData('${p.id}')">⬇ Export All</button>
                 </div>
             </div>
@@ -916,7 +912,7 @@
         const sel = document.getElementById('lmProject');
         sel.innerHTML = '<option value="">— No project —</option>' +
             projects.filter(p => !p.archived && p.id !== UNASSIGNED_ID)
-                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.contractNumber || p.projectId || p.number || p.id)}</option>`)
+                .map(p => `<option value="${escHtml(p.id)}">${escHtml(p.title || p.contractNumber || p.projectId || p.number || p.id)}</option>`)
                 .join('');
         sel.value = preSelectedPid || '';
         const p = preSelectedPid ? projects.find(x => x.id === preSelectedPid) : null;
