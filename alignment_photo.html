@@ -96,6 +96,12 @@
 <div id="tab-setup" class="hidden">
   <div id="setupPanel"></div>
   <div class="card">
+    <div class="card-title">Photo File Name</div>
+    <div class="hint" style="margin-bottom:6px;">Tick what goes into each photo's file name, in this order. The stamp on the photo itself isn't affected.</div>
+    <div id="nameParts"></div>
+    <div class="hint" id="nameExample" style="word-break:break-all;font-weight:700;"></div>
+  </div>
+  <div class="card">
     <div class="card-title">Photo Stamp</div>
     <div class="switch-row"><span>Show project name</span><input type="checkbox" id="stampProj"></div>
     <div class="switch-row"><span>Show N / E</span><input type="checkbox" id="stampNE"></div>
@@ -310,13 +316,42 @@ function canvasToJpegWithExif(canvas, rec) {
 }
 function thumbOf(canvas) { const w = 320, h = Math.round(canvas.height * w / canvas.width); const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(canvas, 0, 0, w, h); return c.toDataURL('image/jpeg', 0.7); }
 const safeName = s => ascii(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 80);
+// File name built from the parts ticked in Setup → Photo File Name (in this order)
+const NAME_PARTS = [
+  { k: 'name', label: 'Photo name (when entered)', on: true },
+  { k: 'proj', label: 'Project', on: false },
+  { k: 'align', label: 'Alignment', on: false },
+  { k: 'sta', label: 'Station', on: true },
+  { k: 'off', label: 'Offset', on: true },
+  { k: 'date', label: 'Date', on: true },
+  { k: 'time', label: 'Time', on: true },
+  { k: 'desc', label: 'Description', on: true },
+];
+const namePartOn = k => { const v = (G.nameParts || {})[k]; return v === undefined ? NAME_PARTS.find(x => x.k === k).on : !!v; };
+const slug = (s, n) => ascii(s).replace(/[^A-Za-z0-9+]+/g, '-').replace(/^-|-$/g, '').slice(0, n);
 function fileNameFor(rec) {
-  if (rec.name && safeName(rec.name)) return safeName(rec.name).replace(/\.jpe?g$/i, '') + '.jpg';
-  const d = new Date(rec.takenAt), p = n => String(n).padStart(2, '0');
-  const ts = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-  const st = rec.staText ? `STA${rec.staText.replace(/\.\d+$/, '')}_${Math.abs(rec.off).toFixed(0)}${rec.off >= 0 ? 'RT' : 'LT'}_` : '';
-  const desc = ascii(rec.desc).replace(/[^A-Za-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
-  return `${st}${ts}${desc ? '_' + desc : ''}.jpg`;
+  const d = new Date(rec.takenAt), p = n => String(n).padStart(2, '0'), parts = [];
+  if (namePartOn('name') && rec.name && safeName(rec.name)) parts.push(safeName(rec.name).replace(/\.jpe?g$/i, ''));
+  if (namePartOn('proj') && rec.project) parts.push(slug(rec.project, 40));
+  if (namePartOn('align') && rec.alignName) parts.push(slug(rec.alignName, 30));
+  if (namePartOn('sta') && rec.staText) parts.push('STA' + rec.staText.replace(/\.\d+$/, '').replace(':', 'z'));
+  if (namePartOn('off') && rec.off != null && rec.staText) parts.push(Math.abs(rec.off) < 0.5 ? 'CL' : Math.abs(rec.off).toFixed(0) + (rec.off >= 0 ? 'RT' : 'LT'));
+  if (namePartOn('date')) parts.push(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`);
+  if (namePartOn('time')) parts.push(`${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`);
+  if (namePartOn('desc') && rec.desc) { const ds = slug(rec.desc, 30); if (ds) parts.push(ds); }
+  // never end up with an empty name
+  if (!parts.length) parts.push(`${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`);
+  return parts.join('_') + '.jpg';
+}
+function renderNameParts() {
+  const el = $('nameParts'); if (!el) return;
+  el.innerHTML = NAME_PARTS.map(x => `<div class="switch-row"><span>${x.label}</span><input type="checkbox" data-np="${x.k}" ${namePartOn(x.k) ? 'checked' : ''}></div>`).join('');
+  el.querySelectorAll('[data-np]').forEach(cb => cb.addEventListener('change', () => { G.nameParts = G.nameParts || {}; G.nameParts[cb.dataset.np] = cb.checked; saveSettings(); nameExample(); }));
+  nameExample();
+}
+function nameExample() {
+  const ex = { name: 'GR-12 end damage', project: projectTitle() || 'Contract 3812', alignName: (aligns[0] && aligns[0].name) || 'US 50 CL', staText: '145+32.0', off: -12.4, desc: 'Guardrail end', takenAt: Date.now() };
+  $('nameExample').textContent = 'Example: ' + fileNameFor(ex);
 }
 
 // ───────── review sheet ─────────
@@ -343,8 +378,8 @@ async function openReview(src, snap, edit, opts = {}) {
       <textarea class="input" id="revDesc" rows="2" placeholder="e.g., Culvert outlet erosion, Lt side ditch">${esc(desc)}</textarea>
       ${!edit && lastDesc ? `<button class="btn btn-secondary btn-sm" style="margin-top:6px;" onclick="$('revDesc').value=lastDesc;restamp()">↺ Use last: ${esc(lastDesc.slice(0, 30))}${lastDesc.length > 30 ? '…' : ''}</button>` : ''}
     </div>
-    <div class="field-group"><label class="label">Photo name <span style="font-weight:500;color:var(--text-muted)">— optional, used as the file name</span></label>
-      <input class="input" id="revName" placeholder="Auto: station, offset &amp; time" value="${esc(name)}" autocapitalize="words">
+    <div class="field-group"><label class="label">Photo name <span style="font-weight:500;color:var(--text-muted)">— optional, goes in the file name</span></label>
+      <input class="input" id="revName" placeholder="optional" value="${esc(name)}" autocapitalize="words">
       <div class="hint" id="revFile"></div></div>
     <div class="field-group"><label class="label">Alignment</label>
       <button class="btn btn-secondary" id="revAlignBtn" onclick="reviewPickAlign()">—</button></div>
@@ -536,9 +571,9 @@ async function updateStorage() {
 }
 
 // ───────── setup (photo-specific) ─────────
-function renderStampSettings() { $('keepPhotos').checked = !!G.keepPhotos; $('stampProj').checked = G.stampProj !== false; $('stampNE').checked = !!G.stampNE; $('stampLL').checked = !!G.stampLL; $('stampHdg').checked = G.stampHdg !== false; }
+function renderStampSettings() { renderNameParts(); $('keepPhotos').checked = !!G.keepPhotos; $('stampProj').checked = G.stampProj !== false; $('stampNE').checked = !!G.stampNE; $('stampLL').checked = !!G.stampLL; $('stampHdg').checked = G.stampHdg !== false; }
 ['keepPhotos', 'stampProj', 'stampNE', 'stampLL', 'stampHdg'].forEach(id => $(id).addEventListener('change', () => { G[id] = $(id).checked; saveSettings(); }));
-function onProjectChange() { selectMode = false; $('selBar').classList.add('hidden'); $('selModeBtn').textContent = 'Select'; loadPhotos(); }
+function onProjectChange() { if ($('nameExample')) nameExample(); selectMode = false; $('selBar').classList.add('hidden'); $('selModeBtn').textContent = 'Select'; loadPhotos(); }
 
 initTabs(['live', 'photos', 'setup']);
 if (_qs.get('back')) { $('backLink').textContent = '‹ Navigate'; $('backLink').href = 'stationing.html?tab=nav'; }
