@@ -149,3 +149,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .tbar-name{font-weight:900;font-size:1.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tbar-sub{font-size:0.78em;font-weight:700;opacity:0.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums;}
 .tbar-dist{flex:0 0 auto;font-weight:900;font-size:1.05em;font-variant-numeric:tabular-nums;}
+
+/* collapsed, locked advanced settings */
+details.adv{padding:0;position:relative;}
+details.adv>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;flex-direction:column;gap:4px;}
+details.adv>summary::-webkit-details-marker{display:none;}
+details.adv>summary::after{content:'▾';position:absolute;right:30px;margin-top:2px;color:var(--text-muted);font-weight:800;}
+details.adv[open]>summary::after{content:'▴';}
+.adv-sum{font-size:0.82em;font-weight:700;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+details.adv>.adv-lock,details.adv>fieldset{margin:0 16px;}
+details.adv>fieldset{border:none;padding:0 0 14px;min-width:0;}
+details.adv>fieldset[disabled]{opacity:0.55;}
+.adv-lock{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:0.8em;color:var(--text-muted);font-weight:600;padding:4px 0 12px;border-top:1px solid var(--border-primary);padding-top:10px;}
