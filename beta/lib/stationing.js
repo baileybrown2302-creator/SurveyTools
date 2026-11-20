@@ -462,13 +462,37 @@ function renderSetupPanel() {
       <div class="hint">Stand on a point you know (control, or a station/offset) and the app shifts GPS to match. Corrects datum, scale and phone GPS bias near that spot.</div></div>
   </div>
   <div class="card">
+    <div class="card-title">Map station labels</div>
+    ${tickSettingsHtml()}
+  </div>
+  <div class="card">
     <div class="card-title">Compass</div>
     <div class="field-group"><label class="label">Magnetic declination (° East)</label><input class="input" id="decl" inputmode="decimal" value="${G.decl}">
       <div class="hint">Phone compasses read magnetic north. Northern Nevada is about 12–13° E. Applies to all projects.</div></div>
   </div>`;
   $('csZone').value = ps.zone; $('csUnits').value = ps.units;
+  document.querySelectorAll('[data-tick]').forEach(el => el.addEventListener('change', onTickSetting));
+  const ts = $('tickSide'); if (ts) ts.addEventListener('click', e => { const v = e.target.dataset.v; if (!v) return; G.mapTickSide = v; [...ts.children].forEach(b => b.classList.toggle('on', b.dataset.v === v)); saveSettings(); if (typeof FTMap !== 'undefined') FTMap.refreshTicks(); });
   $('xmlInput').addEventListener('change', e => { if (e.target.files.length) importLandXML([...e.target.files]); e.target.value = ''; });
   ['csZone', 'csUnits', 'csCF', 'csBaseN', 'csBaseE', 'decl', 'cpLat0', 'cpLon0', 'cpK0', 'cpLat1', 'cpLat2', 'cpFE', 'cpFN'].forEach(id => $(id) && $(id).addEventListener('change', onSetupChange));
+}
+function tickSettingsHtml() {
+  if (typeof FTMap === 'undefined') return '<div class="hint">Map not available on this page.</div>';
+  const sys = PS().units === 'm' ? 'm' : 'ft', u = sys === 'm' ? 'm' : 'ft';
+  const cfg = Object.assign({}, FTMap.TICK_DEFAULTS[sys], ((G.mapTicks || {})[sys]) || {});
+  const opts = sys === 'm' ? [0, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000] : [0, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000, 5000];
+  const sel = band => `<select class="input" data-tick="${band}">${opts.map(v => `<option value="${v}" ${+cfg[band] === v ? 'selected' : ''}>${v ? 'Every ' + v.toLocaleString() + ' ' + u : 'Off'}</option>`).join('')}</select>`;
+  return `<div class="row2"><div class="field-group"><label class="label">Zoomed in close</label>${sel('close')}</div><div class="field-group"><label class="label">Street level</label>${sel('mid')}</div></div>
+    <div class="row2"><div class="field-group"><label class="label">Zoomed out</label>${sel('far')}</div><div class="field-group"><label class="label">Far out</label>${sel('vfar')}</div></div>
+    <div class="field-group"><label class="label">Label side (looking up-station)</label>
+      <div class="seg" id="tickSide"><button data-v="left" class="${G.mapTickSide === 'left' ? 'on' : ''}">Left</button><button data-v="right" class="${G.mapTickSide !== 'left' ? 'on' : ''}">Right</button></div></div>
+    <div class="hint">Labels sit square to the alignment. Pinch the map in or out to see each level. Applies to all projects.</div>`;
+}
+function onTickSetting() {
+  const sys = PS().units === 'm' ? 'm' : 'ft';
+  G.mapTicks = G.mapTicks || {}; G.mapTicks[sys] = {};
+  document.querySelectorAll('[data-tick]').forEach(el => { G.mapTicks[sys][el.dataset.tick] = +el.value; });
+  saveSettings(); if (typeof FTMap !== 'undefined') FTMap.refreshTicks();
 }
 function onSetupChange() {
   const num = (id, d) => { const v = $(id) ? parseFloat($(id).value) : NaN; return isFinite(v) ? v : d; };

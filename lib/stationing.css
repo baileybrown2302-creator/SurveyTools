@@ -119,7 +119,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .ftmap{width:100%;height:340px;border-radius:10px;overflow:hidden;background:var(--plan-bg);z-index:1;}
 .ftmap.ftmap-full{position:fixed!important;inset:0;height:100%!important;border-radius:0;z-index:260;}
 .ftmap-btn{font-size:18px!important;font-weight:800;line-height:30px!important;text-align:center;color:#111!important;}
-.ftmap-sta span{display:inline-block;transform:translate(6px,-50%);font:700 11px/1 -apple-system,Segoe UI,sans-serif;color:#1d4ed8;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px;white-space:nowrap;}
+.ftmap-sta span{position:absolute;left:0;top:0;transform-origin:0 0;font:700 11px/1 -apple-system,Segoe UI,sans-serif;color:#1d4ed8;background:rgba(255,255,255,0.85);padding:2px 4px;border-radius:4px;white-space:nowrap;}
 .ftmap-me{position:relative;width:60px;height:60px;}
 .ftmap-dot{position:absolute;left:21px;top:21px;width:18px;height:18px;border-radius:50%;background:#2563eb;border:3px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5);}
 .ftmap-cone{position:absolute;left:0;top:0;width:60px;height:60px;}
