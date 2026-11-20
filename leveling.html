@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -258,7 +259,7 @@
         <svg id="displayArrow" style="width:16px;height:16px;transition:transform 0.2s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg></h3>
     <div id="displaySettingsContent" style="display:none;margin-top:12px;">
         <div style="display:flex;flex-wrap:wrap;gap:16px;justify-content:center;align-items:end;">
-            <div><label class="label">Theme</label><button id="themeToggle" class="settings-toggle" style="display:block;width:100%;">High Contrast</button></div>
+            <div><label class="label">Theme</label><button id="themeToggle" class="settings-toggle" style="display:block;width:100%;">🌙 Dark</button></div>
             <div><label class="label">Font Size</label><select id="fontSizeSelect" class="select-input" style="min-width:100px;"><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option></select></div>
             <div><label class="label">View Mode</label><select id="viewModeSelect" class="select-input" style="min-width:100px;"><option value="auto" selected>Auto</option><option value="table">Table</option><option value="cards">Cards</option></select></div>
             <div><label class="label">Action Buttons</label><select id="actionPinSelect" class="select-input" style="min-width:120px;"><option value="inline" selected>Inline (default)</option><option value="pinned">Pin to Bottom</option></select></div>
@@ -459,7 +460,7 @@ const stadiaCheckBtn=document.getElementById('stadiaCheckBtn'),stadiaCheckModal=
 let projectDetails={units:'ft'},levelRows=[],tpCounter=0,currentHI=null,lastCalculatedElevation=null,lastPointNameForBS=null,activeSetupData=null,lastDiNiLL=false;
 
 // --- Settings ---
-themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'High Contrast':'Standard';ftSetSetting('levelingTheme',isHC?'':'high-contrast');});
+themeToggle.addEventListener('click',()=>{const isHC=document.documentElement.getAttribute('data-theme')==='high-contrast';document.documentElement.setAttribute('data-theme',isHC?'':'high-contrast');themeToggle.classList.toggle('active',!isHC);themeToggle.textContent=isHC?'🌙 Dark':'☀️ Light';localStorage.setItem('ft_theme',isHC?'':'high-contrast');ftSetSetting('surveyTheme',isHC?'':'high-contrast');});
 fontSizeSelect.addEventListener('change',(e)=>{document.body.setAttribute('data-fontsize',e.target.value);ftSetSetting('levelingFontSize',e.target.value);});
 decimalSelect.addEventListener('change',(e)=>{decimalPlaces=parseInt(e.target.value);ftSetSetting('levelingDecimals',e.target.value);renderTable();});
 
@@ -486,7 +487,7 @@ function applyActionPin(){
 }
 
 (async function loadSettings(){
-    const t=await ftGetSetting('levelingTheme');if(t==='high-contrast'){document.documentElement.setAttribute('data-theme','high-contrast');themeToggle.classList.add('active');themeToggle.textContent='Standard';}
+    if(document.documentElement.getAttribute('data-theme')==='high-contrast'){themeToggle.classList.add('active');themeToggle.textContent='☀️ Light';}
     const f=await ftGetSetting('levelingFontSize');if(f){fontSizeSelect.value=f;document.body.setAttribute('data-fontsize',f);}
     const d=await ftGetSetting('levelingDecimals');if(d){decimalSelect.value=d;decimalPlaces=parseInt(d);}
     const vm=await ftGetSetting('levelingViewMode');if(vm){viewModeSelect.value=vm;}

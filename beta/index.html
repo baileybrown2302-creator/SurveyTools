@@ -9,8 +9,8 @@
     <meta name="apple-mobile-web-app-title" content="Field Tools">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="../beta/icon.png">
-    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
     <script src="db.js"></script>
     <title>Field Tools</title>
     <style>
@@ -136,8 +136,8 @@
 
     <!-- Home: section picker -->
     <div id="homeView">
-        <img src="../beta/icon.png" class="app-icon" alt="Field Tools">
-        <h1>Field Tools</h1>
+        <img src="./icon.png" class="app-icon" alt="Field Tools">
+        <h1>Field Tools <span style="font-size:0.45em;vertical-align:middle;background:#f59e0b;color:#111;padding:3px 8px;border-radius:6px;font-weight:900;letter-spacing:0.5px;">BETA</span></h1>
         <div class="sections">
             <a href="project_manager.html" class="section-card" style="border-color:var(--accent-blue);background:var(--bg-secondary);text-decoration:none;color:inherit;">
                 <span class="section-icon">📁</span>
@@ -181,7 +181,7 @@
                 <span class="section-icon">📡</span>
                 <div class="section-info">
                     <div class="section-name">Survey Tools</div>
-                    <div class="section-count">Leveling · Slope Staking · Control Points · CSV Converter</div>
+                    <div class="section-count">Leveling · Control Points · Slope Staking · CSV Converter</div>
                 </div>
                 <span class="section-arrow">›</span>
             </div>
@@ -217,6 +217,14 @@
             <div class="changelog" id="changelog">
 
                 <div class="cl-entry">
+                    <div class="cl-date">Nov 20, 2026</div>
+                    <div class="cl-title">Beta re-synced with the main app</div>
+                    <ul class="cl-items">
+                        <li>Beta now matches the main app (Transfer, backups, latest Project Manager, Bid Items, Materials and Leveling) plus Slope Staking for evaluation</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
                     <div class="cl-date">Nov 16, 2026</div>
                     <div class="cl-title">Station / Offset &amp; Station Photos (beta)</div>
                     <ul class="cl-items">
@@ -231,6 +239,36 @@
                         <li>Upload alignments to a project from the Project Manager project screen</li>
                         <li>Metric LandXML (TBC exports) converted to the project's units (US survey feet by default) on import</li>
                         <li>NAD83 Nevada West/Central/East, NAD83/94 (HARN) Nevada West, or custom projection; combined factor and check-in on a known point</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Material Reference — Gauge Correlation &amp; Photo References</div>
+                    <ul class="cl-items">
+                        <li>Gauge correlation now captures moisture % reading and oven-dried moisture % for auto-offset calculation</li>
+                        <li>Moisture and density offset slot numbers saved per correlation entry</li>
+                        <li>Reference photos: attach one or more images to any material for visual verification</li>
+                        <li>Photos viewable full-screen from the material card; stored locally on device</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Backup &amp; Transfer</div>
+                    <ul class="cl-items">
+                        <li>Full backup export: select any combination of projects, loops, control points, sessions, materials, tests, and bid items</li>
+                        <li>Import backup with per-record selection — duplicates skipped automatically</li>
+                        <li>Device-to-device transfer via 6-character code (PeerJS, same Wi-Fi or hotspot)</li>
+                        <li>Offline transfer via file share (AirDrop / Nearby Share) or direct file download</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">HMA Tool — bug fix</div>
+                    <ul class="cl-items">
+                        <li>Fixed "From Saved Materials", "Stations" toggle, and "Yield" tab all non-functional due to a JavaScript parse error</li>
                     </ul>
                 </div>
 
@@ -381,8 +419,8 @@
                 title: 'Survey Tools',
                 tools: [
                     { icon: '🔭', name: 'Differential Leveling', desc: 'Level loops, stadia, misclosure & accuracy', href: 'leveling_home.html' },
-                    { icon: '📍', name: 'Slope Staking', desc: 'Catch point, cut/fill, iterative field workflow', href: 'slope_stake_home.html' },
                     { icon: '🗺️', name: 'Control Points', desc: 'Location control sheet — monument status tracking', href: 'controlpoints.html' },
+                    { icon: '📍', name: 'Slope Staking', desc: 'Catch point, cut/fill, iterative field workflow (beta)', href: 'slope_stake_home.html' },
                     { icon: '🔄', name: 'CSV Converter', desc: 'LOIS LPN CSV → GRID & GNSS output files', href: 'csvconverter.html' },
                 ]
             },
@@ -438,9 +476,9 @@
 <script>
 // ---- App updates ----
 async function appVersion() {
-    try { const k = (await caches.keys()).filter(n => /^survey-tool-v\d+/.test(n)).sort((a, b) => +b.match(/\d+$/) - +a.match(/\d+$/))[0]; return k ? 'v' + k.match(/\d+$/)[0] : ''; } catch (e) { return ''; }
+    try { const k = (await caches.keys()).filter(n => /^survey-tool-beta-v\d+/.test(n)).sort((a, b) => +b.match(/\d+$/) - +a.match(/\d+$/))[0]; return k ? 'v' + k.match(/\d+$/)[0] : ''; } catch (e) { return ''; }
 }
-async function showVersion() { const v = await appVersion(); document.getElementById('updVer').textContent = v ? 'App ' + v : ''; }
+async function showVersion() { const v = await appVersion(); document.getElementById('updVer').textContent = v ? 'Beta ' + v : ''; }
 function updBtn(t, dis) { const b = document.getElementById('updBtn'); b.textContent = t; b.disabled = !!dis; }
 async function checkForUpdates() {
     if (!('serviceWorker' in navigator)) { location.reload(); return; }
@@ -457,7 +495,7 @@ async function checkForUpdates() {
             updBtn('Updated — reloading…', true); location.reload(); return;
         }
         // No new version on the server: make sure this phone's copy matches it
-        const live = await fetch('sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => (t.match(/survey-tool-v(\d+)/) || [])[1]).catch(() => null);
+        const live = await fetch('sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => (t.match(/survey-tool-beta-v(\d+)/) || [])[1]).catch(() => null);
         if (live && before && 'v' + live !== before) { await forceRefresh(true); return; }
         updBtn(live ? '✓ Up to date' : '✓ Up to date (offline?)', false);
         setTimeout(() => updBtn('⟳ Check for updates'), 3000);
@@ -467,7 +505,7 @@ async function checkForUpdates() {
 async function forceRefresh(skipAsk) {
     if (!skipAsk && !confirm('Reload a fresh copy of the app? Your projects and data stay on this phone.')) return;
     updBtn('Refreshing…', true);
-    try { for (const k of await caches.keys()) if (/^survey-tool-v/.test(k)) await caches.delete(k); } catch (e) {}
+    try { for (const k of await caches.keys()) if (/^survey-tool-beta-v\d+$/.test(k)) await caches.delete(k); } catch (e) {}
     try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.unregister(); } catch (e) {}
     location.reload();
 }

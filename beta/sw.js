@@ -1,7 +1,16 @@
-const CACHE_NAME = 'survey-tool-v28';
+const CACHE_NAME = 'survey-tool-beta-v1';
 const ASSETS = [
   './',
   './index.html',
+  './slope_stake.html',
+  './slope_stake_home.html',
+  './slope_stake_model.html',
+  './grade.html',
+  './leveling_home.html',
+  './materials.html',
+  './project_manager.html',
+  './soilcompaction.html',
+  './thinlift.html',
   './leveling.html',
   './area.html',
   './hma.html',
@@ -10,18 +19,20 @@ const ASSETS = [
   './controlpoints.html',
   './csvconverter.html',
   './bidestimate.html',
-  './alignment_photo.html',
-  './lib/piexif.js',
+  './transfer.html',
+  './lib/qrcode.min.js',
+  './lib/peerjs.min.js',
   './stationing.html',
-  './lib/stationing.js',
-  './lib/stationing.css',
+  './alignment_photo.html',
   './lib/alignments.js',
   './lib/stationmap.js',
   './lib/leaflet/leaflet.js',
   './lib/leaflet/leaflet.css',
   './lib/leaflet/images/layers.png',
   './lib/leaflet/images/layers-2x.png',
-  './project_manager.html'
+  './lib/stationing.js',
+  './lib/stationing.css',
+  './lib/piexif.js'
 ];
 
 // Install: cache all assets
@@ -37,7 +48,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => /^survey-tool-beta-v\d+$/.test(k) && k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });

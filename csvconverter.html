@@ -130,13 +130,14 @@
 
     .step-label{font-size:0.75em;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--accent-blue);margin-bottom:6px;}
   </style>
+<script src="db.js"></script>
 </head>
 <body>
 
 <div class="top-nav">
-  <a href="index.html" class="nav-back">← Home</a>
-  <span class="nav-title">LOIS CSV Converter</span>
-  <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+  <a href="index.html" class="nav-back">‹ Menu</a>
+  <span class="nav-title">🔄 LOIS CSV Converter</span>
+  <button class="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
 </div>
 
 <div class="content">
@@ -259,7 +260,14 @@ function toggleTheme() {
   const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
   document.documentElement.setAttribute('data-theme', hc ? '' : 'high-contrast');
   localStorage.setItem('ft_theme', hc ? '' : 'high-contrast');
+  if (typeof ftSetSetting === 'function') ftSetSetting('surveyTheme', hc ? '' : 'high-contrast');
+  syncThemeButtons();
 }
+function syncThemeButtons() {
+  const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.querySelectorAll('.theme-btn').forEach(b => b.textContent = hc ? '☀️ Light' : '🌙 Dark');
+}
+document.addEventListener('DOMContentLoaded', syncThemeButtons);
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');

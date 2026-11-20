@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Field Tools">
 <meta name="theme-color" content="#1a1a2e">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="../beta/icon.png">
-<link rel="apple-touch-icon" href="../beta/icon.png">
+<link rel="icon" type="image/png" href="./icon.png">
+<link rel="apple-touch-icon" href="./icon.png">
 <script src="db.js"></script>
 <title>Bid Items — Field Tools</title>
 <style>
@@ -284,10 +284,10 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
      ══════════════════════════════════════════ -->
 <div id="contractListView">
   <nav class="top-nav">
-    <a href="index.html" class="nav-back">&#8249; Home</a>
-    <span class="nav-title">Bid Items</span>
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">📋 Bid Items</span>
     <div class="nav-actions">
-      <button class="nav-btn" id="themeBtn">Dark</button>
+      <button class="nav-btn" id="themeBtn">🌙 Dark</button>
     </div>
   </nav>
 
@@ -734,18 +734,14 @@ const themeBtn = document.getElementById('themeBtn');
 themeBtn.addEventListener('click', () => {
   const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
   document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
-  themeBtn.textContent = isHC ? 'Dark' : 'Light';
+  themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
   localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
   ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const saved = await ftGetSetting('surveyTheme');
-  if (saved === 'high-contrast') {
-    document.documentElement.setAttribute('data-theme', 'high-contrast');
-    themeBtn.textContent = 'Light';
-  }
+  if (document.documentElement.getAttribute('data-theme') === 'high-contrast') themeBtn.textContent = '☀️ Light';
   contracts = await ftGetAllBidContracts();
   contracts.sort((a,b) => (b.created||0) - (a.created||0));
   renderContractList();
@@ -1159,11 +1155,29 @@ async function handlePdfFile(input) {
     const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
     setStatus(`Reading ${pdf.numPages} pages\u2026`);
     let allItems = await extractAllTextItems(pdf);
-    if (isTextGarbled(allItems)) {
+    const garbled = isTextGarbled(allItems);
+    console.log('[BidItems] PDF.js extracted', allItems.length, 'items. Garbled:', garbled);
+    console.log('[BidItems] PDF.js sample (first 20):', allItems.slice(0,20).map(i=>JSON.stringify(i.str)).join(', '));
+    if (garbled) {
       // PDF uses non-standard font encoding (e.g. Bluebeam-processed) — fall back to OCR
       allItems = await extractTextViaOCR(pdf, setStatus);
+      console.log('[BidItems] OCR extracted', allItems.length, 'items total');
+      // Log ALL words from page 1 (needed to see contractor/designer area)
+      const pg1 = allItems.filter(i => i.page === 1).sort((a,b) => a.y - b.y || a.x - b.x);
+      console.log(`[BidItems] OCR page 1 (${pg1.length} words total):`);
+      for (let s = 0; s < pg1.length; s += 50)
+        console.log(`  [${s}-${Math.min(s+50,pg1.length)-1}]:`, pg1.slice(s,s+50).map(i=>`"${i.str}"@(${i.x|0},${i.y|0})`).join(' '));
+      // Log first 40 words from pages 2-3
+      for (let pg = 2; pg <= Math.min(3, pdf.numPages); pg++) {
+        const pageItems = allItems.filter(i => i.page === pg).sort((a,b) => a.y - b.y || a.x - b.x);
+        console.log(`[BidItems] OCR page ${pg} (${pageItems.length} words):`, pageItems.slice(0,40).map(i=>`"${i.str}"@(${i.x|0},${i.y|0})`).join(' '));
+      }
     }
     const parsed = parseAgreementEstimate(allItems);
+    console.log('[BidItems] Parse result: contractNo=%s projectId=%s breakouts=%d items=%d contractor="%s" designer="%s"',
+      parsed.contractNo, parsed.projectId, parsed.breakouts.length,
+      parsed.breakouts.reduce((s,b)=>s+b.items.length,0),
+      parsed.contractor, parsed.designer);
     overlay.classList.remove('open');
     pendingImport = parsed;
     showImportReview(parsed);
@@ -1254,7 +1268,6 @@ function parseAgreementEstimate(items) {
         v = v.replace(/\s+(?:BID VERSION\b|[A-Z][A-Z\s]{3,}\s*:).*$/i, '');
         contract.contractor = v.trim();
       }
-      // Designer — stop at DESIGNER PHONE or any subsequent label
       // Designer — require colon immediately after DESIGNER (not "DESIGNER PHONE:")
       const mDES = fullNorm.match(/\bDESIGNER\s*:\s*(?!PHONE)(.+)/i);
       if (mDES) {
@@ -1298,6 +1311,14 @@ function parseAgreementEstimate(items) {
       const nf = desc.match(/\s+[A-Z][A-Z\s]*\s*:/);
       if (nf) desc = desc.slice(0, nf.index);
       desc = desc.trim();
+      // Fix OCR misread of dash in breakout reference codes (e.g. "1-1088"):
+      //   dash dropped → "11000" (5 chars) → insert dash after first digit
+      //   dash→"1"    → "111088" (6 chars) → remove misread char, insert dash
+      desc = desc.replace(/^(\d)(\d+)(\s|$)/, (m, first, rest, sep) => {
+        if (rest.length === 4) return `${first}-${rest}${sep}`;        // dash was dropped
+        if (rest.length === 5) return `${first}-${rest.slice(1)}${sep}`; // dash misread as digit
+        return m;
+      });
       if (currentBreakout && !currentBreakout.description) {
         currentBreakout.description = desc;
       } else {
@@ -1307,7 +1328,6 @@ function parseAgreementEstimate(items) {
     }
 
     // ── Breakout start ──
-    // Optional period handles new "BREAKOUT NO.:" format
     // N[O0] handles OCR O→0 substitution; optional period for "BREAKOUT NO.:"
     const mBK = fullNorm.match(/BREAKOUT\s+N[O0]\.?[:\s]+(\d+)/i);
     if (mBK) {
@@ -1352,8 +1372,14 @@ function parseAgreementEstimate(items) {
     // ── Bid item row — first token is 6–7 digit pay item number ──
     if (currentBreakout) {
       const rawFirst = line.tokens[0]?.str || '';
-      // Normalize common OCR digit-look-alikes (O→0, I/l→1) before the numeric check
-      const firstStr = rawFirst.replace(/[Oo]/g, '0').replace(/[Il]/g, '1');
+      // Normalize common OCR digit-look-alikes before the numeric check
+      const firstStr = rawFirst
+        .replace(/[Oo]/g, '0')
+        .replace(/[Il]/g, '1')
+        .replace(/[Ss]/g, '5')
+        .replace(/[Bb]/g, '8')
+        .replace(/[Gg]/g, '6')
+        .replace(/[Zz]/g, '2');
       if (/^\d{6,7}$/.test(firstStr)) {
         const item = parseBidItemLine(line.tokens, rawFirst);
         if (item) {
@@ -1362,23 +1388,84 @@ function parseAgreementEstimate(items) {
           item.note = '';
           currentBreakout.items.push(item);
         }
+      } else if (rawFirst.length >= 5 && rawFirst.length <= 8 && /\d{4}/.test(rawFirst)) {
+        // Near-miss: looks numeric but failed digit check — log for diagnosis
+        console.log(`[BidItems] SKIPPED near-miss item: rawFirst="${rawFirst}" firstStr="${firstStr}" tokens:`, line.tokens.map(t=>`"${t.str}"@(${t.x|0},${t.y|0})`).join(' '));
       }
     }
   }
   if (currentBreakout) contract.breakouts.push(currentBreakout);
 
+  // Fix OCR misread of '&' as a lowercase letter in contractor abbreviations (e.g. "QaD" → "Q&D")
+  if (contract.contractor) {
+    contract.contractor = contract.contractor.replace(/\b([A-Z])([a-z])([A-Z])\b/g, '$1&$3');
+  }
+
   return contract;
 }
 
+// Unit-of-measure normalisation: fix common OCR character substitutions.
+const UNIT_NORM = {
+  // Y misread as V/v
+  'SQVD': 'SQYD',
+  // L misread as U; LIN misread as UN; FT misread as ET
+  'UNFT': 'LINFT', 'UNPT': 'LINFT', 'LNFT': 'LINFT', 'LINET': 'LINFT',
+  // S misread as 5; L misread as 1
+  'L5': 'LS', '15': 'LS', '1S': 'LS',
+};
+
+// Parse quantity tokens from the OCR qty column.
+// The PDF always formats quantities as N,NNN.000 (3 decimal places).
+// Tesseract misreads the separators in several ways — this function normalises them all.
+function parseQuantity(raw) {
+  let s = raw.trim().replace(/:/g, '');           // remove colon (OCR artefact for comma)
+  const numDots   = (s.match(/\./g) || []).length;
+  const numCommas = (s.match(/,/g) || []).length;
+
+  if (numDots === 2) {
+    // "5.496.000" → thousands comma misread as dot → remove first dot → "5496.000"
+    s = s.replace('.', '');
+    return parseFloat(s);
+  }
+  if (numDots === 0 && numCommas >= 2) {
+    // "4,503,000" → decimal dot misread as comma → last comma is the decimal point
+    const parts = s.split(',');
+    const dec   = parts.pop();                    // "000"
+    return parseFloat(parts.join('') + '.' + dec); // "4503.000" → 4503
+  }
+  if (numDots === 0 && numCommas === 0 && s.length > 3 && s.endsWith('000')) {
+    // "50000" → "50.000" with the dot and trailing chars merged → divide by 1000
+    return parseInt(s, 10) / 1000;
+  }
+  // Standard cases: "611.000", "6,607.000", "1.000", etc.
+  return parseFloat(s.replace(/,/g, ''));
+}
+
+// Parse price/amount tokens from the OCR price columns.
+// OCR frequently drops the decimal point entirely, or merges the thousands comma with
+// the decimal producing extra decimal digits.  Both are detected and corrected here.
+function parsePriceToken(raw) {
+  const s = raw.trim().replace(/,/g, '');        // remove thousands commas
+  if (!s.includes('.')) {
+    // No decimal point at all → OCR dropped it → actual value = integer / 100
+    return parseInt(s, 10) / 100;
+  }
+  const decLen = s.split('.')[1].length;
+  if (decLen > 2) {
+    // e.g. "1.58250" → OCR merged comma+decimal → strip dot and divide by 100
+    return parseInt(s.replace('.', ''), 10) / 100;
+  }
+  return parseFloat(s);
+}
+
 function parseBidItemLine(tokens, bidItem) {
+  // Column x-boundaries for scale=2.0 on a standard NDOT letter-size page (1224px wide).
   // Column x-boundaries for scale=3.0 on a standard NDOT letter-size page (1836px wide).
   // Scale these proportionally if OCR_SCALE changes (multiply original scale=2.0 values by 1.5).
-  const COL_QTY_START  = 180;  // quantity + unit column (quantities start at x≈200)
-  const COL_DESC_START = 525;  // description column (desc starts at x≈555)
-  // Right-side boundary: unit price and amount are always well past the description.
-  // Using x > PRICE_REGION avoids the need to calibrate an exact UP vs AMT split line,
-  // since right-aligned numbers vary in left-edge position depending on digit count.
-  const PRICE_REGION = 1200;
+  const COL_QTY_START  = 180;   // quantity + unit column (quantities start at x≈200)
+  const COL_DESC_START = 525;   // description column (desc starts at x≈555)
+  const PRICE_REGION   = 1200;  // left bound of unit price column
+  const COL_AMT_START  = 1920;  // left bound of amount column (observed at x≈1977–2009)
 
   const rest = tokens.filter(t => t.str.trim() !== bidItem).sort((a, b) => a.x - b.x);
   if (!rest.length) return null;
@@ -1386,31 +1473,55 @@ function parseBidItemLine(tokens, bidItem) {
   const qtyTokens  = rest.filter(t => t.x >= COL_QTY_START  && t.x < COL_DESC_START);
   const descTokens = rest.filter(t => t.x >= COL_DESC_START && t.x < PRICE_REGION);
 
-  // All xx.xx numbers to the right of the description (sorted left→right).
-  // Second-rightmost = unit price, rightmost = amount (both columns are right-aligned).
-  const priceNums = rest
-    .filter(t => t.x >= PRICE_REGION && /^[\d,]+\.\d{2}$/.test(t.str.trim()))
-    .sort((a, b) => a.x - b.x);
+  // Accept any digit string (with or without decimal) in the price columns.
+  // Integers are common because OCR frequently drops the decimal point.
+  const priceRx = /^[\d,]+(\.\d+)?$/;
+  const upNums  = rest.filter(t => t.x >= PRICE_REGION  && t.x < COL_AMT_START && priceRx.test(t.str.trim()));
+  const amtNums = rest.filter(t => t.x >= COL_AMT_START && priceRx.test(t.str.trim()));
 
-  // Quantity: first number in qty column; Unit: first all-caps alpha token in qty column
+  // Quantity: first parseable number in qty column
+  // Unit: first alphabetic token in qty column (case-insensitive → normalise to uppercase)
   let quantity = null, unitMeas = '';
   for (const t of qtyTokens) {
     const s = t.str.trim();
-    if (!quantity && /^[\d,]+(\.\d+)?$/.test(s)) { quantity = parseNum(s); }
-    else if (!unitMeas && /^[A-Z]{1,10}$/.test(s)) { unitMeas = s; }
+    if (!quantity && /^[\d,.:\-]+$/.test(s) && /\d{2}/.test(s)) {
+      const q = parseQuantity(s);
+      if (isFinite(q) && q > 0) quantity = q;
+    } else if (!unitMeas) {
+      // Strip trailing punctuation OCR adds (e.g. "LINFT." → "LINFT"), then normalise
+      const stripped = s.replace(/[.,;:]+$/, '');
+      if (/^[A-Za-z0-9]{1,10}$/.test(stripped)) {
+        const u = stripped.toUpperCase();
+        unitMeas = UNIT_NORM[u] || u;
+      }
+    }
   }
 
-  // Description: all tokens in the description column
-  const description = descTokens.map(t => t.str).join(' ').trim();
+  // FA / LS items are always quantity 1 — default when OCR misses the "1.000" cell
+  if (quantity === null && (unitMeas === 'FA' || unitMeas === 'LS')) quantity = 1;
+
+  // Description: join, strip leading OCR quote artefacts, fix common OCR misreads
+  let description = descTokens.map(t => t.str).join(' ').trim()
+    .replace(/^['"'"\u201c\u2018\s]+/, '');
+  // "INGH" → "INCH" (OCR reads C as G)
+  description = description.replace(/\bINGH\b/g, 'INCH');
+  // "(N-NCH" → "(N-INCH" (OCR drops I from INCH after a digit-dash)
+  description = description.replace(/(\d+)-NCH\b/g, '$1-INCH');
   if (!description) return null;
 
-  // Unit price = second-rightmost price; amount = rightmost price
-  let unitPrice = null, itemCost = null;
-  if (priceNums.length >= 2) {
-    unitPrice = parseNum(priceNums[priceNums.length - 2].str);
-    itemCost  = parseNum(priceNums[priceNums.length - 1].str);
-  } else if (priceNums.length === 1) {
-    itemCost = parseNum(priceNums[0].str);
+  // Unit price = rightmost token in UP column; amount = rightmost token in amount column
+  const unitPrice = upNums.length  ? parsePriceToken(upNums[upNums.length - 1].str)  : null;
+  const itemCost  = amtNums.length ? parsePriceToken(amtNums[amtNums.length - 1].str) : null;
+
+  // Debug: log token coordinates for items with missing/suspect quantities
+  const debugItem = /traffic.control.supervisor|bridge.deck|epoxy|joint.seal|joint.fill/i.test(description) || (quantity === null && unitMeas !== 'FA' && unitMeas !== 'LS') || (quantity !== null && quantity > 9999);
+  if (debugItem) {
+    console.log(`[parseBidItemLine DEBUG] item="${bidItem}" desc="${description}" qty=${quantity} unit="${unitMeas}" unitPrice=${unitPrice} itemCost=${itemCost}`);
+    console.log(`  ALL tokens (x,y,str):`, tokens.map(t=>`"${t.str}"@(${t.x|0},${t.y|0})`).join(' '));
+    console.log(`  qtyTokens:`, qtyTokens.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
+    console.log(`  descTokens:`, descTokens.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
+    console.log(`  upNums:`, upNums.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
+    console.log(`  amtNums:`, amtNums.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
   }
 
   return { bidItem, quantity, unitMeas, description, unitPrice, itemCost };

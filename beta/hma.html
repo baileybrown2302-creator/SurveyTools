@@ -9,8 +9,8 @@
     <meta name="apple-mobile-web-app-title" content="Field Tools">
     <meta name="theme-color" content="#1a1a2e">
     <link rel="manifest" href="manifest.json">
-    <link rel="icon" type="image/png" href="../beta/icon.png">
-    <link rel="apple-touch-icon" href="../beta/icon.png">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
     <script src="db.js"></script>
     <title>HMA Tool — Field Tools</title>
     <style>
@@ -345,9 +345,9 @@ async function loadMaterialData(){
         if(!materialData.contracts||materialData.contracts.length===0){showNoMaterials();return;}
         const sel=document.getElementById('t_contract');
         sel.innerHTML='<option value="">— Select contract —</option>';
-        const contracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));
-        if(contracts.length===0){showNoMaterials();return;}
-        contracts.forEach(c=>{
+        const hmaContracts=(materialData.contracts||[]).filter(c=>!c.archived&&(c.materials||[]).some(m=>m.category==='HMA'));
+        if(hmaContracts.length===0){showNoMaterials();return;}
+        hmaContracts.forEach(c=>{
             const opt=document.createElement('option');
             opt.value=c.id;opt.textContent=c.number+(c.description?' — '+c.description:'');
             sel.appendChild(opt);

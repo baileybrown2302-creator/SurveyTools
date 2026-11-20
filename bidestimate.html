@@ -284,10 +284,10 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
      ══════════════════════════════════════════ -->
 <div id="contractListView">
   <nav class="top-nav">
-    <a href="index.html" class="nav-back">&#8249; Home</a>
-    <span class="nav-title">Bid Items</span>
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">📋 Bid Items</span>
     <div class="nav-actions">
-      <button class="nav-btn" id="themeBtn">Dark</button>
+      <button class="nav-btn" id="themeBtn">🌙 Dark</button>
     </div>
   </nav>
 
@@ -734,18 +734,14 @@ const themeBtn = document.getElementById('themeBtn');
 themeBtn.addEventListener('click', () => {
   const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
   document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
-  themeBtn.textContent = isHC ? 'Dark' : 'Light';
+  themeBtn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
   localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
   ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
 });
 
 // ── Init ─────────────────────────────────────────────────────────────────────
 async function init() {
-  const saved = await ftGetSetting('surveyTheme');
-  if (saved === 'high-contrast') {
-    document.documentElement.setAttribute('data-theme', 'high-contrast');
-    themeBtn.textContent = 'Light';
-  }
+  if (document.documentElement.getAttribute('data-theme') === 'high-contrast') themeBtn.textContent = '☀️ Light';
   contracts = await ftGetAllBidContracts();
   contracts.sort((a,b) => (b.created||0) - (a.created||0));
   renderContractList();

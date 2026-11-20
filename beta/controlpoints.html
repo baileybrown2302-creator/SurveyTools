@@ -197,9 +197,9 @@
 <!-- ═══ PROJECT LIST VIEW ═══ -->
 <div id="projectListView">
   <div class="top-nav">
-    <a href="index.html" class="nav-back">← Home</a>
-    <span class="nav-title">Control Points</span>
-    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+    <a href="index.html" class="nav-back">‹ Menu</a>
+    <span class="nav-title">🗺️ Control Points</span>
+    <button class="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
   </div>
   <div class="content">
     <div class="section-header">
@@ -213,9 +213,9 @@
 <!-- ═══ POINT LIST VIEW ═══ -->
 <div id="pointListView" class="hidden">
   <div class="top-nav">
-    <button class="nav-back" onclick="backToProjects()">← Projects</button>
+    <button class="nav-back" onclick="backToProjects()">‹ Projects</button>
     <span class="nav-title" id="pointListTitle">Control Points</span>
-    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+    <button class="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
   </div>
   <div class="filter-bar" id="filterBar"></div>
   <div class="content">
@@ -233,9 +233,9 @@
 <!-- ═══ EDITOR VIEW ═══ -->
 <div id="editorView" class="hidden">
   <div class="top-nav">
-    <button class="nav-back" onclick="backToPoints()">← Points</button>
+    <button class="nav-back" onclick="backToPoints()">‹ Points</button>
     <span class="nav-title" id="editorTitle">Edit Point</span>
-    <button class="theme-btn" onclick="toggleTheme()">Theme</button>
+    <button class="theme-btn" onclick="toggleTheme()">🌙 Dark</button>
   </div>
   <div class="content">
     <div class="card">
@@ -580,7 +580,14 @@ function toggleTheme() {
   const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
   document.documentElement.setAttribute('data-theme', hc ? '' : 'high-contrast');
   localStorage.setItem('ft_theme', hc ? '' : 'high-contrast');
+  if (typeof ftSetSetting === 'function') ftSetSetting('surveyTheme', hc ? '' : 'high-contrast');
+  syncThemeButtons();
 }
+function syncThemeButtons() {
+  const hc = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+  document.querySelectorAll('.theme-btn').forEach(b => b.textContent = hc ? '☀️ Light' : '🌙 Dark');
+}
+document.addEventListener('DOMContentLoaded', syncThemeButtons);
 function showView(id) {
   ['projectListView','pointListView','editorView'].forEach(v => {
     document.getElementById(v).classList.toggle('hidden', v !== id);

@@ -1,7 +1,13 @@
-const CACHE_NAME = 'survey-tool-v42';
+const CACHE_NAME = 'survey-tool-v43';
 const ASSETS = [
   './',
   './index.html',
+  './grade.html',
+  './leveling_home.html',
+  './materials.html',
+  './project_manager.html',
+  './soilcompaction.html',
+  './thinlift.html',
   './leveling.html',
   './area.html',
   './hma.html',
@@ -39,7 +45,7 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => /^survey-tool-v\d+$/.test(k) && k !== CACHE_NAME).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
