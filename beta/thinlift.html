@@ -297,6 +297,10 @@
                 </div>
             </div>
             <div class="field-group">
+                <label class="label">Project</label>
+                <select class="select-input" id="f_project" onchange="onRecordProjectChange(this.value)"></select>
+            </div>
+            <div class="field-group">
                 <label class="label">Material Type</label>
                 <input class="input" type="text" id="f_materialType" placeholder="e.g. SM-9.5A Surface Course">
             </div>
@@ -805,7 +809,7 @@ async function loadMixDesignPicker() {
     const withHMA = contracts.filter(c => c.materials && c.materials.some(m => m.category === 'HMA'));
     const sel = document.getElementById('mixContractSelect');
     sel.innerHTML = '<option value="">— Select contract —</option>' +
-        withHMA.map(c => `<option value="${escHtml(c.id)}">${escHtml(c.number || c.contractNumber || c.id)}</option>`).join('');
+        withHMA.map(c => { const p = _allProjects.find(x => x.id === c.id); return `<option value="${escHtml(c.id)}">${escHtml(p ? ftProjectTitle(p) : (c.contractNumber || c.number || c.id))}</option>`; }).join('');
     document.getElementById('mixDesignGroup').style.display = 'none';
 }
 
@@ -1746,7 +1750,7 @@ function renderRecordList() {
         list.innerHTML = '';
         empty.classList.remove('hidden');
         const proj = _selectedProjectId ? _allProjects.find(p => p.id === _selectedProjectId) : null;
-        document.getElementById('listEmptyTitle').textContent = proj ? `No tests for ${proj.projectNumber || 'this project'}` : 'No saved tests';
+        document.getElementById('listEmptyTitle').textContent = proj ? `No tests for ${ftProjectTitle(proj)}` : 'No saved tests';
         document.getElementById('listEmptyHint').textContent = 'Tap "＋ New Test" to begin.';
         return;
     }
@@ -1799,16 +1803,36 @@ function newRecord() {
         currentRecord.projectId = _selectedProjectId;
         const proj = _allProjects.find(p => p.id === _selectedProjectId);
         if (proj) {
-            currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+            currentRecord.contractNumber = ftContractOf(proj);
         }
     }
     showEditor();
 }
 
+// Attach the test to a Project Manager project and fill its contract number
+async function fillRecordProjectPicker() {
+    if (!currentRecord) return;
+    _allProjects = await ftGetAllProjects();
+    if (!currentRecord.projectId && currentRecord.contractNumber) {   // older tests: match by contract number
+        const m = _allProjects.find(p => [p.contractNumber, p.projectNumber, p.projectId].includes(currentRecord.contractNumber));
+        if (m) currentRecord.projectId = m.id;
+    }
+    if (currentRecord.projectId && !currentRecord.contractNumber) {
+        const p = _allProjects.find(x => x.id === currentRecord.projectId);
+        if (p) { currentRecord.contractNumber = ftContractOf(p); document.getElementById('f_contractNumber').value = currentRecord.contractNumber; }
+    }
+    await ftFillProjectSelect(document.getElementById('f_project'), currentRecord.projectId, '— Select project —');
+}
+function onRecordProjectChange(id) {
+    currentRecord.projectId = id || null;
+    const p = _allProjects.find(x => x.id === id);
+    if (p) { currentRecord.contractNumber = ftContractOf(p); document.getElementById('f_contractNumber').value = currentRecord.contractNumber; }
+    updateSubtitle(); scheduleAutoSave();
+}
 function showEditor() {
     document.getElementById('listView').classList.add('hidden');
     document.getElementById('editorView').classList.remove('hidden');
-    loadMixDesignPicker();
+    fillRecordProjectPicker().then(loadMixDesignPicker);
     populateSetupFields();
     renderTestCards();
     setTab('setup');
@@ -1893,7 +1917,7 @@ function fallbackDownload(text, filename) {
         currentRecord.projectId = urlProjectId;
         const proj = _allProjects.find(p => p.id === urlProjectId) || await ftGet('projects', urlProjectId);
         if (proj) {
-            currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+            currentRecord.contractNumber = ftContractOf(proj);
         }
         showEditor();
     }

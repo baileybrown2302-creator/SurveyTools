@@ -188,6 +188,19 @@ async function ftDeleteProject(id) { return ftDelete('projects', id); }
 // --- Project title helper (shared across all tools) ---
 // Hierarchy: contractNumber → projectId → projectNumber
 // Format: "identifier : name" or just "identifier" if no name
+// Fill a <select> with Project Manager projects (titles like "3812 : US 50"). Returns the projects.
+async function ftFillProjectSelect(sel, value, noneLabel = '— Select project —') {
+  if (!sel) return [];
+  const all = await ftGetAllProjects();
+  const projs = all.filter(p => !p.archived || p.id === value)
+    .sort((a, b) => ftProjectTitle(a).localeCompare(ftProjectTitle(b), undefined, { numeric: true }));
+  const h = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  sel.innerHTML = `<option value="">${h(noneLabel)}</option>` + projs.map(p => `<option value="${h(p.id)}">${h(ftProjectTitle(p))}</option>`).join('');
+  sel.value = value || '';
+  return all;
+}
+// Contract number to print on forms (falls back to the project number)
+function ftContractOf(p) { return p ? (p.contractNumber || p.projectNumber || '') : ''; }
 function ftProjectTitle(p) {
   if (!p) return 'Unnamed Project';
   const id = p.contractNumber || p.projectId || p.projectNumber || '';

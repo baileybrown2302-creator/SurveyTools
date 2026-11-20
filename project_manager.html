@@ -796,7 +796,7 @@ async function startExport(projectId) {
     };
 
     exportJSON = JSON.stringify(out, null, 2);
-    document.getElementById('exportModalTitle').textContent = `Export \u2014 ${escHtml(proj.projectNumber || proj.id)}`;
+    document.getElementById('exportModalTitle').textContent = `Export \u2014 ${ftProjectTitle(proj)}`;
     document.getElementById('exportText').value = exportJSON;
     document.getElementById('exportModal').classList.remove('hidden');
 }
@@ -860,9 +860,9 @@ async function previewImport() {
     const allProjects = await ftGetAllProjects();
     const existing = allProjects.find(p => p.id === data.project.id);
     const lines = [];
-    lines.push(`<strong>Project:</strong> ${escHtml(data.project.projectNumber)}`);
+    lines.push(`<strong>Project:</strong> ${escHtml(ftProjectTitle(data.project))}`);
     if (data.project.contractNumber) lines.push(`Contract: ${escHtml(data.project.contractNumber)}`);
-    if (existing) lines.push(`<em>&#9888; A project with this ID already exists ("${escHtml(existing.projectNumber)}") \u2014 data will be merged.</em>`);
+    if (existing) lines.push(`<em>&#9888; A project with this ID already exists ("${escHtml(ftProjectTitle(existing))}") \u2014 data will be merged.</em>`);
     else lines.push(`<em>&#10003; New project will be created.</em>`);
     if (data.leveling) lines.push(`Leveling: ${(data.leveling.loops || []).length} loop(s)`);
     if (data.materials) lines.push(`Materials: ${(data.materials.materials || []).length} material(s)`);
@@ -956,7 +956,7 @@ async function confirmDelete(projectId) {
         : 'No associated data found.';
 
     showConfirm(
-        `Delete "${proj.projectNumber}"?`,
+        `Delete "${escHtml(ftProjectTitle(proj))}"?`,
         `${dataWarning} This cannot be undone.`,
         async () => { await deleteProject(projectId); }
     );

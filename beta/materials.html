@@ -208,7 +208,7 @@
 <div id="contractsView" class="view">
     <div class="view-header">
         <div class="view-title">Contracts</div>
-        <button class="btn btn-primary btn-small" onclick="openAddContract()">＋ Contract</button>
+        <a class="btn btn-secondary btn-small" href="project_manager.html" style="text-decoration:none;">📁 Manage projects</a>
     </div>
     <label class="archive-toggle">
         <input type="checkbox" id="showArchived" onchange="renderContracts()">
@@ -234,8 +234,8 @@
             <div style="font-size:0.8em;color:var(--text-muted);margin-top:2px;" id="contractViewDesc"></div>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
-            <button class="btn-ghost btn-small" id="archiveToggleBtn" onclick="toggleArchiveContract()"></button>
-            <button class="btn btn-danger btn-small" onclick="deleteCurrentContract()">Delete</button>
+            <button class="btn-ghost btn-small" style="display:none" id="archiveToggleBtn" onclick="toggleArchiveContract()"></button>
+            <button class="btn btn-danger btn-small" onclick="deleteCurrentContract()">Clear materials</button>
         </div>
     </div>
     <div class="cat-tabs" id="catTabs">
@@ -468,11 +468,11 @@ async function loadData(){
         const reg=await ftGetAllProjects();
         for(const c of data.contracts){
             const r=reg.find(r=>r.id===c.id);
-            if(r){c.contractNumber=r.contractNumber||'';c.projectId=r.projectId||'';}
+            if(r){c.contractNumber=r.contractNumber||'';c.projectId=r.projectId||'';c.title=ftProjectTitle(r);c.archived=!!r.archived;}
         }
     }catch(e){}
 }
-function cTitle(c){return c.contractNumber||c.projectId||c.number||c.id;}
+function cTitle(c){return c.title||c.contractNumber||c.projectId||c.number||c.id;}
 async function saveData(){
     // Save each contract individually keyed by its id
     for(const c of (data.contracts||[])){
@@ -486,7 +486,6 @@ async function syncToSurveyRegistry(){
     (data.contracts||[]).forEach(c=>{
         const existing=registry.find(r=>r.id===c.id);
         if(!existing){registry.push({id:c.id,projectNumber:c.number||c.id,description:c.description||'',created:c.created||new Date().toISOString()});changed=true;}
-        else if(existing.projectNumber!==c.number){existing.projectNumber=c.number;changed=true;}
     });
     if(changed){for(const r of registry)await ftSaveProject(r);}
 }
@@ -613,11 +612,10 @@ async function toggleArchiveContract(){
 }
 function deleteCurrentContract(){
     const c=getContract(currentContractId);
-    showConfirm(`Delete Contract ${escHtml(c.number)}?`,`Permanently deletes all ${(c.materials||[]).length} material entries. Cannot be undone.`,'Delete',async ()=>{
-        const delId=currentContractId;
-        data.contracts=data.contracts.filter(x=>x.id!==delId);
-        await ftDeleteMaterials(delId);
-        syncToSurveyRegistry();showContractsView();
+    // Projects themselves are archived/deleted in Project Manager; this only clears the material list
+    showConfirm(`Clear materials for ${escHtml(cTitle(c))}?`,`Permanently deletes all ${(c.materials||[]).length} material entries. The project stays in Project Manager. Cannot be undone.`,'Clear',async ()=>{
+        c.materials=[]; await ftSaveMaterials(c);
+        showContractsView(); renderContracts();
     });
 }
 
@@ -1245,7 +1243,7 @@ function closeConfirm(){document.getElementById('confirmModal').classList.add('h
 document.getElementById('confirmModal').addEventListener('click',e=>{if(e.target===document.getElementById('confirmModal'))closeConfirm();});
 
 // ── Init ───────────────────────────────────────────────
-(async function(){await loadData();await syncToSurveyRegistry();await syncFromRegistry();renderContracts();})();
+(async function(){await loadData();await syncToSurveyRegistry();await syncFromRegistry();await loadData();renderContracts();})();
 </script>
 </body>
 </html>

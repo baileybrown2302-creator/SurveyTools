@@ -1311,7 +1311,7 @@ importJSONInput.addEventListener('change',(event)=>{const file=event.target.file
   if(!toSync.length||!_activeProjectId){alert('Imported!');return;}
   // Look up project label for confirmation
   let projLabel='';
-  try{const rp=(await ftGetAllProjects()).find(p=>p.id===_activeProjectId);projLabel=rp?.contractNumber||rp?.projectNumber||'';}catch(e){}
+  try{const rp=(await ftGetAllProjects()).find(p=>p.id===_activeProjectId);projLabel=rp?ftProjectTitle(rp):'';}catch(e){}
   if(!projLabel)projLabel=document.getElementById('projectNumber').value.trim()||'current project';
   const n=toSync.length;
   showConfirmModal(

@@ -253,6 +253,10 @@
             <!-- Test Header — shared fields only -->
             <div class="card">
                 <div class="card-title">Test Header — NDOT 040-007</div>
+                <div class="field-group">
+                    <label class="label">Project</label>
+                    <select class="select-input input-sm" id="f_project"></select>
+                </div>
                 <div class="field-row">
                     <div class="field-group" style="margin-bottom:0;">
                         <label class="label">Contract No.</label>
@@ -604,7 +608,7 @@
             currentRecord = emptyRecord();
             currentRecord.projectId = urlProjectId;
             const proj = await ftGet('projects', urlProjectId).catch(() => null);
-            if (proj) currentRecord.contractNumber = proj.contractNumber || proj.projectNumber || '';
+            if (proj) currentRecord.contractNumber = ftContractOf(proj);
             showEditor();
             return;
         }
@@ -726,7 +730,7 @@
         document.getElementById('navBack').textContent = '‹ Tests';
         setTab('info');
         populateFields();
-        loadProctorPicker();
+        fillProjectPicker().then(loadProctorPicker);   // proctor list uses project titles
     }
     function setTab(name) {
         ['info','readings','results'].forEach(t => {
@@ -835,7 +839,27 @@
     // ─── Open / new / delete ──────────────────────────────────────────────
     function newRecord() {
         currentRecord = emptyRecord();
+        const pf = document.getElementById('projectFilter').value;
+        if (pf) setRecordProject(pf);
         showEditor();
+    }
+    // Attach the test to a Project Manager project and fill its contract number
+    let allProjects = [];
+    function setRecordProject(id) {
+        currentRecord.projectId = id || null;
+        const p = allProjects.find(x => x.id === id);
+        if (p) { currentRecord.contractNumber = ftContractOf(p); setVal('f_contractNumber', currentRecord.contractNumber); }
+    }
+    async function fillProjectPicker() {
+        allProjects = await ftGetAllProjects();
+        // older tests: match the project by contract number
+        if (!currentRecord.projectId && currentRecord.contractNumber) {
+            const m = allProjects.find(p => [p.contractNumber, p.projectNumber, p.projectId].includes(currentRecord.contractNumber));
+            if (m) currentRecord.projectId = m.id;
+        }
+        // project known but contract number blank → fill it
+        if (currentRecord.projectId && !currentRecord.contractNumber) setRecordProject(currentRecord.projectId);
+        await ftFillProjectSelect(document.getElementById('f_project'), currentRecord.projectId, '— Select project —');
     }
     async function openRecord(id) {
         const rec = allRecords.find(r => r.id === id) || await ftGetSoilTest(id).catch(()=>null);
@@ -1079,7 +1103,7 @@
         const sel = document.getElementById('proctorContractSelect');
         sel.innerHTML = '<option value="">— Select contract —</option>' +
             allMaterials
-                .map(c => `<option value="${escHtml(c.id)}">${escHtml(c.contractNumber || c.number || c.id)}</option>`)
+                .map(c => { const p = allProjects.find(x => x.id === c.id); return `<option value="${escHtml(c.id)}">${escHtml(p ? ftProjectTitle(p) : (c.contractNumber || c.number || c.id))}</option>`; })
                 .join('');
         sel.value = currentRecord.linkedContractId || '';
         if (sel.value) onProctorContractChange();
@@ -1111,7 +1135,9 @@
         currentRecord.linkedContractId   = cid;
         currentRecord.linkedMaterialId   = mid;
         const mddDisplay = mat.gran_mdd ? ' · ' + mat.gran_mdd + ' pcf' : '';
-        const contractNum = contract.contractNumber || contract.number || '';
+        const regProj = allProjects.find(x => x.id === cid);
+        const contractNum = regProj ? ftContractOf(regProj) : (contract.contractNumber || contract.number || '');
+        if (!currentRecord.projectId && regProj) { currentRecord.projectId = cid; const fp = document.getElementById('f_project'); if (fp) fp.value = cid; }
         const label = `${mat.gran_name || 'Material'}${mddDisplay} · ${contractNum || cid}`;
         currentRecord.linkedMaterialLabel = label;
         // Auto-fill contract number if field is empty
@@ -1373,6 +1399,7 @@
 
         // List
         document.getElementById('newTestBtn').addEventListener('click', newRecord);
+        document.getElementById('f_project').addEventListener('change', e => { setRecordProject(e.target.value); scheduleAutoSave(); });
         document.getElementById('projectFilter').addEventListener('change', renderRecordList);
 
         // Results tab actions
