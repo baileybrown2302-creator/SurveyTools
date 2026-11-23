@@ -14,6 +14,7 @@
     <script src="db.js"></script>
     <script src="lib/alignments.js"></script>
     <script src="lib/stationfield.js"></script>
+    <script src="lib/printpdf.js"></script>
     <title>Soil Compaction (T103G) — Field Tools</title>
     <style>
         :root {
@@ -1608,7 +1609,7 @@ ${[0,1,2,3].map(i => `<tr><td class="pf-row-label">Dry Density #${i+1} Mg/m³ (l
 <div class="pf-form-no">NDOT &nbsp; 040-007 &nbsp; Rev. 07/14 &nbsp;&nbsp;·&nbsp;&nbsp; Generated ${new Date().toLocaleDateString()}</div>`;
 
         document.getElementById('printFrame').innerHTML = html;
-        window.print();
+        ftPrintForm({ filename: `Soil Compaction ${[r.contractNumber, r.station, r.date].filter(Boolean).join(' ')}.pdf`, margins: [0.5, 0.45, 0.4] });
     }
 
     init();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v47';
+const CACHE_NAME = 'survey-tool-v48';
 const ASSETS = [
   './',
   './index.html',
@@ -30,7 +30,10 @@ const ASSETS = [
   './lib/leaflet/images/layers-2x.png',
   './lib/stationing.js',
   './lib/stationing.css',
-  './lib/piexif.js'
+  './lib/piexif.js',
+  './lib/printpdf.js',
+  './lib/jspdf.umd.min.js',
+  './lib/html2canvas.min.js'
 ];
 
 // Install: cache all assets

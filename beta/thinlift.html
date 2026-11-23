@@ -14,6 +14,7 @@
     <script src="db.js"></script>
     <script src="lib/alignments.js"></script>
     <script src="lib/stationfield.js"></script>
+    <script src="lib/printpdf.js"></script>
     <title>Thinlift Compaction (T335) — Field Tools</title>
     <style>
         :root{
@@ -1018,7 +1019,7 @@ function printRecord() {
 
     let frame = document.getElementById('printFrame');
     frame.innerHTML = html;
-    window.print();
+    ftPrintForm({ filename: `Thin Lift ${[r.contractNumber, r.date].filter(Boolean).join(' ')}.pdf`, margins: [0.45, 0.45, 0.4] });
 }
 
 // ═══════════ SECTION CHANGE (area chip, small section banner) ═══════════
