@@ -1239,7 +1239,7 @@ function groupLines(items) {
       l.phrases = [];
       for (const it of l.items) {
         const ph = l.phrases[l.phrases.length - 1];
-        if (ph && (it.x0 - ph.x1 < Math.max(3, 0.6 * Math.max(ph.h, it.h)) || (it.str === ':' && it.x0 - ph.x1 < 20))) { ph.str += ' ' + it.str; ph.x1 = Math.max(ph.x1, it.x1); }
+        if (ph && ((it.x0 - ph.x1 < Math.max(3, 0.6 * Math.max(ph.h, it.h)) && !/:\s*$/.test(ph.str)) || (it.str === ':' && it.x0 - ph.x1 < 20))) { ph.str += (it.x0 - ph.x1 < 0.8 ? '' : ' ') + it.str; ph.x1 = Math.max(ph.x1, it.x1); }
         else l.phrases.push({ str: it.str, x0: it.x0, x1: it.x1, y: it.y, h: it.h, page });
       }
       l.text = l.phrases.map(p => p.str).join(' ').replace(/\s+/g, ' ').trim();
@@ -1251,15 +1251,19 @@ function groupLines(items) {
 const KNOWN_LABEL = /^(MAINTENANCE|OTHER|CAPACITY|BREAKOUT TYPE|AGREEMENT|BID VERSION|DESIGNER|FUNCTIONAL|CLASSIFICATION|PHASE|ACTIVITY|WORK TYPE|BEGIN STATIONING|END STATIONING|PROJECT [A-Z]+|CONTRACT\S*|CONTRACTOR)\b/i;
 const isLabel = s => /:\s*$/.test(s) || (KNOWN_LABEL.test(s) && s === s.toUpperCase());
 // Value written to the right of a label: everything up to the next label, on the label's row or wrapped just above/below it
-function labelValue(pagePhrases, labelPh, { window = 6 } = {}) {
+function labelValue(pagePhrases, labelPh, { window = 6, below = window } = {}) {
   const row = pagePhrases.filter(p => Math.abs(p.y - labelPh.y) <= Math.max(window, 6) && p.x0 > labelPh.x1 + 1);
   const nextLabel = row.filter(p => isLabel(p.str)).sort((a, b) => a.x0 - b.x0)[0];
   const right = nextLabel ? nextLabel.x0 - 2 : Infinity;
-  const vals = pagePhrases.filter(p => p !== labelPh && !isLabel(p.str) && p.x0 > labelPh.x1 + 1 && p.x0 < right && Math.abs(p.y - labelPh.y) <= window)
+  const vals = pagePhrases.filter(p => p !== labelPh && !isLabel(p.str) && p.x0 > labelPh.x1 + 1 && p.x0 < right && p.y - labelPh.y >= -window && p.y - labelPh.y <= below)
     .sort((a, b) => a.y - b.y || a.x0 - b.x0);
   return vals.map(v => v.str).join(' ').replace(/\s+/g, ' ').trim();
 }
-function findLabel(pagePhrases, rx) { return pagePhrases.find(p => rx.test(p.str.replace(/\s+/g, ' ').trim())); }
+function findLabel(pagePhrases, rx, nearY) {
+  const all = pagePhrases.filter(p => rx.test(p.str.replace(/\s+/g, ' ').trim()));
+  if (nearY == null) return all[0];
+  return all.filter(p => Math.abs(p.y - nearY) < 90).sort((a, b) => Math.abs(a.y - nearY) - Math.abs(b.y - nearY))[0];   // the one belonging to this breakout
+}
 
 // OCR clean-ups
 const OCR_DIGIT = s => s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/[Ss]/g, '5').replace(/[Bb]/g, '8').replace(/[Gg]/g, '6').replace(/[Zz]/g, '2');
@@ -1325,7 +1329,7 @@ function tableColumns(line) {
   const find = (rx, after = -1) => words.find(w => rx.test(w.w) && w.x0 > after);
   const qty = find(/^QUANTITY$/), desc = find(/^DESCRIPTION$/);
   if (!qty || !desc) return null;
-  const unit = find(/^UNIT$/, qty.x0), price = find(/^PRICE$/, desc.x0), amtW = words.filter(w => w.x0 > (price ? price.x1 : desc.x1)).pop();
+  const unit = words.find(w => /^(UNIT|MEAS)$/.test(w.w) && w.x0 > qty.x0 && w.x0 < desc.x0), price = find(/^PRICE$/, desc.x0), amtW = words.filter(w => w.x0 > (price ? price.x1 : desc.x1)).pop();
   return { qtyRight: qty.x1, unitLeft: unit ? unit.x0 : qty.x1 + 2, descLeft: desc.x0, priceRight: price ? price.x1 : null, amtRight: amtW ? amtW.x1 : null };
 }
 
@@ -1345,10 +1349,10 @@ function parseBidItemRow(line, cols, payItemNo) {
       const dUp = Math.abs(t.x1 - cols.priceRight), dAmt = cols.amtRight ? Math.abs(t.x1 - cols.amtRight) : Infinity;
       (dUp <= dAmt ? up : amt).push(s);
     } else if (num && t.x1 <= cols.unitLeft + 3) qtyParts.push(s);
-    else if (!num && t.x0 < cols.descLeft - 6 && t.x0 >= cols.unitLeft - 12 && !unit) {
+    else if (!num && !unit && !descParts.length && t.x0 >= cols.unitLeft - 12 && t.x0 < cols.descLeft - 6 && /^[A-Za-z0-9]{1,8}[.,;:]?$/.test(s)) {
       const u = s.replace(/[.,;:]+$/, '').toUpperCase(); unit = UNIT_NORM[u] || u;
     }
-    else if (t.x0 >= cols.descLeft - 12) descParts.push(s);
+    else if (t.x0 >= cols.unitLeft + 10) descParts.push(s);
   }
   const description = fixDescription(descParts.join(' '));
   const qRaw = qtyParts.join(''), upRaw = up.join(''), amtRaw = amt.join('');
@@ -1382,7 +1386,7 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
   const contract = { contractNo: '', projectNo: '', projectId: '', location: '', county: '', contractor: '', designer: '', breakouts: [], constructionTotal: null, usedOCR, warnings: [] };
   const pagesNo = [...new Set(lines.map(l => l.page))];
   const phrasesOf = pg => lines.filter(l => l.page === pg).flatMap(l => l.phrases);
-  const val = (phs, rx, opts) => { const l = findLabel(phs, rx); return l ? labelValue(phs, l, opts) : ''; };
+  const val = (phs, rx, opts = {}) => { const l = findLabel(phs, rx, opts.nearY); return l ? labelValue(phs, l, opts) : ''; };
 
   // ── Contract header (first page that has it) ──
   for (const pg of pagesNo) {
@@ -1392,7 +1396,7 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
     set('projectId', /^PROJECT\s*(EA|ID)\s*:?$/i);
     set('projectNo', /^PROJECT\s*NUMBER\s*:?$/i);
     set('location', /^PROJECT\s*NAME\s*:?$/i, { window: 3.5 });
-    set('location', /^LOCATION\s*:?$/i, { window: 3.5 });
+    set('location', /^LOCATION\s*:?$/i, { window: 3.5, below: 12 });
     set('contractor', /^CONTRACTOR\s*:?$/i);
     set('designer', /^DESIGNER\s*:?$/i, { window: 3.5 });
     set('county', /^COUNTY\s*:?$/i, { window: 3.5 });
@@ -1415,15 +1419,15 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
 
   // ── Breakouts, items and totals, in reading order ──
   let bk = null, cols = null, lastItemLine = null;
-  const startBreakout = (no, phs) => {
+  const startBreakout = (no, phs, nearY) => {
     if (bk && bk.no === no) return;            // same breakout continued on a new page
-    bk = { no, description: '', constructionType: '', fromStation: '', toStation: '', note: '', items: [], subTotal: null, subTotalAt: null, total: null, done: false };
+    bk = { no, description: '', constructionType: '', fromStation: '', toStation: '', note: '', items: [], subTotal: null, subTotalAt: null, contingency: null, total: null, done: false };
     contract.breakouts.push(bk);
-    bk.description = val(phs, /^BREAKOUT\s*DESCRIPTION\s*:?$/i)
+    bk.description = val(phs, /^BREAKOUT\s*DESCRIPTION\s*:?$/i, { nearY })
       .replace(/^(\d)(\d{4})(\s|$)/, '$1-$2$3').replace(/^(\d)\d(\d{4})(\s|$)/, '$1-$2$3');   // OCR lost the dash in "1-1088"
-    bk.constructionType = val(phs, /^(WORK\s*TYPE|CONSTRUCTION\s*TYPE\s*CODE)\s*:?$/i);
-    bk.fromStation = fixStation(val(phs, /^(BEGIN\s*STATIONING|FROM\s*STATION)\s*:?$/i, { window: 3.5 }));
-    bk.toStation = fixStation(val(phs, /^(END\s*STATIONING|TO\s*STATION)\s*:?$/i, { window: 3.5 }));
+    bk.constructionType = val(phs, /^(WORK\s*TYPE|CONSTRUCTION\s*TYPE\s*CODE)\s*:?$/i, { nearY });
+    bk.fromStation = fixStation(val(phs, /^(BEGIN\s*STATIONING|FROM\s*STATION)\s*:?$/i, { window: 3.5, nearY }));
+    bk.toStation = fixStation(val(phs, /^(END\s*STATIONING|TO\s*STATION)\s*:?$/i, { window: 3.5, nearY }));
   };
   for (const line of lines) {
     const phs = phrasesOf(line.page);
@@ -1431,11 +1435,14 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
     if (bkLabel) {
       let no = labelValue(phs, bkLabel, { window: 3.5 }).split(' ')[0].toUpperCase();
       no = /^\d+$/.test(no) ? no.padStart(2, '0') : no.replace(/^([A-Z])O$/, '$10');
-      if (/^(\d{1,3}|[A-Z]\d)$/.test(no)) { startBreakout(no, phs); continue; }
+      if (/^(\d{1,3}|[A-Z]\d)$/.test(no)) { startBreakout(no, phs, bkLabel.y); continue; }
     }
     if (/^PAY\s*ITEM|QUANTITY.*DESCRIPTION/i.test(line.text)) { cols = tableColumns(line) || cols; continue; }
-    const money = line.items.map(i => i.str).filter(isNumTok).pop();
+    const money = line.items.map(i => i.str.replace(/^\$/, '')).filter(isNumTok).pop();
     if (/TOTAL\s*CONSTRUCTION\s*ITEM\s*COSTS/i.test(line.text)) { if (money) contract.constructionTotal = moneyCandidates(money)[0]; continue; }
+    if (/CONTRACT\s*SUB\s*TOTAL/i.test(line.text)) { if (money) contract.contractSubTotal = moneyCandidates(money)[0]; continue; }
+    if (bk && !bk.done && /^CONTINGENCY\b/i.test(line.text) && !/^\d{7}/.test(line.text)) { if (money) bk.contingency = moneyCandidates(money)[0]; continue; }
+    if (bk && !bk.done && /^TOTAL\s*COST\s*:/i.test(line.text)) { if (money) bk.total = moneyCandidates(money)[0]; bk.done = true; continue; }
     if (bk && !bk.done && /SUB\s*TOTAL/i.test(line.text)) { if (money && bk.subTotal == null) { bk.subTotal = moneyCandidates(money)[0]; bk.subTotalAt = bk.items.length; } continue; }
     if (bk && !bk.done && /BREAKOUT\s*TOTAL/i.test(line.text) && !/BREAKOUT\s*NO/i.test(line.text)) { if (money) bk.total = moneyCandidates(money)[0]; bk.done = true; continue; }
     if (!bk || bk.done || !cols) continue;
@@ -1445,7 +1452,7 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
     }
     // Wrapped description: text only in the description column just below an item
     const prev = bk.items[bk.items.length - 1];
-    if (prev && lastItemLine && lastItemLine.page === line.page && line.y - lastItemLine.y < 14 && line.items.every(i => i.x0 >= cols.descLeft - 12 && (!cols.priceRight || i.x1 < cols.priceRight - 75))) {
+    if (prev && lastItemLine && lastItemLine.page === line.page && line.y - lastItemLine.y < 14 && line.items.every(i => i.x0 >= cols.unitLeft + 30 && (!cols.priceRight || i.x1 < cols.priceRight - 75))) {
       prev.description = fixDescription(prev.description + ' ' + line.items.map(i => i.str).join(' ')); lastItemLine = line;
     }
   }
@@ -1454,11 +1461,13 @@ function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) 
   const sum = arr => Math.round(arr.reduce((s, i) => s + (i.itemCost || 0), 0) * 100) / 100;
   for (const b of contract.breakouts) {
     b.itemSum = sum(b.items);
-    if (b.total != null) b.totalOk = Math.abs(b.itemSum - b.total) < 0.05;
+    if (b.total != null) b.totalOk = Math.abs(b.itemSum + (b.contingency || 0) - b.total) < 0.05;
     if (b.subTotal != null) b.subTotalOk = Math.abs(sum(b.items.slice(0, b.subTotalAt)) - b.subTotal) < 0.05;
   }
   const constr = contract.breakouts.filter(b => /^\d+$/.test(b.no));
-  if (contract.constructionTotal != null) contract.constructionTotalOk = Math.abs(constr.reduce((s, b) => s + (b.total ?? b.itemSum), 0) - contract.constructionTotal) < 0.05;
+  if (contract.contractSubTotal != null) contract.contractSubTotalOk = Math.abs(contract.breakouts.reduce((s, b) => s + (b.subTotal ?? 0), 0) - contract.contractSubTotal) < 0.05;
+  // older AEBs print this total in whole dollars (each breakout rounded), so allow $1 per breakout there
+  if (contract.constructionTotal != null) contract.constructionTotalOk = Math.abs(constr.reduce((s, b) => s + (b.total ?? b.itemSum), 0) - contract.constructionTotal) < (Number.isInteger(contract.constructionTotal) ? Math.max(1, constr.length) : 0.05);
   return contract;
 }
 
@@ -1486,11 +1495,13 @@ function renderImportChecks(parsed) {
   if (fixed.length) h += line(null, `${fixed.length} item${fixed.length !== 1 ? 's' : ''} had a misread number or unit corrected (marked in orange) — worth a quick look`);
   if (totals.length) h += line(totalsBad.length === 0, totalsBad.length ? `${totalsBad.length} of ${totals.length} breakout totals don't match the items read` : `All ${totals.length} breakout totals match the items read`);
   else h += line(null, 'No breakout totals found to check against');
+  if (parsed.contractSubTotal != null) h += line(!!parsed.contractSubTotalOk, `Contract subtotal ${fmtMoney(parsed.contractSubTotal)} ${parsed.contractSubTotalOk ? 'matches' : "doesn't match"} the breakout subtotals`);
   if (parsed.constructionTotal != null) h += line(!!parsed.constructionTotalOk, `Total construction item costs ${fmtMoney(parsed.constructionTotal)} ${parsed.constructionTotalOk ? 'matches' : "doesn't match"} the breakouts`);
   h += `<div class="ir-list">` + parsed.breakouts.map((b, bi) => {
     const nBad = b.items.filter(i => i.check === 'mismatch' || i.check === 'incomplete').length;
     const nFix = b.items.filter(i => i.check === 'fixed').length;
-    const tot = b.total != null ? `<span class="${b.totalOk ? 'ir-ok' : 'ir-bad'}">${fmtMoney(b.itemSum)}${b.totalOk ? ' ✓' : ` ≠ ${fmtMoney(b.total)}`}</span>` : `<span>${fmtMoney(b.itemSum)}</span>`;
+    const cont = b.contingency ? ` + ${fmtMoney(b.contingency)} contingency` : '';
+    const tot = b.total != null ? `<span class="${b.totalOk ? 'ir-ok' : 'ir-bad'}">${fmtMoney(b.itemSum)}${cont}${b.totalOk ? ' ✓' : ` ≠ ${fmtMoney(b.total)}`}</span>` : `<span>${fmtMoney(b.itemSum)}${cont}</span>`;
     return `<details class="ir-bk" ${nBad || nFix || (b.total != null && !b.totalOk) ? 'open' : ''}>
       <summary><b>Breakout ${esc(b.no)}</b> <span class="ir-bkdesc">${esc(b.description || '')}</span><span class="ir-bkmeta">${b.items.length} items · ${tot}${nBad ? ` · <span class="ir-bad">${nBad} to check</span>` : ''}</span></summary>
       ${b.items.map((it, ii) => `<div class="ir-item ${it.check}" onclick="editImportItem(${bi},${ii})">
@@ -1527,7 +1538,7 @@ function saveImportItemEdit() {
   it.importFlag = ok ? '' : 'Still doesn’t add up — check against the PDF';
   const b = pendingImport.breakouts[irEdit.bi];
   b.itemSum = Math.round(b.items.reduce((s, i) => s + (i.itemCost || 0), 0) * 100) / 100;
-  if (b.total != null) b.totalOk = Math.abs(b.itemSum - b.total) < 0.05;
+  if (b.total != null) b.totalOk = Math.abs(b.itemSum + (b.contingency || 0) - b.total) < 0.05;
   irEdit = null; closeItemModal(); renderImportChecks(pendingImport);
 }
 
@@ -1538,7 +1549,7 @@ function cancelImport() {
 
 function importedBreakouts(p) {
   return p.breakouts.map(b => ({ no: b.no, description: b.description, constructionType: b.constructionType,
-    fromStation: b.fromStation, toStation: b.toStation, note: '', total: b.total,
+    fromStation: b.fromStation, toStation: b.toStation, note: '', total: b.total, ...(b.contingency ? { contingency: b.contingency } : {}),
     items: b.items.map(i => ({ id: i.id, bidItem: i.bidItem, unitMeas: i.unitMeas, description: i.description, quantity: i.quantity,
       unitPrice: i.unitPrice, itemCost: i.itemCost, note: '', ...((i.check === 'mismatch' || i.check === 'incomplete') ? { importFlag: i.importFlag } : {}) })) }));
 }
