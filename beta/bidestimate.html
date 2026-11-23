@@ -1704,7 +1704,7 @@ async function applyPmSync(bidContract, existingProject) {
     selected.forEach(f => { proj[f.pmKey] = bidContract[f.key]; });
     await ftSaveProject(proj);
     // Create stub materials entry so project appears in other tools
-    await ftSaveMaterials({ id, number: proj.projectNumber, description: '', archived: false, created: proj.created, materials: [] });
+    await ftSaveMaterials({ id, number: proj.contractNumber || proj.projectNumber || proj.name || id, description: '', archived: false, created: proj.created, materials: [] });
     closePmSyncSheet();
     showToast('Project created in Project Manager');
   } else {

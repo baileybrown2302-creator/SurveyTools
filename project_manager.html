@@ -270,12 +270,12 @@
         <div class="modal-handle"></div>
         <div class="modal-title" id="projectModalTitle">New Project</div>
         <div class="field-group">
-            <label class="label" for="projNumber">Project Number *</label>
-            <input type="text" class="input" id="projNumber" placeholder="e.g. P-2024-001" autocomplete="off">
+            <label class="label" for="projName">Project Name *</label>
+            <input type="text" class="input" id="projName" placeholder="e.g. Reno Airport Widening" autocomplete="off">
         </div>
         <div class="field-group">
-            <label class="label" for="projName">Project Name</label>
-            <input type="text" class="input" id="projName" placeholder="e.g. Reno Airport Widening" autocomplete="off">
+            <label class="label" for="projNumber">Project Number <span style="font-weight:500;color:var(--text-muted)">(optional)</span></label>
+            <input type="text" class="input" id="projNumber" placeholder="e.g. P-2024-001" autocomplete="off">
         </div>
         <div class="field-group">
             <label class="label" for="projContract">Contract Number</label>
@@ -543,8 +543,9 @@ async function openDetailView(projectId) {
     const proj = allProjects.find(p => p.id === projectId);
     if (!proj) return;
 
-    document.getElementById('detailTitle').textContent = proj.contractNumber || proj.projectId || proj.projectNumber || 'Project';
-    document.getElementById('detailProjectNumber').textContent = ftProjectTitle(proj);
+    document.getElementById('detailTitle').textContent = proj.contractNumber || proj.projectId || proj.projectNumber || proj.name || 'Project';
+    const fullTitle = ftProjectTitle(proj);
+    document.getElementById('detailProjectNumber').textContent = fullTitle === document.getElementById('detailTitle').textContent ? '' : fullTitle;
     // Sub-heading: show project number when it isn't already the primary identifier
     document.getElementById('detailContractNumber').textContent = proj.projectNumber && (proj.contractNumber || proj.projectId) ? proj.projectNumber : '';
     document.getElementById('detailFunding').textContent = proj.fundingSource || '—';
@@ -731,17 +732,20 @@ async function openProjectModal(projectId) {
         existingCreated = null;
     }
     document.getElementById('projectModal').classList.remove('hidden');
-    setTimeout(() => document.getElementById('projNumber').focus(), 100);
+    setTimeout(() => document.getElementById('projName').focus(), 100);
 }
 
 async function saveProject() {
     const projNum = document.getElementById('projNumber').value.trim();
-    if (!projNum) { document.getElementById('projNumber').focus(); showToast('Project Number is required.'); return; }
+    const projName = document.getElementById('projName').value.trim();
+    if (!projName) { document.getElementById('projName').focus(); showToast('Project Name is required.'); return; }
+    // short label other tools use when they need one (contract → project no. → name)
+    const shortLabel = document.getElementById('projContract').value.trim() || projNum || projName;
     const id = editingProjectId || uid();
     const proj = {
         id,
         projectNumber: projNum,
-        name: document.getElementById('projName').value.trim(),
+        name: projName,
         contractNumber: document.getElementById('projContract').value.trim(),
         fundingSource: document.getElementById('projFunding').value,
         contractor: document.getElementById('projContractor').value.trim(),
@@ -763,12 +767,12 @@ async function saveProject() {
     // Ensure a materials entry exists so this project appears in material-based apps (HMA, thinlift, etc.)
     const existingMat = await ftGetMaterials(id);
     if (!existingMat) {
-        await ftSaveMaterials({ id, number: projNum, description: proj.description || '', archived: false, created: proj.created, materials: [] });
-    } else if (existingMat.number !== projNum) {
-        await ftSaveMaterials({ ...existingMat, number: projNum });
+        await ftSaveMaterials({ id, number: shortLabel, description: proj.description || '', archived: false, created: proj.created, materials: [] });
+    } else if (existingMat.number !== shortLabel) {
+        await ftSaveMaterials({ ...existingMat, number: shortLabel });
     }
     const lp = await ftGetLevelProject(id);
-    if (lp) { lp.number = projNum; lp.desc = proj.description; await ftSaveLevelProject(lp); }
+    if (lp) { lp.number = shortLabel; lp.desc = proj.description; await ftSaveLevelProject(lp); }
     closeModal('projectModal');
     await renderProjectList();
     showToast(editingProjectId ? 'Project updated.' : 'Project created.');
@@ -812,7 +816,7 @@ function copyExport() {
 function downloadExport() {
     let proj;
     try { proj = JSON.parse(exportJSON).project; } catch(e) { proj = {}; }
-    const name = (proj.projectNumber || 'project').replace(/[^a-z0-9]/gi, '_');
+    const name = (proj.contractNumber || proj.projectNumber || proj.name || 'project').replace(/[^a-z0-9]/gi, '_');
     const a = document.createElement('a');
     a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(exportJSON);
     a.download = `fieldtools_${name}_${todayStr()}.json`;
@@ -851,8 +855,8 @@ async function previewImport() {
         return;
     }
 
-    if (!data.project || !data.project.projectNumber) {
-        errEl.textContent = 'Missing project.projectNumber in imported data.';
+    if (!data.project || !(data.project.name || data.project.projectNumber || data.project.contractNumber)) {
+        errEl.textContent = 'Imported data has no project name, number or contract.';
         errEl.classList.add('show');
         return;
     }

@@ -1723,7 +1723,7 @@ let _selectedProjectId = null;
 async function loadRecordList() {
     // Load projects for picker
     _allProjects = await ftGetAllProjects();
-    _allProjects.sort((a,b) => (a.projectNumber||'').localeCompare(b.projectNumber||''));
+    _allProjects.sort((a,b) => ftProjectTitle(a).localeCompare(ftProjectTitle(b), undefined, { numeric: true }));
     const sel = document.getElementById('listProjectSelect');
     if (sel) {
         const cur = sel.value;
