@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LandXML xmlns="http://www.landxml.org/schema/LandXML-1.2" version="1.2" date="2026-11-23" time="09:00:00">
+  <Units><Imperial linearUnit="USSurveyFoot" areaUnit="squareFoot" volumeUnit="cubicYard" angularUnit="decimal degrees" direction="decimal degrees"/></Units>
+  <CoordinateSystem name="NAD83 Nevada State Plane West Zone, US Survey Feet" epsgCode="3423" horizontalDatum="NAD83" horizontalCoordinateSystemName="NAD83 / Nevada West (ftUS)"/>
+  <Project name="Carson City Demo" desc="Demonstration alignment near the office. Grid coordinates (combined factor 1)."/>
+  <Application name="Field Tools demo generator" version="1.0"/>
+  <Alignments name="Demo">
+    <Alignment name="DEMO CL" length="1463.3389" staStart="1000.0000" desc="Demo centerline: 4 curves (R 25-60 ft) and one angle point">
+      <CoordGeom>
+        <Line staStart="1000.0000" length="43.9375"><Start>14740363.7576 2289428.6838</Start><End>14740363.0326 2289384.7523</End></Line>
+        <Line staStart="1043.9375" length="189.2422"><Start>14740363.0326 2289384.7523</Start><End>14740552.2392 2289388.4220</End></Line>
+        <Curve rot="ccw" crvType="arc" staStart="1233.1797" radius="30.0000" length="47.0187" delta="89.799145" chord="42.3520" tangent="29.8950"><Start>14740552.2392 2289388.4220</Start><Center>14740552.8210 2289358.4277</Center><End>14740582.8131 2289359.1146</End><PI>14740582.1286 2289389.0018</PI></Curve>
+        <Line staStart="1280.1985" length="354.8458"><Start>14740582.8131 2289359.1146</Start><End>14740590.9378 2289004.3618</End></Line>
+        <Curve rot="ccw" crvType="arc" staStart="1635.0442" radius="25.0000" length="39.4533" delta="90.420280" chord="35.4848" tangent="25.1841"><Start>14740590.9378 2289004.3618</Start><Center>14740565.9444 2289003.7894</Center><End>14740566.3334 2288978.7925</End><PI>14740591.5144 2288979.1844</PI></Curve>
+        <Line staStart="1674.4975" length="136.4739"><Start>14740566.3334 2288978.7925</Start><End>14740429.8760 2288976.6686</End></Line>
+        <Curve rot="cw" crvType="arc" staStart="1810.9714" radius="30.0000" length="47.3223" delta="90.378879" chord="42.5665" tangent="30.1990"><Start>14740429.8760 2288976.6686</Start><Center>14740430.3429 2288946.6722</Center><End>14740400.3503 2288946.0070</End><PI>14740399.6806 2288976.1986</PI></Curve>
+        <Line staStart="1858.2937" length="312.9149"><Start>14740400.3503 2288946.0070</Start><End>14740407.2888 2288633.1691</End></Line>
+        <Curve rot="cw" crvType="arc" staStart="2171.2086" radius="60.0000" length="94.6289" delta="90.363986" chord="85.1219" tangent="60.3824"><Start>14740407.2888 2288633.1691</Start><Center>14740467.2741 2288634.4995</Center><End>14740468.9856 2288574.5239</End><PI>14740408.6278 2288572.8015</PI></Curve>
+        <Line staStart="2265.8375" length="197.5014"><Start>14740468.9856 2288574.5239</Start><End>14740666.4066 2288580.1576</End></Line>
+      </CoordGeom>
+    </Alignment>
+  </Alignments>
+</LandXML>

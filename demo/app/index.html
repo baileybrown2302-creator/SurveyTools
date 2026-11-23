@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script src="../demo_sim.js"></script>
+<script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Field Tools">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" href="./icon.png">
+    <link rel="apple-touch-icon" href="./icon.png">
+    <script src="db.js"></script>
+    <title>Field Tools</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-primary: #f3f4f6; --bg-secondary: #ffffff; --bg-tertiary: #f9fafb;
+            --text-primary: #111827; --text-secondary: #374151; --text-muted: #9ca3af;
+            --border-primary: #e5e7eb; --border-secondary: #d1d5db;
+            --accent-blue: #3b82f6; --shadow: 0 1px 3px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.12);
+        }
+        [data-theme="high-contrast"] {
+            --bg-primary: #000000; --bg-secondary: #0a0a0a; --bg-tertiary: #111111;
+            --text-primary: #ffffff; --text-secondary: #f0f0f0; --text-muted: #999999;
+            --border-primary: #333333; --border-secondary: #444444;
+            --accent-blue: #60a5fa; --shadow: 0 1px 3px rgba(0,0,0,0.5);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+            background: var(--bg-primary); color: var(--text-primary);
+            min-height: 100vh; -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+        /* ── Theme button ── */
+        .theme-btn {
+            position: fixed; top: 14px; right: 14px; z-index: 100;
+            background: var(--bg-secondary); border: 1.5px solid var(--border-secondary);
+            border-radius: 8px; padding: 6px 10px; font-size: 0.75em; font-weight: 700;
+            color: var(--text-secondary); cursor: pointer;
+        }
+
+        /* ── Home view ── */
+        #homeView {
+            display: flex; flex-direction: column; align-items: center;
+            padding: 48px 20px 40px; min-height: 100vh;
+        }
+        .app-icon {
+            width: 90px; height: 90px; border-radius: 20px;
+            box-shadow: var(--shadow-lg); margin-bottom: 12px;
+        }
+        h1 { font-size: 1.9em; font-weight: 800; color: var(--text-primary); margin-bottom: 28px; }
+        .sections { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
+        /* ── Footer / changelog ── */
+        .home-footer { width: 100%; max-width: 420px; margin-top: 36px; }
+        .update-row { display:flex; gap:8px; justify-content:center; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
+        .update-btn { background:var(--bg-secondary); border:1.5px solid var(--border-secondary); color:var(--text-secondary); border-radius:9px; padding:7px 12px; font-weight:700; font-size:0.78em; cursor:pointer; font-family:inherit; }
+        .update-ver { font-size:0.7em; color:var(--text-muted); }
+        .update-banner { position:fixed; left:50%; bottom:calc(16px + env(safe-area-inset-bottom)); transform:translateX(-50%); background:#2563eb; color:#fff; border:none; border-radius:12px; padding:12px 18px; font-weight:800; font-size:0.9em; box-shadow:0 6px 20px rgba(0,0,0,0.3); z-index:999; cursor:pointer; font-family:inherit; }
+        .footer-meta { font-size: 0.72em; color: var(--text-muted); text-align: center; margin-bottom: 10px; }
+        .changelog-toggle {
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-size: 0.72em; font-weight: 700; color: var(--text-muted);
+            background: none; border: none; cursor: pointer; width: 100%;
+            padding: 4px 0; text-decoration: underline; text-underline-offset: 3px;
+        }
+        .changelog {
+            display: none; margin-top: 12px;
+            background: var(--bg-secondary); border: 1.5px solid var(--border-primary);
+            border-radius: 12px; overflow: hidden;
+        }
+        .changelog.open { display: block; }
+        .cl-entry { padding: 12px 16px; border-bottom: 1px solid var(--border-primary); }
+        .cl-entry:last-child { border-bottom: none; }
+        .cl-date { font-size: 0.65em; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 4px; }
+        .cl-title { font-size: 0.85em; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+        .cl-items { list-style: none; padding: 0; margin: 0; }
+        .cl-items li { font-size: 0.78em; color: var(--text-secondary); padding: 2px 0; }
+        .cl-items li::before { content: '· '; color: var(--text-muted); }
+        .section-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 20px 20px; background: var(--bg-secondary);
+            border: 1.5px solid var(--border-primary); border-radius: 16px;
+            cursor: pointer; box-shadow: var(--shadow);
+            transition: border-color 0.15s, transform 0.1s;
+        }
+        .section-card:active { transform: scale(0.98); }
+        .section-card:hover { border-color: var(--accent-blue); }
+        .section-card.disabled {
+            opacity: 0.45; cursor: default; border-style: dashed;
+            background: var(--bg-tertiary); pointer-events: none;
+        }
+        .section-icon { font-size: 2.2em; flex-shrink: 0; }
+        .section-info { flex: 1; }
+        .section-name { font-size: 1.05em; font-weight: 800; color: var(--text-primary); }
+        .section-count { font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
+        .section-arrow { color: var(--text-muted); font-size: 1.4em; flex-shrink: 0; }
+
+        /* ── Tool list view ── */
+        #toolView {
+            display: none; flex-direction: column; min-height: 100vh;
+        }
+        .tool-nav {
+            background: var(--bg-secondary); border-bottom: 1.5px solid var(--border-primary);
+            padding: 12px 16px; display: flex; align-items: center; gap: 12px;
+            position: sticky; top: 0; z-index: 50; box-shadow: var(--shadow);
+        }
+        .back-btn {
+            color: var(--accent-blue); font-weight: 700; font-size: 0.9em;
+            background: none; border: none; cursor: pointer; padding: 4px 0;
+        }
+        .tool-nav-title { font-weight: 800; font-size: 1em; color: var(--text-primary); }
+        .tool-list { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .tool-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 18px 20px; background: var(--bg-secondary);
+            border: 1.5px solid var(--border-primary); border-radius: 14px;
+            cursor: pointer; text-decoration: none; color: inherit;
+            box-shadow: var(--shadow); transition: border-color 0.15s, transform 0.1s;
+        }
+        .tool-card:active { transform: scale(0.98); }
+        .tool-card:hover { border-color: var(--accent-blue); }
+        .tool-icon { font-size: 2em; flex-shrink: 0; }
+        .tool-info { flex: 1; min-width: 0; }
+        .tool-name { font-size: 1em; font-weight: 700; color: var(--text-primary); }
+        .tool-desc { font-size: 0.78em; color: var(--text-muted); margin-top: 2px; }
+        .tool-arrow { color: var(--text-muted); font-size: 1.3em; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <button class="theme-btn" id="themeBtn">🌙 Dark</button>
+
+    <!-- Home: section picker -->
+    <div id="homeView">
+        <img src="./icon.png" class="app-icon" alt="Field Tools">
+        <h1>Field Tools <span style="font-size:0.45em;vertical-align:middle;background:#7c3aed;color:#fff;padding:3px 8px;border-radius:6px;font-weight:900;letter-spacing:0.5px;">DEMO</span></h1>
+        <div class="sections">
+            <a href="project_manager.html" class="section-card" style="border-color:var(--accent-blue);background:var(--bg-secondary);text-decoration:none;color:inherit;">
+                <span class="section-icon">📁</span>
+                <div class="section-info">
+                    <div class="section-name">Project Manager</div>
+                    <div class="section-count">View, export &amp; import all project data</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+            <a href="materials.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">🗂️</span>
+                <div class="section-info">
+                    <div class="section-name">Material Reference</div>
+                    <div class="section-count">HMA, concrete, granular &amp; Proctor data by contract</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+        </div>
+        <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
+        <div class="sections">
+            <a href="stationing.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">🧭</span>
+                <div class="section-info">
+                    <div class="section-name">Station / Offset</div>
+                    <div class="section-count">Live station &amp; offset from GPS · navigate to a station</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+            <a href="alignment_photo.html" class="section-card" style="text-decoration:none;color:inherit;">
+                <span class="section-icon">📸</span>
+                <div class="section-info">
+                    <div class="section-name">Station Photos</div>
+                    <div class="section-count">Photos stamped with station, offset &amp; description</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </a>
+        </div>
+        <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
+        <div class="sections">
+            <div class="section-card" onclick="openSection('survey')">
+                <span class="section-icon">📡</span>
+                <div class="section-info">
+                    <div class="section-name">Survey Tools</div>
+                    <div class="section-count">Leveling · Control Points · CSV Converter</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </div>
+            <div class="section-card" onclick="openSection('inspection')">
+                <span class="section-icon">🔍</span>
+                <div class="section-info">
+                    <div class="section-name">Inspection Tools</div>
+                    <div class="section-count">Area &amp; Volume · HMA Tool · Bid Items</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </div>
+            <div class="section-card" onclick="openSection('testing')">
+                <span class="section-icon">🧪</span>
+                <div class="section-info">
+                    <div class="section-name">Testing Tools</div>
+                    <div class="section-count">Thinlift Compaction (T335) · Soil Compaction (T103G)</div>
+                </div>
+                <span class="section-arrow">›</span>
+            </div>
+        </div>
+
+        <!-- Footer + changelog -->
+        <div class="home-footer">
+            <div class="footer-meta">Last updated Nov 16, 2026</div>
+            <div class="update-row" style="display:none">
+                <button class="update-btn" id="updBtn" onclick="checkForUpdates()">⟳ Check for updates</button>
+                <span class="update-ver" id="updVer"></span>
+                <a href="#" class="update-ver" style="color:var(--text-muted);" onclick="event.preventDefault();forceRefresh()">force refresh</a>
+            </div>
+            <button class="changelog-toggle" onclick="toggleChangelog()">
+                <span id="clToggleLabel">▸ View Changelog</span>
+            </button>
+            <div class="changelog" id="changelog">
+
+                <div class="cl-entry">
+                    <div class="cl-date">Nov 20, 2026</div>
+                    <div class="cl-title">Projects in one place · station entry</div>
+                    <ul class="cl-items">
+                        <li>Projects are created, edited, archived and deleted only in Project Manager; Leveling and Control Points pick from it</li>
+                        <li>Deleting a project now also removes its control points, compaction tests, alignments and station photos</li>
+                        <li>Thinlift and Soil Compaction: stations are checked and tidied (STA 10+5 → 10+05); 📍 fills station (and Soil's distance to CL) from GPS using the project's alignments</li>
+                        <li>Fixed Thinlift showing stations like 1+100 instead of 2+00</li>
+                        <li>Soil Compaction and Thinlift have a Project field: picking it fills the contract number and enables 📍; older tests are matched by contract number</li>
+                        <li>Projects show their Project Manager title (contract : name) in Materials, test forms, Project Manager export/delete and Leveling</li>
+                        <li>Material Reference no longer renames or creates projects; "Clear materials" replaces deleting a contract</li>
+                        <li>New projects need a Project Name; Project Number is optional</li>
+                        <li>New desktop demo version at /demo/ with simulated GPS and compass for presentations</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Nov 20, 2026</div>
+                    <div class="cl-title">Slope Staking moved to Beta</div>
+                    <ul class="cl-items">
+                        <li>Slope Staking is now only in the Beta version while it's being evaluated; existing stake sessions are kept and open from Project Manager</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Nov 16, 2026</div>
+                    <div class="cl-title">Station / Offset &amp; Station Photos (beta)</div>
+                    <ul class="cl-items">
+                        <li>New Station / Offset app: live station &amp; offset from phone GPS, plus a Navigate tab with an arrow and distance to any station/offset</li>
+                        <li>Navigate shows how far to go ahead/back and left/right along the alignment, with ±50/±100 station steps</li>
+                        <li>Point list for inspection/stakeout: import CSV, generate stations at an interval with offsets, Prev/Next, mark done, 📸 photo at a point, export</li>
+                        <li>Station equations: zones shown like Trimble Access (119+00:3) where stations repeat; gap stations flagged; equation table per alignment</li>
+                        <li>Map view: satellite, satellite + roads, streets, topo or blank (offline); pan, zoom, follow-me, full screen, ⊥ dotted line square to the alignment with station/offset; alignments with station ticks, target, point list and photo markers</li>
+                        <li>Station Photos: photos stamped with description, station/offset, alignment, date/time, facing &amp; GPS accuracy</li>
+                        <li>Optional custom photo name used as the file name; CSV &amp; KML photo log export</li>
+                        <li>Alignments (LandXML: lines, curves, spirals, station equations), coordinate settings and photos are kept per project</li>
+                        <li>Upload alignments to a project from the Project Manager project screen</li>
+                        <li>Metric LandXML (TBC exports) converted to the project's units (US survey feet by default) on import</li>
+                        <li>NAD83 Nevada West/Central/East, NAD83/94 (HARN) Nevada West, or custom projection; combined factor and check-in on a known point</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Material Reference — Gauge Correlation &amp; Photo References</div>
+                    <ul class="cl-items">
+                        <li>Gauge correlation now captures moisture % reading and oven-dried moisture % for auto-offset calculation</li>
+                        <li>Moisture and density offset slot numbers saved per correlation entry</li>
+                        <li>Reference photos: attach one or more images to any material for visual verification</li>
+                        <li>Photos viewable full-screen from the material card; stored locally on device</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">Backup &amp; Transfer</div>
+                    <ul class="cl-items">
+                        <li>Full backup export: select any combination of projects, loops, control points, sessions, materials, tests, and bid items</li>
+                        <li>Import backup with per-record selection — duplicates skipped automatically</li>
+                        <li>Device-to-device transfer via 6-character code (PeerJS, same Wi-Fi or hotspot)</li>
+                        <li>Offline transfer via file share (AirDrop / Nearby Share) or direct file download</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 30, 2026</div>
+                    <div class="cl-title">HMA Tool — bug fix</div>
+                    <ul class="cl-items">
+                        <li>Fixed "From Saved Materials", "Stations" toggle, and "Yield" tab all non-functional due to a JavaScript parse error</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 22, 2026</div>
+                    <div class="cl-title">Bid Items — Agreement Estimate PDF import</div>
+                    <ul class="cl-items">
+                        <li>Upload any NDOT Agreement Estimate PDF — breakouts and bid items parsed automatically</li>
+                        <li>Collapsible breakouts with From/To station info and item counts</li>
+                        <li>Live search by bid item number or description across all breakouts</li>
+                        <li>Per-breakout and per-item field notes</li>
+                        <li>Manual entry fallback for adding or editing breakouts and items</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 22, 2026</div>
+                    <div class="cl-title">Control Points — Multi-Source Observations &amp; Imports</div>
+                    <ul class="cl-items">
+                        <li>Observation history: each point now tracks N/E/Elev from multiple sources (leveling loops, LOIS CSV, CSV import, manual entry)</li>
+                        <li>Per-coordinate preference selection — independently choose which source's northing, easting, or elevation to display on the card</li>
+                        <li>LOIS CSV import: auto-detected by LPN/Scale Factor columns; filter by LPN or scale factor range; field toggles for N/E/Elev; project picker; merges into existing points by name</li>
+                        <li>Generic N/E/Elev CSV import: per-field toggles (elevation off by default for GNSS data); same merge-on-name-match logic</li>
+                        <li>Manual observation entry: "Add Observation" button in each point's editor with Source/Label, N/E/Elev, and Note</li>
+                        <li>Leveling tool: CP name suggestions on BM, IP, and TP modals; live elevation diff display when entering a known BM</li>
+                        <li>Leveling tool: IPs and custom-named TPs auto-create or update their CP record with a leveling observation after each shot</li>
+                        <li>Materials Reference: removed "Never Exported" reminder (persistent storage now active)</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 20, 2026</div>
+                    <div class="cl-title">Soil Compaction Test (T103G)</div>
+                    <ul class="cl-items">
+                        <li>Nuclear gauge compaction report replacing NDOT form 040-047</li>
+                        <li>Automatic 6% rule check for density &amp; moisture counts — reveals extra reading inputs when exceeded</li>
+                        <li>Proctor reference linked from Materials Manager (Granular) or manual entry</li>
+                        <li>Dry density calculations per reading pair, average dry density &amp; % compaction</li>
+                        <li>ACCEPTED / REJECTED verdict with configurable minimum % compaction</li>
+                        <li>Auto-save with project linking and test code parsing</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 2026</div>
+                    <div class="cl-title">Thinlift Compaction Test (T335)</div>
+                    <ul class="cl-items">
+                        <li>Random-location nuclear density test using pre-defined block table (blocks 1–35)</li>
+                        <li>5-segment section division with full calculation display</li>
+                        <li>Three pass/fail criteria: single location, joint, and test section average</li>
+                        <li>Small test section mode (&lt;1,000 sq yd), correlation mode (7 locations)</li>
+                        <li>Station equation and mile marker stationing options</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 19, 2026</div>
+                    <div class="cl-title">App renamed to Field Tools · Section navigation</div>
+                    <ul class="cl-items">
+                        <li>Renamed app from "Survey Tool" to "Field Tools"</li>
+                        <li>Home screen reorganized into Survey, Inspection, and Testing sections</li>
+                        <li>Tap a section to open its tool list with back navigation</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 2026</div>
+                    <div class="cl-title">Slope Staking — Model-Based Calculator</div>
+                    <ul class="cl-items">
+                        <li>New model-based staking tool for GPS/Total Station workflows</li>
+                        <li>Grade break entry with H/V offsets, auto-sorted by distance</li>
+                        <li>Live NDOT 4-face stake preview (Back / Side / Front / Side)</li>
+                        <li>Incremental C/F calculation from catch point toward CL</li>
+                        <li>PDF print output for field records</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Mar 2026</div>
+                    <div class="cl-title">Slope Staking — Project &amp; Session Manager</div>
+                    <ul class="cl-items">
+                        <li>Unified project hub linking leveling, materials, and staking data</li>
+                        <li>Session metadata: operator, date, equipment, superelevation &amp; template presets</li>
+                        <li>Export all project data (leveling + materials + stakes) as JSON</li>
+                        <li>Field Calculator GPS/TS mode — direct ground elevation input</li>
+                        <li>Station-range to template auto-fill for office prep</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">Early 2026</div>
+                    <div class="cl-title">Slope Staking — Field Calculator</div>
+                    <ul class="cl-items">
+                        <li>Iterative catch-point workflow for cut, fill, cut+ditch, and custom sections</li>
+                        <li>Shot-by-shot trial history with convergence detection</li>
+                        <li>Saved templates for typical sections by contract</li>
+                        <li>Session notes export (plain text)</li>
+                    </ul>
+                </div>
+
+                <div class="cl-entry">
+                    <div class="cl-date">2025</div>
+                    <div class="cl-title">Core tools released</div>
+                    <ul class="cl-items">
+                        <li>Differential Leveling — level loops, stadia, misclosure &amp; accuracy</li>
+                        <li>Material Reference — HMA, concrete, granular &amp; Proctor by contract</li>
+                        <li>Area &amp; Volume — rectangle, triangle, trapezoid, circle &amp; spandrel</li>
+                        <li>HMA Tool — tonnage, yield check &amp; RICE density</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Tool list view -->
+    <div id="toolView">
+        <nav class="tool-nav">
+            <button class="back-btn" onclick="goBack()">&#8249; Home</button>
+            <span class="tool-nav-title" id="toolViewTitle"></span>
+        </nav>
+        <div class="tool-list" id="toolList"></div>
+    </div>
+
+    <script>
+        // ── Theme ──
+        const btn = document.getElementById('themeBtn');
+        btn.addEventListener('click', () => {
+            const isHC = document.documentElement.getAttribute('data-theme') === 'high-contrast';
+            document.documentElement.setAttribute('data-theme', isHC ? '' : 'high-contrast');
+            btn.textContent = isHC ? '🌙 Dark' : '☀️ Light';
+            localStorage.setItem('ft_theme', isHC ? '' : 'high-contrast');
+            ftSetSetting('surveyTheme', isHC ? '' : 'high-contrast');
+        });
+
+        async function init() {
+            const saved = await ftGetSetting('surveyTheme');
+            if (saved === 'high-contrast') {
+                document.documentElement.setAttribute('data-theme', 'high-contrast');
+                btn.textContent = '☀️ Light';
+            }
+        }
+        init();
+
+        // ── Section definitions ──
+        const sections = {
+            survey: {
+                title: 'Survey Tools',
+                tools: [
+                    { icon: '🔭', name: 'Differential Leveling', desc: 'Level loops, stadia, misclosure & accuracy', href: 'leveling_home.html' },
+                    { icon: '🗺️', name: 'Control Points', desc: 'Location control sheet — monument status tracking', href: 'controlpoints.html' },
+                    { icon: '🔄', name: 'CSV Converter', desc: 'LOIS LPN CSV → GRID & GNSS output files', href: 'csvconverter.html' },
+                ]
+            },
+            inspection: {
+                title: 'Inspection Tools',
+                tools: [
+                    { icon: '📐', name: 'Area & Volume', desc: 'Rectangle, triangle, trapezoid, trapezium, circle & spandrel', href: 'area.html' },
+                    { icon: '🛣️', name: 'HMA Tool', desc: 'Tonnage, yield check & RICE density', href: 'hma.html' },
+                    { icon: '📋', name: 'Bid Items', desc: 'Agreement Estimate — searchable bid items by breakout', href: 'bidestimate.html' },
+                ]
+            },
+            testing: {
+                title: 'Testing Tools',
+                tools: [
+                    { icon: '🔬', name: 'Thinlift Compaction', desc: 'Nuclear density — T335 random-location test', href: 'thinlift.html' },
+                    { icon: '🪨', name: 'Soil Compaction', desc: 'T103G — Nuclear gauge compaction report — NDOT 040-007', href: 'soilcompaction.html' },
+                ]
+            }
+        };
+
+        function openSection(key) {
+            const sec = sections[key];
+            if (!sec) return;
+            document.getElementById('toolViewTitle').textContent = sec.title;
+            document.getElementById('toolList').innerHTML = sec.tools.map(t => `
+                <a href="${t.href}" class="tool-card">
+                    <span class="tool-icon">${t.icon}</span>
+                    <div class="tool-info">
+                        <div class="tool-name">${t.name}</div>
+                        <div class="tool-desc">${t.desc}</div>
+                    </div>
+                    <span class="tool-arrow">›</span>
+                </a>
+            `).join('');
+            document.getElementById('homeView').style.display = 'none';
+            document.getElementById('toolView').style.display = 'flex';
+            window.scrollTo(0, 0);
+        }
+
+        function goBack() {
+            document.getElementById('toolView').style.display = 'none';
+            document.getElementById('homeView').style.display = 'flex';
+            window.scrollTo(0, 0);
+        }
+
+        function toggleChangelog() {
+            const cl = document.getElementById('changelog');
+            const label = document.getElementById('clToggleLabel');
+            const open = cl.classList.toggle('open');
+            label.textContent = open ? '▾ Hide Changelog' : '▸ View Changelog';
+        }
+    </script>
+<script>
+// ---- App updates ----
+async function appVersion() {
+    try { const k = (await caches.keys()).filter(n => /^survey-tool-v\d+/.test(n)).sort((a, b) => +b.match(/\d+$/) - +a.match(/\d+$/))[0]; return k ? 'v' + k.match(/\d+$/)[0] : ''; } catch (e) { return ''; }
+}
+async function showVersion() { const v = await appVersion(); document.getElementById('updVer').textContent = v ? 'App ' + v : ''; }
+function updBtn(t, dis) { const b = document.getElementById('updBtn'); b.textContent = t; b.disabled = !!dis; }
+async function checkForUpdates() {
+    if (!('serviceWorker' in navigator)) { location.reload(); return; }
+    updBtn('Checking…', true);
+    try {
+        let reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) reg = await navigator.serviceWorker.register('sw.js');
+        const before = await appVersion();
+        await reg.update();
+        const sw = reg.installing || reg.waiting;
+        if (sw) {
+            updBtn('Downloading update…', true);
+            await new Promise(res => { if (sw.state === 'activated') return res(); sw.addEventListener('statechange', () => { if (sw.state === 'activated' || sw.state === 'redundant') res(); }); setTimeout(res, 20000); });
+            updBtn('Updated — reloading…', true); location.reload(); return;
+        }
+        // No new version on the server: make sure this phone's copy matches it
+        const live = await fetch('sw.js', { cache: 'no-store' }).then(r => r.text()).then(t => (t.match(/survey-tool-v(\d+)/) || [])[1]).catch(() => null);
+        if (live && before && 'v' + live !== before) { await forceRefresh(true); return; }
+        updBtn(live ? '✓ Up to date' : '✓ Up to date (offline?)', false);
+        setTimeout(() => updBtn('⟳ Check for updates'), 3000);
+    } catch (e) { updBtn('⟳ Check for updates'); if (confirm('Could not check for updates (' + e.message + '). Force a full refresh?')) forceRefresh(true); }
+}
+// Last resort: drop the cached app files (your projects and data are NOT touched) and reload
+async function forceRefresh(skipAsk) {
+    if (!skipAsk && !confirm('Reload a fresh copy of the app? Your projects and data stay on this phone.')) return;
+    updBtn('Refreshing…', true);
+    try { for (const k of await caches.keys()) if (/^survey-tool-v\d+$/.test(k)) await caches.delete(k); } catch (e) {}
+    try { const r = await navigator.serviceWorker.getRegistration(); if (r) await r.unregister(); } catch (e) {}
+    location.reload();
+}
+// Tell the user when a newer version has just been installed in the background
+if ('serviceWorker' in navigator) {
+    let hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (!hadController) { hadController = true; showVersion(); return; }
+        if (document.getElementById('updBanner')) return;
+        const b = document.createElement('button'); b.id = 'updBanner'; b.className = 'update-banner'; b.textContent = '⟳ Update ready — tap to reload';
+        b.onclick = () => location.reload(); document.body.appendChild(b);
+    });
+}
+showVersion();
+</script>
+</body>
+</html>

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Field Tools — Demo</title>
+<link rel="icon" type="image/png" href="app/icon.png">
+<link rel="stylesheet" href="app/lib/leaflet/leaflet.css">
+<script src="app/lib/leaflet/leaflet.js"></script>
+<script src="app/db.js"></script>
+<script src="app/lib/alignments.js"></script>
+<style>
+  :root { --bg:#0f1115; --panel:#181b21; --card:#20242c; --line:#2d323c; --text:#e8eaee; --muted:#9aa3b2; --accent:#7c3aed; --accent2:#a78bfa; --ok:#22c55e; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; overflow:hidden; }
+  .wrap { display:grid; grid-template-columns:1fr 1fr; height:100vh; }
+  /* ── left: phone ── */
+  .left { position:relative; display:flex; flex-direction:column; align-items:center; justify-content:center; background:radial-gradient(ellipse at center,#1c2029 0%,#0b0d11 75%); overflow:hidden; }
+  .phone-box { position:relative; }
+  .phone { position:absolute; left:0; top:0; width:418px; height:872px; padding:14px; border-radius:58px; background:#05060a;
+           box-shadow:0 0 0 2px #3a3f4a, 0 0 0 6px #14161b, 0 30px 80px rgba(0,0,0,.6); transform-origin:0 0; }
+  .screen { width:390px; height:844px; border-radius:44px; overflow:hidden; background:#000; display:flex; flex-direction:column; }
+  .status { height:40px; flex:none; display:flex; align-items:center; justify-content:space-between; padding:6px 30px 0 34px; color:#fff; font-size:15px; font-weight:600; position:relative; }
+  .status .notch { position:absolute; top:0; left:50%; transform:translateX(-50%); width:150px; height:28px; background:#05060a; border-radius:0 0 18px 18px; }
+  .status .icons { font-size:12px; letter-spacing:1px; }
+  .phone iframe { width:390px; flex:1; border:0; background:#fff; display:block; }
+  .phone-nav { position:absolute; bottom:14px; left:0; right:0; display:flex; justify-content:center; gap:8px; }
+  .phone-nav button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; cursor:pointer; }
+  .phone-nav button:hover { border-color:var(--accent2); }
+  /* ── right: navigation ── */
+  .right { display:flex; flex-direction:column; min-height:0; border-left:1px solid var(--line); background:var(--panel); }
+  header { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:1px solid var(--line); }
+  header h1 { font-size:18px; margin:0; font-weight:800; }
+  .badge { background:var(--accent); color:#fff; font-size:11px; font-weight:900; letter-spacing:.5px; padding:3px 8px; border-radius:6px; }
+  header .sub { color:var(--muted); font-size:13px; flex:1; }
+  .btn { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+  .btn:hover { border-color:var(--accent2); }
+  .btn.danger:hover { border-color:#ef4444; color:#fca5a5; }
+  #map { flex:1; min-height:200px; cursor:crosshair; }
+  .leaflet-container { background:#1b1f26; }
+  .panel { display:grid; grid-template-columns:auto 1fr; gap:16px; padding:14px 16px; border-top:1px solid var(--line); }
+  .dpad { display:grid; grid-template-columns:repeat(3,54px); grid-template-rows:repeat(3,54px); gap:6px; }
+  .dpad button { background:var(--card); color:var(--text); border:1px solid var(--line); border-radius:12px; font-size:22px; cursor:pointer; user-select:none; touch-action:none; }
+  .dpad button:hover { border-color:var(--accent2); }
+  .dpad button:active, .dpad button.on { background:var(--accent); border-color:var(--accent); }
+  .dpad .mid { display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; line-height:1.15; }
+  .opts { display:flex; flex-direction:column; gap:9px; min-width:0; }
+  .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .lbl { color:var(--muted); font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; width:42px; }
+  .seg { display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .seg button { background:var(--card); color:var(--text); border:0; border-right:1px solid var(--line); padding:6px 10px; font-size:13px; font-weight:600; cursor:pointer; }
+  .seg button:last-child { border-right:0; }
+  .seg button.on { background:var(--accent); color:#fff; }
+  .read { font-size:13px; color:var(--muted); line-height:1.5; font-variant-numeric:tabular-nums; }
+  .read b { color:var(--text); font-weight:700; }
+  .keys { font-size:12px; color:var(--muted); }
+  kbd { background:var(--card); border:1px solid var(--line); border-bottom-width:2px; border-radius:4px; padding:0 5px; font-size:11px; color:var(--text); }
+  .me { width:34px; height:34px; }
+  .me svg { width:34px; height:34px; display:block; filter:drop-shadow(0 1px 2px rgba(0,0,0,.6)); }
+  .stake-lbl { background:rgba(15,17,21,.8); color:#fff; border:0; box-shadow:none; font-size:11px; font-weight:700; padding:1px 5px; }
+  .stake-lbl::before { display:none; }
+  .busy { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); font-weight:700; z-index:9999; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <section class="left" id="left">
+    <div class="phone-box" id="phoneBox">
+      <div class="phone" id="phone"><div class="screen"><div class="status"><span id="clock">9:41</span><span class="notch"></span><span class="icons">▂▄▆ ▮▮▮▯</span></div><iframe id="app" title="Field Tools app" src="about:blank"></iframe></div></div>
+    </div>
+    <div class="phone-nav">
+      <button onclick="appBack()">◀ Back</button>
+      <button onclick="appHome()">⌂ Home</button>
+      <button onclick="appReload()">⟳ Reload page</button>
+    </div>
+  </section>
+
+  <section class="right">
+    <header>
+      <h1>Field Tools</h1><span class="badge">DEMO</span>
+      <span class="sub">Simulated GPS &amp; compass. Click the map to jump there.</span>
+      <button class="btn danger" onclick="resetDemo()" title="Delete everything made in the demo and reload the Carson City project">↺ Reset demo</button>
+    </header>
+    <div id="map"></div>
+    <div class="panel">
+      <div class="dpad">
+        <span></span><button data-act="fwd" title="Walk forward (↑)">▲</button><span></span>
+        <button data-act="left" title="Turn left (←)">⟲</button><div class="mid" id="hdgMid">270°<br>W</div><button data-act="right" title="Turn right (→)">⟳</button>
+        <span></span><button data-act="back" title="Walk backward (↓)">▼</button><span></span>
+      </div>
+      <div class="opts">
+        <div class="row"><span class="lbl">Step</span><div class="seg" id="stepSeg"></div></div>
+        <div class="row"><span class="lbl">Turn</span><div class="seg" id="turnSeg"></div></div>
+        <div class="row">
+          <button class="btn" onclick="faceAlignment(1)" title="Turn to face up-station along the nearest alignment">Face ahead ↑</button>
+          <button class="btn" onclick="faceAlignment(-1)" title="Turn to face down-station">Face back ↓</button>
+          <button class="btn" onclick="goToTarget()" title="Jump to the point the app is navigating to">Jump to target</button>
+          <label class="keys" style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="follow" checked> Follow</label>
+        </div>
+        <div class="read" id="readout"></div>
+        <div class="keys"><kbd>↑</kbd><kbd>↓</kbd> walk · <kbd>←</kbd><kbd>→</kbd> turn · hold <kbd>Shift</kbd> for small moves · works inside the phone too</div>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="busy hidden" id="busy">Setting up the demo…</div>
+
+<script>
+'use strict';
+const SEED_VERSION = 'carson-v1';
+const PROJ_ID = 'demo-carson-city';
+const USFT = 1200 / 3937;
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const $ = id => document.getElementById(id);
+const P_DEF = { zone: 'NV_W', units: 'usft', cf: 1, baseN: 0, baseE: 0, shiftN: 0, shiftE: 0, custom: {} };
+
+// ═════════ simulated position (read by ../demo_sim.js inside the phone) ═════════
+const sim = { lat: 39.1620, lon: -119.7666, hdg: 270, acc: 1.2 };
+window.FTDemoSim = { state: sim, key: (k, shift) => onKey(k, shift) };
+const STEPS = [1, 5, 10, 25, 50, 100], TURNS = [5, 15, 45, 90];
+let stepFt = +(localStorage.getItem('ftDemoStep') || 10), turnDeg = +(localStorage.getItem('ftDemoTurn') || 15);
+
+function setPos(lat, lon, hdg) {
+  sim.lat = lat; sim.lon = lon; if (hdg != null) sim.hdg = ((hdg % 360) + 360) % 360;
+  try { localStorage.setItem('ftDemoPos', JSON.stringify(sim)); } catch (e) {}
+  drawMe();
+}
+function walk(dir, fine) {
+  const d = stepFt * (fine ? 0.2 : 1) * USFT * dir, h = sim.hdg * D2R;
+  setPos(sim.lat + d * Math.cos(h) / 111132.95, sim.lon + d * Math.sin(h) / (111319.49 * Math.cos(sim.lat * D2R)));
+}
+function turn(dir, fine) { setPos(sim.lat, sim.lon, sim.hdg + (fine ? 1 : turnDeg) * dir); }
+function act(a, fine) { ({ fwd: () => walk(1, fine), back: () => walk(-1, fine), left: () => turn(-1, fine), right: () => turn(1, fine) })[a](); }
+function onKey(k, shift) { const a = { ArrowUp: 'fwd', ArrowDown: 'back', ArrowLeft: 'left', ArrowRight: 'right' }[k]; if (a) { act(a, shift); flash(a); } }
+window.addEventListener('keydown', e => {
+  if (!/^Arrow/.test(e.key) || (e.target.closest && e.target.closest('input[type=text], textarea, select'))) return;
+  e.preventDefault(); onKey(e.key, e.shiftKey);
+});
+function flash(a) { const b = document.querySelector(`[data-act="${a}"]`); if (!b) return; b.classList.add('on'); clearTimeout(b._t); b._t = setTimeout(() => b.classList.remove('on'), 120); }
+// hold a button to keep walking/turning
+document.querySelectorAll('.dpad button').forEach(b => {
+  let t1, t2; const stop = () => { clearTimeout(t1); clearInterval(t2); };
+  b.addEventListener('pointerdown', e => { e.preventDefault(); act(b.dataset.act, e.shiftKey); t1 = setTimeout(() => { t2 = setInterval(() => act(b.dataset.act, e.shiftKey), 90); }, 350); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+});
+function seg(el, vals, cur, unit, set) {
+  el.innerHTML = vals.map(v => `<button data-v="${v}" class="${v === cur ? 'on' : ''}">${v}${unit}</button>`).join('');
+  el.onclick = e => { const v = +e.target.dataset.v; if (!v) return; set(v); el.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v === v)); };
+}
+seg($('stepSeg'), STEPS, stepFt, ' ft', v => { stepFt = v; localStorage.setItem('ftDemoStep', v); });
+seg($('turnSeg'), TURNS, turnDeg, '°', v => { turnDeg = v; localStorage.setItem('ftDemoTurn', v); });
+
+// ═════════ phone frame ═════════
+const app = $('app');
+function fitPhone() {
+  const L = $('left'), W = 418, H = 872, s = Math.min((L.clientHeight - 80) / H, (L.clientWidth - 40) / W, 1.15);
+  $('phone').style.transform = `scale(${s})`; $('phoneBox').style.width = W * s + 'px'; $('phoneBox').style.height = H * s + 'px';
+  $('phoneBox').style.marginBottom = '40px';
+}
+window.addEventListener('resize', fitPhone); fitPhone();
+const tick = () => { $('clock').textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M$/i, ''); }; tick(); setInterval(tick, 15000);
+function appHome() { app.src = 'app/index.html'; }
+function appBack() { try { app.contentWindow.history.back(); } catch (e) { appHome(); } }
+function appReload() { try { app.contentWindow.location.reload(); } catch (e) { appHome(); } }
+app.addEventListener('load', () => { refreshOverlay(true); });
+
+// ═════════ coordinates ═════════
+function gridToLL(ps, N, E) {
+  const u = FTAlign.UNIT_M[ps.units] || USFT, cf = +ps.cf || 1;
+  let n = N - (+ps.shiftN || 0), e = E - (+ps.shiftE || 0);
+  n = (+ps.baseN || 0) + (n - (+ps.baseN || 0)) * cf; e = (+ps.baseE || 0) + (e - (+ps.baseE || 0)) * cf;
+  n *= u; e *= u;
+  if (ps.zone === 'LCC') return FTAlign.lccInverse(e, n, ps.custom);
+  return FTAlign.tmInverse(e, n, ps.zone === 'TM' ? ps.custom : (FTAlign.ZONES[ps.zone] || FTAlign.ZONES.NV_W));
+}
+const bearing = (a, b) => { const y = Math.sin((b.lon - a.lon) * D2R) * Math.cos(b.lat * D2R), x = Math.cos(a.lat * D2R) * Math.sin(b.lat * D2R) - Math.sin(a.lat * D2R) * Math.cos(b.lat * D2R) * Math.cos((b.lon - a.lon) * D2R); return (Math.atan2(y, x) * R2D + 360) % 360; };
+const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+
+// ═════════ map ═════════
+const map = L.map('map', { zoomControl: true, attributionControl: true, keyboard: false }).setView([sim.lat, sim.lon], 18);
+const layers = {
+  'Satellite': L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 21, maxNativeZoom: 19, attribution: 'Imagery © Esri' }),
+  'Streets': L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 21, maxNativeZoom: 19, attribution: '© OpenStreetMap contributors' })
+};
+layers.Satellite.addTo(map); L.control.layers(layers, null, { position: 'topright' }).addTo(map);
+const overlay = L.layerGroup().addTo(map);
+const meIcon = L.divIcon({ className: 'me', iconSize: [34, 34], iconAnchor: [17, 17],
+  html: '<svg viewBox="0 0 34 34"><g id="meRot"><circle cx="17" cy="17" r="8" fill="#2563eb" stroke="#fff" stroke-width="3"/><path d="M17 1 L23 12 L17 9.5 L11 12 Z" fill="#fff" stroke="#2563eb" stroke-width="1.5"/></g></svg>' });
+const me = L.marker([sim.lat, sim.lon], { icon: meIcon, interactive: false, zIndexOffset: 1000 }).addTo(map);
+map.on('click', e => setPos(e.latlng.lat, e.latlng.lng));
+map.on('dragstart', () => { $('follow').checked = false; });
+function drawMe() {
+  me.setLatLng([sim.lat, sim.lon]);
+  const g = me.getElement() && me.getElement().querySelector('#meRot'); if (g) g.setAttribute('transform', `rotate(${sim.hdg} 17 17)`);
+  if ($('follow').checked) map.panTo([sim.lat, sim.lon], { animate: false });
+  $('hdgMid').innerHTML = `${Math.round(sim.hdg)}°<br>${DIRS[Math.round(sim.hdg / 45) % 8]}`;
+  updateReadout();
+}
+
+// What the app currently has: project, alignments, stakeout points, target
+let ctx = { ps: { ...P_DEF }, aligns: [], target: null }, ctxSig = '';
+async function refreshOverlay(force) {
+  let s, rows;
+  try { s = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} }; rows = await FTAlign.apGetAll('alignments'); } catch (e) { return; }
+  const projId = (s.g && s.g.projId) || '', ps = Object.assign({ ...P_DEF }, (s.p || {})[projId] || {});
+  const mine = rows.filter(r => r.projId === projId);
+  const sig = JSON.stringify([projId, ps.zone, ps.units, ps.cf, ps.baseN, ps.baseE, ps.shiftN, ps.shiftE, mine.map(r => [r.id, r.name, r.els && r.els.length, r.units]), ps.stakeList, ps.target]);
+  if (!force && sig === ctxSig) return; ctxSig = sig;
+  const aligns = mine.map(r => ({ ...r, poly: FTAlign.buildPolyline(r, ps.units) }));
+  ctx = { ps, aligns, target: ps.target };
+  overlay.clearLayers();
+  for (const a of aligns) {
+    const ll = Array.from(a.poly.xs, (x, i) => { const p = gridToLL(ps, a.poly.ys[i], x); return [p.lat, p.lon]; });
+    L.polyline(ll, { color: '#000', weight: 7, opacity: 0.35, interactive: false }).addTo(overlay);
+    L.polyline(ll, { color: '#facc15', weight: 3.5, interactive: false }).addTo(overlay);
+    L.circleMarker(ll[0], { radius: 5, color: '#fff', weight: 2, fillColor: '#22c55e', fillOpacity: 1, interactive: false }).bindTooltip(a.name + ' start', { direction: 'top' }).addTo(overlay);
+  }
+  for (const p of ps.stakeList || []) {
+    const ll = stakeLL(p); if (!ll) continue;
+    const active = ps.target && p.alignId === ps.target.alignId && p.sta === ps.target.sta && p.off === ps.target.off;
+    L.circleMarker(ll, { radius: active ? 8 : 6, color: '#fff', weight: 2, fillColor: p.done ? '#22c55e' : active ? '#ef4444' : '#f97316', fillOpacity: 1 })
+      .bindTooltip(p.name || 'Point', { permanent: true, direction: 'right', offset: [8, 0], className: 'stake-lbl' })
+      .on('click', e => { L.DomEvent.stop(e); setPos(ll[0], ll[1]); }).addTo(overlay);
+  }
+  const t = ps.target && stakeLL(ps.target);
+  if (t) L.circleMarker(t, { radius: 13, color: '#ef4444', weight: 2.5, fill: false, dashArray: '4 4', interactive: false }).addTo(overlay);
+  updateReadout();
+}
+setInterval(() => refreshOverlay(false), 1500);
+function stakeLL(p) {
+  const a = ctx.aligns.find(x => x.id === p.alignId) || ctx.aligns[0]; if (!a || !isFinite(p.sta)) return null;
+  const s = FTAlign.internalSta(a, p.sta, p.side || ''); if (!isFinite(s)) return null;
+  const q = FTAlign.pointAt(a.poly, s, +p.off || 0), ll = gridToLL(ctx.ps, q.y, q.x); return [ll.lat, ll.lon];
+}
+function nearest() {
+  if (!ctx.aligns.length) return null;
+  const g = FTAlign.projectWith(ctx.ps, sim.lat, sim.lon); let best = null;
+  for (const a of ctx.aligns) { const r = FTAlign.stationOffset(a.poly, g.E, g.N); if (r && (!best || (r.inRange ? r.dist : r.dist + 1e6) < (best.r.inRange ? best.r.dist : best.r.dist + 1e6))) best = { a, r }; }
+  return best;
+}
+function updateReadout() {
+  const n = nearest(), u = ctx.ps.units;
+  const sta = n ? `${FTAlign.fmtSta(FTAlign.displaySta(n.a, n.r.sta), u)} · ${FTAlign.fmtOff(n.r.off, u)}${n.r.inRange ? '' : ' (off the ends)'}` : 'no alignment in the open project';
+  $('readout').innerHTML = `<b>${Math.round(sim.hdg)}° ${DIRS[Math.round(sim.hdg / 45) % 8]}</b> · ${sim.lat.toFixed(7)}, ${sim.lon.toFixed(7)}<br>Nearest: <b>${n ? n.a.name + ' ' : ''}${sta}</b>`;
+}
+function faceAlignment(dir) {
+  const n = nearest(); if (!n) return;
+  const s = Math.max(n.a.poly.ss[0], Math.min(n.r.sta, n.a.poly.ss[n.a.poly.ss.length - 1]));
+  const p1 = FTAlign.pointAt(n.a.poly, s - 2, 0), p2 = FTAlign.pointAt(n.a.poly, s + 2, 0);
+  const a = gridToLL(ctx.ps, p1.y, p1.x), b = gridToLL(ctx.ps, p2.y, p2.x);
+  setPos(sim.lat, sim.lon, bearing(a, b) + (dir < 0 ? 180 : 0));
+}
+function goToTarget() {
+  const t = ctx.target && stakeLL(ctx.target);
+  if (!t) return alert('The app has no navigation target yet. Pick a point in Station / Offset → Navigate first.');
+  setPos(t[0], t[1]);
+}
+
+// ═════════ demo data ═════════
+async function clearDemoData() {
+  const dbs = [await ftOpenDB(), await FTAlign.apDB()];
+  for (const db of dbs) {
+    const names = [...db.objectStoreNames]; if (!names.length) continue;
+    await new Promise((res, rej) => { const tx = db.transaction(names, 'readwrite'); names.forEach(n => tx.objectStore(n).clear()); tx.oncomplete = res; tx.onerror = () => rej(tx.error); });
+  }
+}
+async function seedDemo() {
+  const now = new Date().toISOString();
+  await ftSaveProject({ id: PROJ_ID, projectNumber: '', name: 'Carson City Demo', contractNumber: '', fundingSource: '', contractor: 'Demo Contractor',
+    route: 'Carson City', location: 'Near the District I office', projectId: '', county: 'Carson City', designer: '',
+    description: 'Demonstration project with a sample alignment and stakeout list.', archived: false, created: now });
+  await ftSetSetting('ftStationing', { g: { projId: PROJ_ID, compass: true, keepPhotos: true }, p: { [PROJ_ID]: { zone: 'NV_W', units: 'usft', cf: 1 } } });
+  const xml = await fetch('Carson_City_Demo_Alignment.xml', { cache: 'no-store' }).then(r => r.text());
+  await FTAlign.importFiles(PROJ_ID, [new File([xml], 'Carson_City_Demo_Alignment.xml', { type: 'application/xml' })], { units: 'usft', zone: 'NV_W', updateSettings: false });
+  const al = (await FTAlign.getForProject(PROJ_ID))[0];
+  const s = await ftGetSetting('ftStationing', null), ps = s.p[PROJ_ID];
+  const pts = [['MH-1', 1150, 0, 'Manhole rim'], ['DI-2', 1400, 18, 'Drop inlet grate'], ['SIGN-3', 1750, -20, 'Sign post location'],
+               ['LP-4', 2000, 22, 'Light pole base'], ['WV-5', 2350, -10, 'Water valve box']];
+  ps.stakeList = pts.map(([name, sta, off, desc], i) => ({ id: 'demo' + i, name, alignId: al.id, sta, side: '', off, desc, done: false }));
+  ps.stakeActive = ''; ps.target = null;
+  await ftSetSetting('ftStationing', s);
+  // start just before the beginning of the alignment, 25 ft left, facing up-station
+  await refreshOverlay(true);
+  const a = ctx.aligns[0], q = FTAlign.pointAt(a.poly, 1015, -25), ll = gridToLL(ctx.ps, q.y, q.x);
+  setPos(ll.lat, ll.lon, 0); faceAlignment(1);
+  localStorage.setItem('ftDemoSeed', SEED_VERSION);
+}
+async function resetDemo(skipAsk) {
+  if (!skipAsk && !confirm('Reset the demo?\n\nThis deletes everything made in the demo (projects, photos, tests) and reloads the Carson City demo project. Your real Field Tools data is not affected.')) return;
+  $('busy').classList.remove('hidden');
+  app.src = 'about:blank';
+  await new Promise(r => setTimeout(r, 300));
+  try { await clearDemoData(); await seedDemo(); }
+  catch (e) { alert('Could not set up the demo: ' + e.message); console.error(e); }
+  $('busy').classList.add('hidden');
+  map.setView([sim.lat, sim.lon], 18);
+  appHome();
+}
+
+(async function init() {
+  if (localStorage.getItem('ftDemoSeed') !== SEED_VERSION) { await resetDemo(true); return; }
+  try { const p = JSON.parse(localStorage.getItem('ftDemoPos')); if (p && isFinite(p.lat)) Object.assign(sim, p); } catch (e) {}
+  map.setView([sim.lat, sim.lon], 18); drawMe();
+  await refreshOverlay(true);
+  appHome();
+})();
+</script>
+</body>
+</html>
