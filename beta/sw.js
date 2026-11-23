@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-beta-v9';
+const CACHE_NAME = 'survey-tool-beta-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -36,7 +36,9 @@ const ASSETS = [
   './lib/piexif.js',
   './lib/printpdf.js',
   './lib/jspdf.umd.min.js',
-  './lib/html2canvas.min.js'
+  './lib/html2canvas.min.js',
+  './lib/pdfjs/pdf.min.js',
+  './lib/pdfjs/pdf.worker.min.js'
 ];
 
 // Install: cache all assets

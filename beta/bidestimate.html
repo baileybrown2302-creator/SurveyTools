@@ -582,6 +582,19 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
   </div>
 </div>
 
+<!-- Re-import choice -->
+<div class="confirm-overlay" id="reimportOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title">Contract already in Bid Items</div>
+    <div class="confirm-msg" id="reimportMsg"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+      <button class="btn btn-primary" onclick="finishImport('replace')">Update existing (keep notes)</button>
+      <button class="btn btn-secondary" onclick="finishImport('copy')">Import as a separate copy</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('reimportOverlay').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Loading Overlay -->
 <div class="loading-overlay" id="loadingOverlay">
   <div class="spinner"></div>
@@ -593,24 +606,25 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
 
 <script>
 // ── PDF.js ──────────────────────────────────────────────────────────────────
+// Bundled with the app (lib/pdfjs) so normal PDFs import offline; the CDN copy is only a fallback
+const PDFJS_LOCAL = 'lib/pdfjs/pdf.min.js', PDFJS_LOCAL_WORKER = 'lib/pdfjs/pdf.worker.min.js';
 const PDFJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 let pdfjsLib = null;
 
 function loadPdfJs() {
   if (pdfjsLib) return Promise.resolve(pdfjsLib);
-  if (window.pdfjsLib) { pdfjsLib = window.pdfjsLib; pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return Promise.resolve(pdfjsLib); }
-  return new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = PDFJS_CDN;
-    s.onload = () => {
-      pdfjsLib = window.pdfjsLib;
-      pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER;
-      resolve(pdfjsLib);
-    };
-    s.onerror = () => reject(new Error('Could not load PDF.js. Check your connection.'));
+  const load = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = src;
+    s.onload = () => window.pdfjsLib ? resolve(window.pdfjsLib) : reject(new Error('PDF reader did not load'));
+    s.onerror = () => { s.remove(); reject(new Error('Could not load ' + src)); };
     document.head.appendChild(s);
   });
+  const ready = lib => { pdfjsLib = lib; pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return lib; };
+  if (window.pdfjsLib) return Promise.resolve(ready(window.pdfjsLib));
+  return load(PDFJS_LOCAL).then(lib => { PDFJS_WORKER = new URL(PDFJS_LOCAL_WORKER, location.href).href; return ready(lib); })
+    .catch(() => load(PDFJS_CDN).then(ready))
+    .catch(() => { throw new Error('Could not load the PDF reader. Open Bid Items once with a connection, then try again.'); });
 }
 
 // ── Tesseract OCR (fallback for Bluebeam-encoded PDFs) ───────────────────────
@@ -1069,7 +1083,7 @@ async function saveItemModal() {
     }
   } else {
     b.items.push({
-      id: uid(), bidItem, unitMeas: document.getElementById('im_unit').value.trim(),
+      id: uid(), manual: true, bidItem, unitMeas: document.getElementById('im_unit').value.trim(),
       description: desc,
       quantity: parseNum(document.getElementById('im_qty').value),
       unitPrice: parseNum(document.getElementById('im_price').value),
@@ -1522,34 +1536,63 @@ function cancelImport() {
   document.getElementById('importReviewSheet').classList.remove('open');
 }
 
+function importedBreakouts(p) {
+  return p.breakouts.map(b => ({ no: b.no, description: b.description, constructionType: b.constructionType,
+    fromStation: b.fromStation, toStation: b.toStation, note: '', total: b.total,
+    items: b.items.map(i => ({ id: i.id, bidItem: i.bidItem, unitMeas: i.unitMeas, description: i.description, quantity: i.quantity,
+      unitPrice: i.unitPrice, itemCost: i.itemCost, note: '', ...((i.check === 'mismatch' || i.check === 'incomplete') ? { importFlag: i.importFlag } : {}) })) }));
+}
 async function confirmImport() {
   if (!pendingImport) return;
-  const c = {
-    id: uid(), created: Date.now(),
-    contractNo: pendingImport.contractNo,
-    projectNo: pendingImport.projectNo,
-    projectId: pendingImport.projectId,
-    county: pendingImport.county,
-    location: pendingImport.location,
-    contractor: pendingImport.contractor,
-    designer: pendingImport.designer,
-    note: '',
-    breakouts: pendingImport.breakouts.map(b => ({ no: b.no, description: b.description, constructionType: b.constructionType,
-      fromStation: b.fromStation, toStation: b.toStation, note: '', total: b.total,
-      items: b.items.map(i => ({ id: i.id, bidItem: i.bidItem, unitMeas: i.unitMeas, description: i.description, quantity: i.quantity,
-        unitPrice: i.unitPrice, itemCost: i.itemCost, note: '', ...((i.check === 'mismatch' || i.check === 'incomplete') ? { importFlag: i.importFlag } : {}) })) }))
-  };
+  const no = (pendingImport.contractNo || '').trim();
+  const existing = no && contracts.find(c => (c.contractNo || '').trim() === no);
+  if (!existing) return finishImport('new');
+  const iCount = (existing.breakouts || []).reduce((s, b) => s + (b.items || []).length, 0);
+  const notes = (existing.breakouts || []).reduce((s, b) => s + (b.note ? 1 : 0) + (b.items || []).filter(i => i.note).length, 0) + (existing.note ? 1 : 0);
+  document.getElementById('reimportMsg').innerHTML = `Contract <b>${esc(no)}</b> is already here (${(existing.breakouts || []).length} breakouts, ${iCount} items${notes ? `, ${notes} note${notes !== 1 ? 's' : ''}` : ''}).<br><br>
+    <b>Update existing</b> replaces its breakouts and items with this PDF and carries over your notes (matched by breakout and pay item). Items you added by hand, or that have a note, are kept even if they're not in the PDF.`;
+  document.getElementById('reimportOverlay').classList.add('open');
+}
+async function finishImport(mode) {
+  document.getElementById('reimportOverlay').classList.remove('open');
+  if (!pendingImport) return;
+  const p = pendingImport, fresh = importedBreakouts(p);
+  let c, summary = '';
+  if (mode === 'replace') {
+    c = contracts.find(x => (x.contractNo || '').trim() === p.contractNo.trim());
+    const oldB = c.breakouts || [];
+    let kept = 0, carried = 0, changed = 0, removed = 0;
+    for (const nb of fresh) {
+      const ob = oldB.find(b => b.no === nb.no); if (!ob) continue;
+      if (ob.note) { nb.note = ob.note; carried++; }
+      const used = new Set();
+      for (const ni of nb.items) {
+        const oi = (ob.items || []).find(i => i.bidItem === ni.bidItem && !used.has(i));
+        if (!oi) continue; used.add(oi); ni.id = oi.id;
+        if (oi.note) { ni.note = oi.note; carried++; }
+        if (oi.quantity !== ni.quantity || oi.unitPrice !== ni.unitPrice) changed++;
+      }
+      // items added by hand (no match in the PDF) stay; imported ones that are gone are dropped
+      for (const oi of ob.items || []) if (!used.has(oi)) { if (oi.manual || oi.note) { nb.items.push(oi); kept++; } else removed++; }
+    }
+    Object.assign(c, { projectNo: p.projectNo || c.projectNo, projectId: p.projectId || c.projectId, county: p.county || c.county,
+      location: p.location || c.location, contractor: p.contractor || c.contractor, designer: p.designer || c.designer,
+      breakouts: fresh, updated: Date.now() });
+    summary = ` · ${changed} changed, ${removed} removed${carried ? `, ${carried} note${carried !== 1 ? 's' : ''} kept` : ''}${kept ? `, ${kept} not in the PDF kept` : ''}`;
+  } else {
+    c = { id: uid(), created: Date.now(), contractNo: p.contractNo, projectNo: p.projectNo, projectId: p.projectId, county: p.county,
+      location: p.location, contractor: p.contractor, designer: p.designer, note: '', breakouts: fresh };
+    if (mode === 'copy') c.contractNo = p.contractNo + ' (copy)';
+    contracts.unshift(c);
+  }
   await ftSaveBidContract(c);
-  contracts.unshift(c);
   pendingImport = null;
   document.getElementById('importReviewSheet').classList.remove('open');
   renderContractList();
   openContract(c.id);
-  const bCount = c.breakouts.length;
-  const iCount = c.breakouts.reduce((s,b)=>s+(b.items||[]).length,0);
-  showToast(`Imported ${bCount} breakout${bCount!==1?'s':''}, ${iCount} item${iCount!==1?'s':''}`);
-  // Offer PM sync after a brief delay so the detail view is visible first
-  if (c.contractNo) setTimeout(() => checkProjectSync(c), 600);
+  const bCount = c.breakouts.length, iCount = c.breakouts.reduce((s, b) => s + (b.items || []).length, 0);
+  showToast(`${mode === 'replace' ? 'Updated' : 'Imported'} ${bCount} breakout${bCount !== 1 ? 's' : ''}, ${iCount} item${iCount !== 1 ? 's' : ''}${summary}`, 4000);
+  if (mode !== 'copy' && c.contractNo) setTimeout(() => checkProjectSync(c), 600);
 }
 
 // ── Project Manager Sync ──────────────────────────────────────────────────────
