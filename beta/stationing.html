@@ -333,6 +333,16 @@ function renderStakeList() {
       <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')">✕</button></div>`;
   }).join('');
 }
+// Navigate to a grid point (control point from the map): station/offset on the nearest alignment
+window.ftNavigateToGrid = (N, E, name) => {
+  let best = null;
+  for (const a of aligns) { if (a.visible === false) continue; const r = stationOffset(a.poly, E, N); if (r && (!best || (r.inRange ? r.dist : r.dist + 1e6) < (best.r.inRange ? best.r.dist : best.r.dist + 1e6))) best = { a, r }; }
+  if (!best) return toast('Load an alignment first');
+  const sta = Math.min(Math.max(best.r.sta, best.a.poly.ss[0]), best.a.poly.ss[best.a.poly.ss.length - 1]);
+  const off = best.r.inRange ? best.r.off : stationOffset(best.a.poly, E, N).off;
+  PS().target = { alignId: best.a.id, sta: Math.round(displaySta(best.a, sta) * 100) / 100, side: staSide(best.a, sta), off: Math.round(off * 100) / 100 };
+  PS().stakeActive = ''; saveSettings(); fillTargetForm(); switchTab('nav'); renderStakeList(); notify(); toast('Navigating to ' + name);
+};
 function goStake(id) {
   const p = SL().find(x => x.id === id); if (!p) return;
   if (!aligns.find(a => a.id === p.alignId)) return toast('That alignment is not loaded for this project');

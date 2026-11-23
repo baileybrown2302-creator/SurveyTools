@@ -129,6 +129,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .ftmap .leaflet-control-attribution{font-size:8px;line-height:1.2;max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .ftmap-perp span{display:inline-block;transform:translate(-50%,20px);font:800 11px/1 -apple-system,Segoe UI,sans-serif;color:#111827;background:#facc15;padding:3px 5px;border-radius:4px;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,0.4);}
 .leaflet-bar.on a{background:#dbeafe;}
+.ftmap-cp{background:none;border:0;}
+.ftmap-cp svg{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));}
+.leaflet-tooltip.ftmap-cplbl{background:rgba(17,24,39,0.82);color:#fff;border:0;box-shadow:none;font:700 11px/1.2 -apple-system,Segoe UI,sans-serif;padding:2px 5px;border-radius:4px;}
+.leaflet-tooltip.ftmap-cplbl::before{display:none;}
+.ftmap-far .ftmap-cplbl{display:none;}
+.ftmap-cpnav{display:block;width:100%;margin-top:6px;padding:7px;border:0;border-radius:7px;background:#2563eb;color:#fff;font-weight:700;font-size:13px;}
 /* full-screen map: keep controls clear of the status bar, notch / Dynamic Island and home indicator.
    Uses the phone's reported safe areas, with minimums in case it reports 0. */
 .ftmap.ftmap-full .leaflet-top{top:max(env(safe-area-inset-top, 0px), 48px);}

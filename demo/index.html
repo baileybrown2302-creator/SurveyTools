@@ -108,7 +108,7 @@
 
 <script>
 'use strict';
-const SEED_VERSION = 'carson-v1';
+const SEED_VERSION = 'carson-v2';
 const PROJ_ID = 'demo-carson-city';
 const USFT = 1200 / 3937;
 const D2R = Math.PI / 180, R2D = 180 / Math.PI;
@@ -205,7 +205,8 @@ async function refreshOverlay(force) {
   try { s = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} }; rows = await FTAlign.apGetAll('alignments'); } catch (e) { return; }
   const projId = (s.g && s.g.projId) || '', ps = Object.assign({ ...P_DEF }, (s.p || {})[projId] || {});
   const mine = rows.filter(r => r.projId === projId);
-  const sig = JSON.stringify([projId, ps.zone, ps.units, ps.cf, ps.baseN, ps.baseE, ps.shiftN, ps.shiftE, mine.map(r => [r.id, r.name, r.els && r.els.length, r.units]), ps.stakeList, ps.target]);
+  let cps = []; try { cps = projId ? await ftGetControlPointsByProject(projId) : []; } catch (e) {}
+  const sig = JSON.stringify([projId, ps.zone, ps.units, ps.cf, ps.baseN, ps.baseE, ps.shiftN, ps.shiftE, mine.map(r => [r.id, r.name, r.els && r.els.length, r.units]), ps.stakeList, ps.target, cps.map(c => [c.id, c.name, c.northing, c.easting, c.status])]);
   if (!force && sig === ctxSig) return; ctxSig = sig;
   const aligns = mine.map(r => ({ ...r, poly: FTAlign.buildPolyline(r, ps.units) }));
   ctx = { ps, aligns, target: ps.target };
@@ -221,6 +222,14 @@ async function refreshOverlay(force) {
     const active = ps.target && p.alignId === ps.target.alignId && p.sta === ps.target.sta && p.off === ps.target.off;
     L.circleMarker(ll, { radius: active ? 8 : 6, color: '#fff', weight: 2, fillColor: p.done ? '#22c55e' : active ? '#ef4444' : '#f97316', fillOpacity: 1 })
       .bindTooltip(p.name || 'Point', { permanent: true, direction: 'right', offset: [8, 0], className: 'stake-lbl' })
+      .on('click', e => { L.DomEvent.stop(e); setPos(ll[0], ll[1]); }).addTo(overlay);
+  }
+  const CPC = { undisturbed: '#16a34a', disturbed: '#f59e0b', missing: '#dc2626', could_not_locate: '#ea580c' };
+  for (const c of cps) {
+    if (!isFinite(parseFloat(c.northing)) || !isFinite(parseFloat(c.easting))) continue;
+    const q = gridToLL(ps, parseFloat(c.northing), parseFloat(c.easting)), ll = [q.lat, q.lon];
+    L.marker(ll, { icon: L.divIcon({ className: '', iconSize: [20, 18], iconAnchor: [10, 12], html: `<svg viewBox="0 0 22 20" width="20" height="18"><path d="M11 1.5 L20.5 18.5 L1.5 18.5 Z" fill="${CPC[c.status] || '#7c3aed'}" stroke="#fff" stroke-width="2"/></svg>` }) })
+      .bindTooltip(c.name || 'CP', { permanent: true, direction: 'right', offset: [8, -3], className: 'stake-lbl' })
       .on('click', e => { L.DomEvent.stop(e); setPos(ll[0], ll[1]); }).addTo(overlay);
   }
   const t = ps.target && stakeLL(ps.target);
@@ -280,6 +289,15 @@ async function seedDemo() {
   ps.stakeList = pts.map(([name, sta, off, desc], i) => ({ id: 'demo' + i, name, alignId: al.id, sta, side: '', off, desc, done: false }));
   ps.stakeActive = ''; ps.target = null;
   await ftSetSetting('ftStationing', s);
+  // control points (Control Points tool) beside the alignment
+  const poly = FTAlign.buildPolyline(al, 'usft');
+  const cps = [['CP 101', 1100, 45, 4652.318, 'undisturbed', 'Rebar & cap'], ['CP 102', 1600, -40, 4655.902, 'disturbed', 'Cap bent, re-check'],
+               ['CP 103', 2100, 50, 4649.477, 'undisturbed', 'Mag nail in curb'], ['CP 104', 2440, -35, 4651.064, 'missing', 'Not found 11/2026']];
+  for (const [name, sta, off, el, status, note] of cps) {
+    const q = FTAlign.pointAt(poly, sta, off);
+    await ftSaveControlPoint({ id: 'democp-' + name.replace(/\D/g, ''), projectId: PROJ_ID, name, status, northing: +q.y.toFixed(3), easting: +q.x.toFixed(3), elevation: el,
+      newStation: FTAlign.fmtSta(sta, 'usft').replace(/\.\d+$/, ''), distanceNew: Math.abs(off), note, created: now });
+  }
   // start just before the beginning of the alignment, 25 ft left, facing up-station
   await refreshOverlay(true);
   const a = ctx.aligns[0], q = FTAlign.pointAt(a.poly, 1015, -25), ll = gridToLL(ctx.ps, q.y, q.x);
