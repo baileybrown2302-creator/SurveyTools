@@ -166,6 +166,7 @@ body {
 .item-bid { font-size: 0.78em; font-weight: 800; color: var(--accent-blue); flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .item-desc { flex: 1; font-size: 0.82em; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .item-qty { font-size: 0.78em; color: var(--text-secondary); font-weight: 600; flex-shrink: 0; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.item-flag { color: var(--accent-red); font-weight: 900; font-size: 0.85em; flex-shrink: 0; align-self: center; }
 .item-note-dot { width: 7px; height: 7px; background: var(--accent-blue); border-radius: 50%; flex-shrink: 0; margin-left: 2px; align-self: center; }
 .add-item-row {
   padding: 10px 14px; display: flex; justify-content: flex-end;
@@ -272,6 +273,26 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
 .import-review-row { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 0.85em; }
 .import-review-label { color: var(--text-muted); font-weight: 600; }
 .import-review-val { color: var(--text-primary); font-weight: 700; }
+.import-review-val { text-align: right; margin-left: 10px; }
+.ir-check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.84em; font-weight: 600; padding: 4px 0; line-height: 1.35; }
+.ir-check span:first-child { width: 16px; flex-shrink: 0; text-align: center; font-weight: 900; }
+.ir-check.ok span:first-child, .ir-ok { color: var(--accent-green); }
+.ir-check.bad span:first-child, .ir-bad { color: var(--accent-red); }
+.ir-check.warn span:first-child { color: var(--accent-orange, #f59e0b); }
+.ir-list { margin-top: 10px; }
+.ir-bk { background: var(--bg-tertiary); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+.ir-bk summary { padding: 10px 12px; cursor: pointer; font-size: 0.85em; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.ir-bkdesc { color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ir-bkmeta { width: 100%; color: var(--text-muted); font-size: 0.92em; font-weight: 600; }
+.ir-item { padding: 8px 12px; border-top: 1px solid var(--border-primary); font-size: 0.8em; cursor: pointer; }
+.ir-item.mismatch, .ir-item.incomplete { background: rgba(239,68,68,0.10); border-left: 3px solid var(--accent-red); }
+.ir-item.fixed { border-left: 3px solid var(--accent-orange, #f59e0b); }
+.ir-item-top { display: flex; gap: 8px; }
+.ir-no { font-weight: 800; font-variant-numeric: tabular-nums; }
+.ir-desc { flex: 1; color: var(--text-primary); }
+.ir-item-nums { color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.ir-flag { color: var(--accent-red); font-weight: 700; margin-top: 2px; }
+.ir-item.fixed .ir-flag { color: var(--accent-orange, #f59e0b); }
 .import-stats { display: flex; gap: 10px; padding: 0 20px; margin-bottom: 4px; }
 .import-stat { flex: 1; background: var(--bg-tertiary); border-radius: 10px; padding: 12px; text-align: center; }
 .import-stat-num { font-size: 1.6em; font-weight: 800; color: var(--accent-blue); }
@@ -477,6 +498,7 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
         <div class="item-price-value" id="ids_cost"></div>
       </div>
     </div>
+    <div id="ids_flag" style="color:var(--accent-red);font-weight:700;font-size:0.82em;padding:6px 20px 0;"></div>
     <div class="item-detail-divider"></div>
     <div class="item-detail-notes-label">Notes</div>
     <textarea class="item-note-area" id="ids_note" placeholder="No notes yet. Tap to add…"></textarea>
@@ -526,7 +548,7 @@ textarea.field-input { resize: vertical; min-height: 80px; font-family: inherit;
         </div>
       </div>
       <div class="import-review-info" id="ir_info"></div>
-      <p style="font-size:0.8em;color:var(--text-muted);padding:0 0 4px;">You can edit contract details after import.</p>
+      <div id="ir_checks" style="padding:10px 20px 0;"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" style="flex:1;" onclick="cancelImport()">Cancel</button>
@@ -633,53 +655,39 @@ function makeNoClipCtx(realCtx) {
   });
 }
 
-async function extractTextViaOCR(pdf, updateStatus) {
-  updateStatus('Loading OCR engine\u2026 (first use downloads ~10\u202fMB)');
+async function extractTextViaOCR(pdf, updateStatus, onlyPages) {
+  updateStatus('Loading OCR engine… (first use downloads ~10 MB)');
   await loadTesseract();
-  updateStatus('Initializing OCR\u2026');
+  updateStatus('Initializing OCR…');
   const worker = await Tesseract.createWorker('eng', 1, {
     logger: m => {
       if (m.status === 'loading tesseract core' || m.status === 'loading language traineddata') {
-        updateStatus(`Downloading OCR data\u2026 ${((m.progress||0)*100)|0}%`);
+        updateStatus(`Downloading OCR data… ${((m.progress||0)*100)|0}%`);
       }
     }
   });
-  // PSM 11 = sparse text: find as much text as possible without structure assumptions.
-  // Default PSM 3 skips tabular/numeric content; PSM 11 scans the whole image for any text.
+  // PSM 11 = sparse text: finds the scattered labels and table cells on these forms
   await worker.setParameters({ tessedit_pageseg_mode: '11' });
+  const OCR_SCALE = 3.0;   // pixels per PDF point; results are converted back to points
+  const pages = onlyPages || Array.from({ length: pdf.numPages }, (_, i) => i + 1);
   try {
     const allItems = [];
-    for (let p = 1; p <= pdf.numPages; p++) {
-      updateStatus(`OCR: rendering page ${p}\u202f/\u202f${pdf.numPages}\u2026`);
+    for (const [n, p] of pages.entries()) {
+      updateStatus(`Reading page ${n + 1} / ${pages.length} with OCR…`);
       const page = await pdf.getPage(p);
-      const OCR_SCALE = 3.0; // higher scale = more pixels per character = fewer substitution errors
       const vp = page.getViewport({ scale: OCR_SCALE });
       const canvas = document.createElement('canvas');
-      canvas.width = vp.width;
-      canvas.height = vp.height;
+      canvas.width = vp.width; canvas.height = vp.height;
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // Use no-clip proxy so Type 3 glyphs with bad bboxes still render
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // no-clip proxy so Type 3 glyphs with bad bboxes still render
       await page.render({ canvasContext: makeNoClipCtx(ctx), viewport: vp }).promise;
-      // Binarize to clean B&W: eliminates anti-aliasing fuzz that causes character confusion
-      const id = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const px = id.data;
-      for (let i = 0; i < px.length; i += 4) {
-        const g = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
-        const v = g > 180 ? 255 : 0;
-        px[i] = px[i + 1] = px[i + 2] = v;
-      }
-      ctx.putImageData(id, 0, 0);
-
-      updateStatus(`OCR: reading page ${p}\u202f/\u202f${pdf.numPages}\u2026`);
       const { data } = await worker.recognize(canvas);
-      // Use actual word bounding-box pixel coordinates so multi-column rows
-      // stay in their correct vertical positions and don't bleed across columns.
-      for (const word of (data.words || [])) {
-        const t = word.text.trim();
+      for (const w of (data.words || [])) {
+        const t = w.text.trim();
         if (!t) continue;
-        allItems.push({ str: t, x: word.bbox.x0, y: word.bbox.y0, page: p });
+        const b = w.bbox;
+        allItems.push({ str: t, x0: b.x0 / OCR_SCALE, x1: b.x1 / OCR_SCALE, y: (b.y0 + b.y1) / 2 / OCR_SCALE, h: (b.y1 - b.y0) / OCR_SCALE, page: p });
       }
     }
     return allItems;
@@ -903,6 +911,7 @@ function renderBreakouts(searchQuery) {
         <span class="item-desc">${esc(item.description)}</span>
         <span class="item-qty">${fmtQty(item.quantity)} ${esc(item.unitMeas)}</span>
         ${item.note ? '<span class="item-note-dot"></span>' : ''}
+        ${item.importFlag ? '<span class="item-flag" title="' + esc(item.importFlag) + '">⚠</span>' : ''}
       </div>`).join('');
 
     return `<div class="breakout-card${isOpen?' open':''}" id="bcard-${bIdx}" ${!show?'style="display:none"':''}>
@@ -1042,8 +1051,9 @@ function openEditItemModal() {
   closeItemDetail();
   document.getElementById('itemModal').classList.add('open');
 }
-function closeItemModal() { document.getElementById('itemModal').classList.remove('open'); }
+function closeItemModal() { document.getElementById('itemModal').classList.remove('open'); irEdit = null; }
 async function saveItemModal() {
+  if (irEdit) return saveImportItemEdit();
   const bidItem = document.getElementById('im_bidItem').value.trim();
   const desc = document.getElementById('im_desc').value.trim();
   if (!bidItem||!desc) { if(!bidItem) document.getElementById('im_bidItem').focus(); else document.getElementById('im_desc').focus(); return; }
@@ -1056,6 +1066,7 @@ async function saveItemModal() {
       item.quantity = parseNum(document.getElementById('im_qty').value);
       item.unitPrice = parseNum(document.getElementById('im_price').value);
       item.itemCost = parseNum(document.getElementById('im_cost').value);
+      delete item.importFlag;
     }
   } else {
     b.items.push({
@@ -1085,6 +1096,7 @@ function openItemDetail(breakoutNo, bIdx, itemId) {
   document.getElementById('ids_price').textContent = fmtMoney(item.unitPrice);
   document.getElementById('ids_cost').textContent = fmtMoney(item.itemCost);
   document.getElementById('ids_note').value = item.note||'';
+  document.getElementById('ids_flag').textContent = item.importFlag ? '⚠ ' + item.importFlag + ' — check against the PDF, then edit the item.' : '';
   document.getElementById('itemDetailSheet').classList.add('open');
 }
 function closeItemDetail() { document.getElementById('itemDetailSheet').classList.remove('open'); }
@@ -1148,37 +1160,24 @@ async function handlePdfFile(input) {
   const loadText = document.getElementById('loadingText');
   const setStatus = t => { loadText.textContent = t; };
   overlay.classList.add('open');
-  setStatus('Loading PDF.js\u2026');
+  setStatus('Loading PDF reader…');
   try {
     const lib = await loadPdfJs();
-    setStatus('Parsing PDF\u2026');
-    const arrayBuffer = await file.arrayBuffer();
-    const pdf = await lib.getDocument({ data: arrayBuffer }).promise;
-    setStatus(`Reading ${pdf.numPages} pages\u2026`);
-    let allItems = await extractAllTextItems(pdf);
-    const garbled = isTextGarbled(allItems);
-    console.log('[BidItems] PDF.js extracted', allItems.length, 'items. Garbled:', garbled);
-    console.log('[BidItems] PDF.js sample (first 20):', allItems.slice(0,20).map(i=>JSON.stringify(i.str)).join(', '));
-    if (garbled) {
-      // PDF uses non-standard font encoding (e.g. Bluebeam-processed) — fall back to OCR
-      allItems = await extractTextViaOCR(pdf, setStatus);
-      console.log('[BidItems] OCR extracted', allItems.length, 'items total');
-      // Log ALL words from page 1 (needed to see contractor/designer area)
-      const pg1 = allItems.filter(i => i.page === 1).sort((a,b) => a.y - b.y || a.x - b.x);
-      console.log(`[BidItems] OCR page 1 (${pg1.length} words total):`);
-      for (let s = 0; s < pg1.length; s += 50)
-        console.log(`  [${s}-${Math.min(s+50,pg1.length)-1}]:`, pg1.slice(s,s+50).map(i=>`"${i.str}"@(${i.x|0},${i.y|0})`).join(' '));
-      // Log first 40 words from pages 2-3
-      for (let pg = 2; pg <= Math.min(3, pdf.numPages); pg++) {
-        const pageItems = allItems.filter(i => i.page === pg).sort((a,b) => a.y - b.y || a.x - b.x);
-        console.log(`[BidItems] OCR page ${pg} (${pageItems.length} words):`, pageItems.slice(0,40).map(i=>`"${i.str}"@(${i.x|0},${i.y|0})`).join(' '));
-      }
+    setStatus('Opening PDF…');
+    const pdf = await lib.getDocument({ data: await file.arrayBuffer() }).promise;
+    setStatus(`Reading ${pdf.numPages} pages…`);
+    const { items, pages } = await extractAllTextItems(pdf);
+    let all = items, usedOCR = false;
+    if (isTextGarbled(items)) {
+      // No usable text layer (text drawn as shapes, or a non-standard font encoding) — read the pages with OCR
+      all = await extractTextViaOCR(pdf, setStatus);
+      usedOCR = true;
+    } else {
+      // Mostly text, but OCR any page that has no text at all (e.g. a scanned page added in)
+      const empty = pages.filter(p => !items.some(i => i.page === p.page)).map(p => p.page);
+      if (empty.length) all = items.concat(await extractTextViaOCR(pdf, setStatus, empty));
     }
-    const parsed = parseAgreementEstimate(allItems);
-    console.log('[BidItems] Parse result: contractNo=%s projectId=%s breakouts=%d items=%d contractor="%s" designer="%s"',
-      parsed.contractNo, parsed.projectId, parsed.breakouts.length,
-      parsed.breakouts.reduce((s,b)=>s+b.items.length,0),
-      parsed.contractor, parsed.designer);
+    const parsed = parseAgreementEstimate(all, { fileName: file.name, usedOCR });
     overlay.classList.remove('open');
     pendingImport = parsed;
     showImportReview(parsed);
@@ -1189,365 +1188,334 @@ async function handlePdfFile(input) {
   }
 }
 
+// Text items in PDF points: { str, x0, x1, y (vertical centre, top = 0), h, page }
 async function extractAllTextItems(pdf) {
-  const allItems = [];
+  const items = [], pages = [];
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const vp = page.getViewport({ scale: 1 });
-    const pageH = vp.height;
+    pages.push({ page: p, w: vp.width, h: vp.height });
     const tc = await page.getTextContent();
-    for (const item of tc.items) {
-      if (!item.str || !item.str.trim()) continue;
-      // PDF transform: [scaleX, skewX, skewY, scaleY, tx, ty]
-      const x = item.transform[4];
-      const y = pageH - item.transform[5]; // flip y so top=0
-      allItems.push({ str: item.str.trim(), x, y, page: p });
+    for (const it of tc.items) {
+      const str = (it.str || '').trim();
+      if (!str) continue;
+      const h = Math.abs(it.height || it.transform[3]) || 8;
+      const x0 = it.transform[4];
+      items.push({ str, x0, x1: x0 + (it.width || str.length * h * 0.5), y: vp.height - it.transform[5] - h * 0.35, h, page: p });
     }
   }
-  return allItems;
+  return { items, pages };
 }
 
-function parseAgreementEstimate(items) {
-  // Group into lines by y-position (per page)
-  const byPage = {};
-  for (const item of items) {
-    if (!byPage[item.page]) byPage[item.page] = [];
-    byPage[item.page].push(item);
-  }
-
-  const lines = []; // array of { page, y, tokens: [{str, x}] }
-  for (const [page, pageItems] of Object.entries(byPage)) {
-    pageItems.sort((a,b) => a.y - b.y);
-    const grouped = [];
-    for (const item of pageItems) {
-      const last = grouped[grouped.length-1];
-      if (last && Math.abs(item.y - last.y) < 12) {
-        last.tokens.push({ str: item.str, x: item.x });
-      } else {
-        grouped.push({ page: Number(page), y: item.y, tokens: [{ str: item.str, x: item.x }] });
+// ── Layout helpers ──
+function groupLines(items) {
+  const byPage = new Map();
+  for (const it of items) { if (!byPage.has(it.page)) byPage.set(it.page, []); byPage.get(it.page).push(it); }
+  const lines = [];
+  for (const page of [...byPage.keys()].sort((a, b) => a - b)) {
+    const its = byPage.get(page).slice().sort((a, b) => a.y - b.y);
+    const pl = [];
+    for (const it of its) {
+      const last = pl[pl.length - 1];
+      if (last && Math.abs(it.y - last.y) <= 3.5) { last.items.push(it); last.y = (last.y * (last.items.length - 1) + it.y) / last.items.length; }
+      else pl.push({ page, y: it.y, items: [it] });
+    }
+    for (const l of pl) {
+      l.items.sort((a, b) => a.x0 - b.x0);
+      // phrases: neighbouring words joined (labels like "PROJECT EA :" become one piece)
+      l.phrases = [];
+      for (const it of l.items) {
+        const ph = l.phrases[l.phrases.length - 1];
+        if (ph && (it.x0 - ph.x1 < Math.max(3, 0.6 * Math.max(ph.h, it.h)) || (it.str === ':' && it.x0 - ph.x1 < 20))) { ph.str += ' ' + it.str; ph.x1 = Math.max(ph.x1, it.x1); }
+        else l.phrases.push({ str: it.str, x0: it.x0, x1: it.x1, y: it.y, h: it.h, page });
       }
-    }
-    for (const g of grouped) {
-      g.tokens.sort((a,b) => a.x - b.x);
-      lines.push(g);
+      l.text = l.phrases.map(p => p.str).join(' ').replace(/\s+/g, ' ').trim();
+      lines.push(l);
     }
   }
+  return lines;
+}
+const KNOWN_LABEL = /^(MAINTENANCE|OTHER|CAPACITY|BREAKOUT TYPE|AGREEMENT|BID VERSION|DESIGNER|FUNCTIONAL|CLASSIFICATION|PHASE|ACTIVITY|WORK TYPE|BEGIN STATIONING|END STATIONING|PROJECT [A-Z]+|CONTRACT\S*|CONTRACTOR)\b/i;
+const isLabel = s => /:\s*$/.test(s) || (KNOWN_LABEL.test(s) && s === s.toUpperCase());
+// Value written to the right of a label: everything up to the next label, on the label's row or wrapped just above/below it
+function labelValue(pagePhrases, labelPh, { window = 6 } = {}) {
+  const row = pagePhrases.filter(p => Math.abs(p.y - labelPh.y) <= Math.max(window, 6) && p.x0 > labelPh.x1 + 1);
+  const nextLabel = row.filter(p => isLabel(p.str)).sort((a, b) => a.x0 - b.x0)[0];
+  const right = nextLabel ? nextLabel.x0 - 2 : Infinity;
+  const vals = pagePhrases.filter(p => p !== labelPh && !isLabel(p.str) && p.x0 > labelPh.x1 + 1 && p.x0 < right && Math.abs(p.y - labelPh.y) <= window)
+    .sort((a, b) => a.y - b.y || a.x0 - b.x0);
+  return vals.map(v => v.str).join(' ').replace(/\s+/g, ' ').trim();
+}
+function findLabel(pagePhrases, rx) { return pagePhrases.find(p => rx.test(p.str.replace(/\s+/g, ' ').trim())); }
 
-  // Parse document
-  const contract = {
-    contractNo: '', projectNo: '', projectId: '',
-    location: '', county: '', contractor: '', designer: '',
-    breakouts: []
+// OCR clean-ups
+const OCR_DIGIT = s => s.replace(/[Oo]/g, '0').replace(/[Il|]/g, '1').replace(/[Ss]/g, '5').replace(/[Bb]/g, '8').replace(/[Gg]/g, '6').replace(/[Zz]/g, '2');
+function fixDescription(d) {
+  return d.replace(/^['"“‘\s]+/, '')
+    .replace(/\bINGH\b/g, 'INCH').replace(/(\d+)-NCH\b/g, '$1-INCH')
+    .replace(/\b[C0]F\b/g, 'OF')
+    .replace(/\s+/g, ' ').trim();
+}
+const fixStation = s => (s || '').replace(/\b(MP\s+[A-Z]{2}\s+\d+),(\d{3})\b/g, '$1.$2').replace(/\s+/g, ' ').trim();
+const UNIT_NORM = { 'SQVD': 'SQYD', 'UNFT': 'LINFT', 'UNPT': 'LINFT', 'LNFT': 'LINFT', 'LINET': 'LINFT', 'L5': 'LS', '15': 'LS', '1S': 'LS' };
+
+// Number candidates for a quantity / money cell, most likely first (OCR can drop or swap separators)
+function qtyCandidates(raw) {
+  const s = raw.replace(/:/g, ',').replace(/[^\d.,]/g, '');
+  const c = [];
+  const dots = (s.match(/\./g) || []).length, commas = (s.match(/,/g) || []).length;
+  if (dots === 1) c.push(parseFloat(s.replace(/,/g, '')));
+  if (dots >= 2) c.push(parseFloat(s.replace(/\.(?=.*\.)/g, '')));                 // 5.496.000 → 5496.000
+  if (dots === 0 && commas >= 1) {
+    const parts = s.split(','), dec = parts.pop();
+    if (dec.length === 3) c.push(parseFloat(parts.join('') + '.' + dec));            // 445,000 → 445.000 (decimal read as comma)
+    c.push(parseFloat(s.replace(/,/g, '')));
+  }
+  if (dots === 0 && commas === 0) { const n = parseInt(s, 10); if (s.length > 3) c.push(n / 1000); c.push(n); }
+  return [...new Set(c.filter(isFinite))];
+}
+function moneyCandidates(raw) {
+  const s = raw.replace(/:/g, ',').replace(/[^\d.,]/g, '');
+  const c = [];
+  const m = s.match(/^(.*)[.,](\d{2})$/);
+  if (m) c.push(parseFloat(m[1].replace(/[.,]/g, '') + '.' + m[2]));                 // last separator before 2 digits is the decimal
+  const plain = s.replace(/,/g, '');
+  if (/^\d+\.\d+$/.test(plain)) c.push(parseFloat(plain));
+  if (/^\d+$/.test(plain)) { c.push(parseInt(plain, 10) / 100); c.push(parseInt(plain, 10)); } // decimal point dropped
+  if (/^\d+\.\d{3,}$/.test(plain)) c.push(parseInt(plain.replace('.', ''), 10) / 100);
+  return [...new Set(c.filter(isFinite))];
+}
+// NDOT units of measure; an OCR misread is matched to the closest one
+const KNOWN_UNITS = ['LS','FA','EACH','LINFT','SQYD','SQFT','CUYD','CUFT','TON','POUND','DAY','HOUR','GAL','MGAL','ACRE','MILE','STA','LB','UNIT','SET','MONTH','WEEK','LANEMILE','KIP','CWT','MBM','LF','SY','SF','CY','EA'];
+function editDist(a, b) { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i-1][j] + 1, d[i][j-1] + 1, d[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)); return d[a.length][b.length]; }
+function fixUnit(u) {
+  if (!u || KNOWN_UNITS.includes(u)) return { unit: u };
+  const collapsed = u.replace(/(.)\1+/g, '$1');
+  if (KNOWN_UNITS.includes(collapsed)) return { unit: collapsed, fixedFrom: u };
+  const best = KNOWN_UNITS.filter(k => k.length >= 4 || u.length <= 3).map(k => [k, editDist(u, k)]).sort((a, b) => a[1] - b[1])[0];
+  if (best && best[1] <= (u.length >= 5 ? 2 : 1)) return { unit: best[0], fixedFrom: u };
+  return { unit: u, unknown: true };
+}
+const isNumTok = s => /^[\d][\d,.:]*$/.test(s) && /\d/.test(s);
+const lineMathOk = (q, u, a) => Math.abs(q * u - a) <= 0.015 + a * 1e-7;
+
+// Table columns from the "PAY ITEM NO | QUANTITY UNIT | DESCRIPTION | UNIT PRICE | AMOUNT" header row
+function tableColumns(line) {
+  const words = [];
+  for (const it of line.items) {
+    // split multi-word text items into words with approximate positions
+    const parts = it.str.split(/\s+/), cw = (it.x1 - it.x0) / Math.max(1, it.str.length);
+    let pos = 0;
+    for (const w of parts) { const i = it.str.indexOf(w, pos); words.push({ w: w.toUpperCase(), x0: it.x0 + i * cw, x1: it.x0 + (i + w.length) * cw }); pos = i + w.length; }
+  }
+  const find = (rx, after = -1) => words.find(w => rx.test(w.w) && w.x0 > after);
+  const qty = find(/^QUANTITY$/), desc = find(/^DESCRIPTION$/);
+  if (!qty || !desc) return null;
+  const unit = find(/^UNIT$/, qty.x0), price = find(/^PRICE$/, desc.x0), amtW = words.filter(w => w.x0 > (price ? price.x1 : desc.x1)).pop();
+  return { qtyRight: qty.x1, unitLeft: unit ? unit.x0 : qty.x1 + 2, descLeft: desc.x0, priceRight: price ? price.x1 : null, amtRight: amtW ? amtW.x1 : null };
+}
+
+function parseBidItemRow(line, cols, payItemNo) {
+  const toks = [];
+  for (const it of line.items.slice(1)) {
+    // OCR sometimes glues quantity and unit: "1.000LS"
+    const g = it.str.match(/^([\d][\d,.:]*)([A-Za-z]{2,6})$/);
+    if (g) { const cut = it.x0 + (it.x1 - it.x0) * g[1].length / it.str.length; toks.push({ str: g[1], x0: it.x0, x1: cut }, { str: g[2], x0: cut + 1, x1: it.x1 }); }
+    else toks.push(it);
+  }
+  const qtyParts = [], descParts = [], up = [], amt = [];
+  let unit = '';
+  for (const t of toks) {
+    const s = t.str.trim(), num = isNumTok(s);
+    if (cols.priceRight && num && t.x1 > cols.priceRight - 75) {
+      const dUp = Math.abs(t.x1 - cols.priceRight), dAmt = cols.amtRight ? Math.abs(t.x1 - cols.amtRight) : Infinity;
+      (dUp <= dAmt ? up : amt).push(s);
+    } else if (num && t.x1 <= cols.unitLeft + 3) qtyParts.push(s);
+    else if (!num && t.x0 < cols.descLeft - 6 && t.x0 >= cols.unitLeft - 12 && !unit) {
+      const u = s.replace(/[.,;:]+$/, '').toUpperCase(); unit = UNIT_NORM[u] || u;
+    }
+    else if (t.x0 >= cols.descLeft - 12) descParts.push(s);
+  }
+  const description = fixDescription(descParts.join(' '));
+  const qRaw = qtyParts.join(''), upRaw = up.join(''), amtRaw = amt.join('');
+  const qC = qRaw ? qtyCandidates(qRaw) : [], uC = upRaw ? moneyCandidates(upRaw) : [], aC = amtRaw ? moneyCandidates(amtRaw) : [];
+  if (!qC.length && (unit === 'LS' || unit === 'FA')) qC.push(1);
+  let quantity = qC[0] ?? null, unitPrice = uC[0] ?? null, itemCost = aC[0] ?? null, check = 'ok', flag = '';
+  if (quantity != null && unitPrice != null && itemCost != null) {
+    let best = null;
+    for (let i = 0; i < qC.length && !best; i++) for (let j = 0; j < uC.length && !best; j++) for (let k = 0; k < aC.length && !best; k++)
+      if (lineMathOk(qC[i], uC[j], aC[k])) best = [qC[i], uC[j], aC[k]];
+    if (best) {
+      if (best[0] !== quantity || best[1] !== unitPrice || best[2] !== itemCost) { check = 'fixed'; flag = `Corrected misread numbers (read as ${qRaw} × ${upRaw} = ${amtRaw})`; }
+      [quantity, unitPrice, itemCost] = best;
+    } else { check = 'mismatch'; flag = `Quantity × unit price (${fmtMoney(quantity * unitPrice)}) doesn't match the amount`; }
+  } else {
+    check = 'incomplete';
+    flag = 'Missing ' + [quantity == null && 'quantity', unitPrice == null && 'unit price', itemCost == null && 'amount'].filter(Boolean).join(', ');
+  }
+  if (!description) { check = 'incomplete'; flag = flag ? flag + '; no description' : 'No description'; }
+  if (!unit) { check = check === 'ok' || check === 'fixed' ? 'incomplete' : check; flag = flag ? flag + '; no unit' : 'No unit'; }
+  else {
+    const fu = fixUnit(unit); unit = fu.unit;
+    if (fu.fixedFrom) { if (check === 'ok') check = 'fixed'; flag = (flag ? flag + '; ' : '') + `Unit read as ${fu.fixedFrom}, corrected to ${fu.unit}`; }
+    else if (fu.unknown) { if (check === 'ok') check = 'fixed'; flag = (flag ? flag + '; ' : '') + `Unit "${unit}" isn't a usual NDOT unit — check it`; }
+  }
+  return { id: uid(), bidItem: payItemNo, quantity, unitMeas: unit, description, unitPrice, itemCost, note: '', check, importFlag: flag };
+}
+
+function parseAgreementEstimate(items, { fileName = '', usedOCR = false } = {}) {
+  const lines = groupLines(items);
+  const contract = { contractNo: '', projectNo: '', projectId: '', location: '', county: '', contractor: '', designer: '', breakouts: [], constructionTotal: null, usedOCR, warnings: [] };
+  const pagesNo = [...new Set(lines.map(l => l.page))];
+  const phrasesOf = pg => lines.filter(l => l.page === pg).flatMap(l => l.phrases);
+  const val = (phs, rx, opts) => { const l = findLabel(phs, rx); return l ? labelValue(phs, l, opts) : ''; };
+
+  // ── Contract header (first page that has it) ──
+  for (const pg of pagesNo) {
+    const phs = phrasesOf(pg);
+    const set = (k, rx, opts) => { if (!contract[k]) { const v = val(phs, rx, opts); if (v) contract[k] = v; } };
+    set('contractNo', /^CONTRACT\s*(#|N[O0]\.?)\s*:?$/i);
+    set('projectId', /^PROJECT\s*(EA|ID)\s*:?$/i);
+    set('projectNo', /^PROJECT\s*NUMBER\s*:?$/i);
+    set('location', /^PROJECT\s*NAME\s*:?$/i, { window: 3.5 });
+    set('location', /^LOCATION\s*:?$/i, { window: 3.5 });
+    set('contractor', /^CONTRACTOR\s*:?$/i);
+    set('designer', /^DESIGNER\s*:?$/i, { window: 3.5 });
+    set('county', /^COUNTY\s*:?$/i, { window: 3.5 });
+    if (!contract.county) {   // "LOCATION DETAILS" table: first row under COUNTY NAME
+      const h = phs.find(p => /^COUNTY NAME\b/i.test(p.str));
+      if (h) { const v = phs.filter(p => p.y > h.y + 4 && p.y < h.y + 40 && Math.abs(p.x0 - h.x0) < 15).sort((a, b) => a.y - b.y)[0]; if (v) contract.county = v.str.replace(/\s+(US|IR|SR)\d.*$/, '').trim(); }
+    }
+    if (contract.contractNo && contract.projectId) break;
+  }
+  contract.contractNo = (contract.contractNo.match(/[A-Z]?\d{3,}[A-Z]?/i) || [''])[0];
+  if (!contract.contractNo) {
+    const m = fileName.replace(/^[0-9a-f]{8}-/i, '').match(/(?:^|\D)(\d{4,5})(?:\D|$)/);
+    if (m) { contract.contractNo = m[1]; contract.warnings.push(`Contract number taken from the file name (${m[1]}) — please check it.`); }
+    else contract.warnings.push('Contract number not found — add it after import.');
+  }
+  contract.projectId = (contract.projectId.match(/^\S+/) || [''])[0];
+  contract.county = contract.county.replace(/^[^A-Za-z0-9]+/, '');
+  contract.contractor = contract.contractor.replace(/\s*BID VERSION.*$/i, '').replace(/\b([A-Z])([a-z])([A-Z])\b/g, '$1&$3').trim();
+  contract.designer = contract.designer.replace(/\s*PHONE.*$/i, '').trim();
+
+  // ── Breakouts, items and totals, in reading order ──
+  let bk = null, cols = null, lastItemLine = null;
+  const startBreakout = (no, phs) => {
+    if (bk && bk.no === no) return;            // same breakout continued on a new page
+    bk = { no, description: '', constructionType: '', fromStation: '', toStation: '', note: '', items: [], subTotal: null, subTotalAt: null, total: null, done: false };
+    contract.breakouts.push(bk);
+    bk.description = val(phs, /^BREAKOUT\s*DESCRIPTION\s*:?$/i)
+      .replace(/^(\d)(\d{4})(\s|$)/, '$1-$2$3').replace(/^(\d)\d(\d{4})(\s|$)/, '$1-$2$3');   // OCR lost the dash in "1-1088"
+    bk.constructionType = val(phs, /^(WORK\s*TYPE|CONSTRUCTION\s*TYPE\s*CODE)\s*:?$/i);
+    bk.fromStation = fixStation(val(phs, /^(BEGIN\s*STATIONING|FROM\s*STATION)\s*:?$/i, { window: 3.5 }));
+    bk.toStation = fixStation(val(phs, /^(END\s*STATIONING|TO\s*STATION)\s*:?$/i, { window: 3.5 }));
   };
-  let currentBreakout = null;
-  let headerParsed = false;
-  // Buffer description/type that appear BEFORE BREAKOUT NO (old format)
-  let pendingDescription = '';
-  let pendingConstructionType = '';
-
-  for (let li = 0; li < lines.length; li++) {
-    const line = lines[li];
-    const full = line.tokens.map(t=>t.str).join(' ');
-    const fullNorm = full.replace(/\s+/g,' ').trim();
-
-    // ── Project header fields ──
-    if (!headerParsed) {
-      // Contract number: old "CONTRACT NO:" or new "CONTRACT#:"
-      const mCN = fullNorm.match(/CONTRACT(?:\s*NO|\s*#)[:\s]+(\S+)/i);
-      if (mCN) { contract.contractNo = mCN[1]; }
-      // Project EA/ID: old "PROJECT ID:" or new "PROJECT EA:" (PSM 11 may merge to "PROJECTEA:")
-      const mPID = fullNorm.match(/PROJECT\s*(?:ID|EA)[:\s]+(\S+)/i);
-      if (mPID) { contract.projectId = mPID[1]; }
-      const mPN = fullNorm.match(/PROJECT NUMBER[:\s]+(\S+)/i);
-      if (mPN) { contract.projectNo = mPN[1]; }
-      // Contractor — require colon immediately after CONTRACTOR (prevents matching
-      // "Contractor" as a breakout-type value in page 2 header rows)
-      const mCON = fullNorm.match(/\bCONTRACTOR\s*:\s*(.+)/i);
-      if (mCON) {
-        let v = mCON[1];
-        // Strip at first ALL-CAPS label or BID VERSION (allow optional space before colon)
-        v = v.replace(/\s+(?:BID VERSION\b|[A-Z][A-Z\s]{3,}\s*:).*$/i, '');
-        contract.contractor = v.trim();
-      }
-      // Designer — require colon immediately after DESIGNER (not "DESIGNER PHONE:")
-      const mDES = fullNorm.match(/\bDESIGNER\s*:\s*(?!PHONE)(.+)/i);
-      if (mDES) {
-        let v = mDES[1];
-        // Strip at any subsequent ALL-CAPS label or PHONE sub-field
-        v = v.replace(/\s+(?:PHONE\b|[A-Z][A-Z\s]{3,}:).*$/i, '');
-        contract.designer = v.trim();
-      }
-      // County: require colon to avoid matching "COUNTY NAME" table header
-      const mCNTY = fullNorm.match(/^COUNTY\s*:\s*(.+)/i);
-      if (mCNTY) { contract.county = mCNTY[1].trim(); }
-      // Location: new "PROJECT NAME:" or old "^LOCATION:"
-      const mPNAME = fullNorm.match(/PROJECT NAME\s*:\s*(.+)/i);
-      if (mPNAME && !contract.location) {
-        let loc = mPNAME[1];
-        const nf = loc.match(/\s+[A-Z][A-Z\s]*\s*:/);
-        if (nf) loc = loc.slice(0, nf.index);
-        contract.location = loc.trim();
-      }
-      const mLOC = fullNorm.match(/^LOCATION\s*:\s*(.+)/i);
-      if (mLOC && !contract.location) { contract.location = mLOC[1].trim(); }
+  for (const line of lines) {
+    const phs = phrasesOf(line.page);
+    const bkLabel = line.phrases.find(p => /^BREAKOUT\s*N[O0]\.?\s*:?$/i.test(p.str));
+    if (bkLabel) {
+      let no = labelValue(phs, bkLabel, { window: 3.5 }).split(' ')[0].toUpperCase();
+      no = /^\d+$/.test(no) ? no.padStart(2, '0') : no.replace(/^([A-Z])O$/, '$10');
+      if (/^(\d{1,3}|[A-Z]\d)$/.test(no)) { startBreakout(no, phs); continue; }
     }
-
-    // ── Construction type / work type ──
-    // old: "CONSTRUCTION TYPE CODE:", new: "WORK TYPE:"
-    const mCT = fullNorm.match(/(?:CONSTRUCTION TYPE CODE|WORK TYPE)[:\s]+(.+)/i);
-    if (mCT) {
-      const ct = mCT[1].replace(/\s+AGREEMENT\b.*$/i,'').trim();
-      if (currentBreakout) currentBreakout.constructionType = ct;
-      else pendingConstructionType = ct;
-      continue;
+    if (/^PAY\s*ITEM|QUANTITY.*DESCRIPTION/i.test(line.text)) { cols = tableColumns(line) || cols; continue; }
+    const money = line.items.map(i => i.str).filter(isNumTok).pop();
+    if (/TOTAL\s*CONSTRUCTION\s*ITEM\s*COSTS/i.test(line.text)) { if (money) contract.constructionTotal = moneyCandidates(money)[0]; continue; }
+    if (bk && !bk.done && /SUB\s*TOTAL/i.test(line.text)) { if (money && bk.subTotal == null) { bk.subTotal = moneyCandidates(money)[0]; bk.subTotalAt = bk.items.length; } continue; }
+    if (bk && !bk.done && /BREAKOUT\s*TOTAL/i.test(line.text) && !/BREAKOUT\s*NO/i.test(line.text)) { if (money) bk.total = moneyCandidates(money)[0]; bk.done = true; continue; }
+    if (!bk || bk.done || !cols) continue;
+    const first = OCR_DIGIT(line.items[0].str.trim());
+    if (/^\d{7}$/.test(first) && line.items[0].x1 < cols.qtyRight - 20) {
+      bk.items.push(parseBidItemRow(line, cols, first)); lastItemLine = line; continue;
     }
-
-    // ── Breakout description ──
-    // Old format: appears BEFORE breakout no → buffer in pendingDescription
-    // New format: appears AFTER breakout no → set directly on currentBreakout
-    const mBD = fullNorm.match(/BREAKOUT DESCRIPTION[:\s]+(.+)/i);
-    if (mBD) {
-      let desc = mBD[1];
-      // Truncate at next field label (e.g. "BEGIN STATIONING :")
-      const nf = desc.match(/\s+[A-Z][A-Z\s]*\s*:/);
-      if (nf) desc = desc.slice(0, nf.index);
-      desc = desc.trim();
-      // Fix OCR misread of dash in breakout reference codes (e.g. "1-1088"):
-      //   dash dropped → "11000" (5 chars) → insert dash after first digit
-      //   dash→"1"    → "111088" (6 chars) → remove misread char, insert dash
-      desc = desc.replace(/^(\d)(\d+)(\s|$)/, (m, first, rest, sep) => {
-        if (rest.length === 4) return `${first}-${rest}${sep}`;        // dash was dropped
-        if (rest.length === 5) return `${first}-${rest.slice(1)}${sep}`; // dash misread as digit
-        return m;
-      });
-      if (currentBreakout && !currentBreakout.description) {
-        currentBreakout.description = desc;
-      } else {
-        pendingDescription = desc;
-      }
-      // No continue — this line may also contain BEGIN STATIONING
-    }
-
-    // ── Breakout start ──
-    // N[O0] handles OCR O→0 substitution; optional period for "BREAKOUT NO.:"
-    const mBK = fullNorm.match(/BREAKOUT\s+N[O0]\.?[:\s]+(\d+)/i);
-    if (mBK) {
-      headerParsed = true;
-      if (currentBreakout) contract.breakouts.push(currentBreakout);
-      const no = mBK[1].padStart(2,'0');
-      let fromSta = '', toSta = '';
-      const mFrom = fullNorm.match(/FROM STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
-      const mTo   = fullNorm.match(/TO STATION[:\s]+("?[^"]*"?\s*[\d+.]+)/i);
-      if (mFrom) fromSta = mFrom[1].trim();
-      if (mTo)   toSta   = mTo[1].trim();
-      currentBreakout = {
-        no, description: pendingDescription,
-        constructionType: pendingConstructionType,
-        fromStation: fromSta, toStation: toSta,
-        note: '', items: []
-      };
-      pendingDescription = '';
-      pendingConstructionType = '';
-      continue;
-    }
-
-    // ── Station fields ──
-    if (currentBreakout) {
-      // New format: BEGIN/END STATIONING (stop before adjacent fields)
-      const mBS = fullNorm.match(/BEGIN STATIONING[:\s]+(.+?)(?:\s+(?:MAINTENANCE|OTHER|CAPACITY)\b|$)/i);
-      if (mBS && !currentBreakout.fromStation) currentBreakout.fromStation = mBS[1].trim();
-      const mES = fullNorm.match(/END STATIONING[:\s]+(.+?)(?:\s+(?:MAINTENANCE|OTHER|CAPACITY)\b|$)/i);
-      if (mES && !currentBreakout.toStation) currentBreakout.toStation = mES[1].trim();
-      // Old format: FROM/TO STATION
-      const mF = fullNorm.match(/FROM STATION[:\s]+(.+?)(?:\s+TO STATION|$)/i);
-      if (mF && !currentBreakout.fromStation) currentBreakout.fromStation = mF[1].trim();
-      const mT = fullNorm.match(/TO STATION[:\s]+(.+)/i);
-      if (mT && !currentBreakout.toStation) currentBreakout.toStation = mT[1].trim();
-    }
-
-    // ── Skip totals ──
-    if (/^SUB\s*TOTAL/i.test(fullNorm) || /^BREAKOUT TOTAL/i.test(fullNorm)) {
-      continue;
-    }
-
-    // ── Bid item row — first token is 6–7 digit pay item number ──
-    if (currentBreakout) {
-      const rawFirst = line.tokens[0]?.str || '';
-      // Normalize common OCR digit-look-alikes before the numeric check
-      const firstStr = rawFirst
-        .replace(/[Oo]/g, '0')
-        .replace(/[Il]/g, '1')
-        .replace(/[Ss]/g, '5')
-        .replace(/[Bb]/g, '8')
-        .replace(/[Gg]/g, '6')
-        .replace(/[Zz]/g, '2');
-      if (/^\d{6,7}$/.test(firstStr)) {
-        const item = parseBidItemLine(line.tokens, rawFirst);
-        if (item) {
-          item.bidItem = firstStr; // store normalized number
-          item.id = uid();
-          item.note = '';
-          currentBreakout.items.push(item);
-        }
-      } else if (rawFirst.length >= 5 && rawFirst.length <= 8 && /\d{4}/.test(rawFirst)) {
-        // Near-miss: looks numeric but failed digit check — log for diagnosis
-        console.log(`[BidItems] SKIPPED near-miss item: rawFirst="${rawFirst}" firstStr="${firstStr}" tokens:`, line.tokens.map(t=>`"${t.str}"@(${t.x|0},${t.y|0})`).join(' '));
-      }
+    // Wrapped description: text only in the description column just below an item
+    const prev = bk.items[bk.items.length - 1];
+    if (prev && lastItemLine && lastItemLine.page === line.page && line.y - lastItemLine.y < 14 && line.items.every(i => i.x0 >= cols.descLeft - 12 && (!cols.priceRight || i.x1 < cols.priceRight - 75))) {
+      prev.description = fixDescription(prev.description + ' ' + line.items.map(i => i.str).join(' ')); lastItemLine = line;
     }
   }
-  if (currentBreakout) contract.breakouts.push(currentBreakout);
 
-  // Fix OCR misread of '&' as a lowercase letter in contractor abbreviations (e.g. "QaD" → "Q&D")
-  if (contract.contractor) {
-    contract.contractor = contract.contractor.replace(/\b([A-Z])([a-z])([A-Z])\b/g, '$1&$3');
+  // ── Checks ──
+  const sum = arr => Math.round(arr.reduce((s, i) => s + (i.itemCost || 0), 0) * 100) / 100;
+  for (const b of contract.breakouts) {
+    b.itemSum = sum(b.items);
+    if (b.total != null) b.totalOk = Math.abs(b.itemSum - b.total) < 0.05;
+    if (b.subTotal != null) b.subTotalOk = Math.abs(sum(b.items.slice(0, b.subTotalAt)) - b.subTotal) < 0.05;
   }
-
+  const constr = contract.breakouts.filter(b => /^\d+$/.test(b.no));
+  if (contract.constructionTotal != null) contract.constructionTotalOk = Math.abs(constr.reduce((s, b) => s + (b.total ?? b.itemSum), 0) - contract.constructionTotal) < 0.05;
   return contract;
 }
 
-// Unit-of-measure normalisation: fix common OCR character substitutions.
-const UNIT_NORM = {
-  // Y misread as V/v
-  'SQVD': 'SQYD',
-  // L misread as U; LIN misread as UN; FT misread as ET
-  'UNFT': 'LINFT', 'UNPT': 'LINFT', 'LNFT': 'LINFT', 'LINET': 'LINFT',
-  // S misread as 5; L misread as 1
-  'L5': 'LS', '15': 'LS', '1S': 'LS',
-};
-
-// Parse quantity tokens from the OCR qty column.
-// The PDF always formats quantities as N,NNN.000 (3 decimal places).
-// Tesseract misreads the separators in several ways — this function normalises them all.
-function parseQuantity(raw) {
-  let s = raw.trim().replace(/:/g, '');           // remove colon (OCR artefact for comma)
-  const numDots   = (s.match(/\./g) || []).length;
-  const numCommas = (s.match(/,/g) || []).length;
-
-  if (numDots === 2) {
-    // "5.496.000" → thousands comma misread as dot → remove first dot → "5496.000"
-    s = s.replace('.', '');
-    return parseFloat(s);
-  }
-  if (numDots === 0 && numCommas >= 2) {
-    // "4,503,000" → decimal dot misread as comma → last comma is the decimal point
-    const parts = s.split(',');
-    const dec   = parts.pop();                    // "000"
-    return parseFloat(parts.join('') + '.' + dec); // "4503.000" → 4503
-  }
-  if (numDots === 0 && numCommas === 0 && s.length > 3 && s.endsWith('000')) {
-    // "50000" → "50.000" with the dot and trailing chars merged → divide by 1000
-    return parseInt(s, 10) / 1000;
-  }
-  // Standard cases: "611.000", "6,607.000", "1.000", etc.
-  return parseFloat(s.replace(/,/g, ''));
-}
-
-// Parse price/amount tokens from the OCR price columns.
-// OCR frequently drops the decimal point entirely, or merges the thousands comma with
-// the decimal producing extra decimal digits.  Both are detected and corrected here.
-function parsePriceToken(raw) {
-  const s = raw.trim().replace(/,/g, '');        // remove thousands commas
-  if (!s.includes('.')) {
-    // No decimal point at all → OCR dropped it → actual value = integer / 100
-    return parseInt(s, 10) / 100;
-  }
-  const decLen = s.split('.')[1].length;
-  if (decLen > 2) {
-    // e.g. "1.58250" → OCR merged comma+decimal → strip dot and divide by 100
-    return parseInt(s.replace('.', ''), 10) / 100;
-  }
-  return parseFloat(s);
-}
-
-function parseBidItemLine(tokens, bidItem) {
-  // Column x-boundaries for scale=2.0 on a standard NDOT letter-size page (1224px wide).
-  // Column x-boundaries for scale=3.0 on a standard NDOT letter-size page (1836px wide).
-  // Scale these proportionally if OCR_SCALE changes (multiply original scale=2.0 values by 1.5).
-  const COL_QTY_START  = 180;   // quantity + unit column (quantities start at x≈200)
-  const COL_DESC_START = 525;   // description column (desc starts at x≈555)
-  const PRICE_REGION   = 1200;  // left bound of unit price column
-  const COL_AMT_START  = 1920;  // left bound of amount column (observed at x≈1977–2009)
-
-  const rest = tokens.filter(t => t.str.trim() !== bidItem).sort((a, b) => a.x - b.x);
-  if (!rest.length) return null;
-
-  const qtyTokens  = rest.filter(t => t.x >= COL_QTY_START  && t.x < COL_DESC_START);
-  const descTokens = rest.filter(t => t.x >= COL_DESC_START && t.x < PRICE_REGION);
-
-  // Accept any digit string (with or without decimal) in the price columns.
-  // Integers are common because OCR frequently drops the decimal point.
-  const priceRx = /^[\d,]+(\.\d+)?$/;
-  const upNums  = rest.filter(t => t.x >= PRICE_REGION  && t.x < COL_AMT_START && priceRx.test(t.str.trim()));
-  const amtNums = rest.filter(t => t.x >= COL_AMT_START && priceRx.test(t.str.trim()));
-
-  // Quantity: first parseable number in qty column
-  // Unit: first alphabetic token in qty column (case-insensitive → normalise to uppercase)
-  let quantity = null, unitMeas = '';
-  for (const t of qtyTokens) {
-    const s = t.str.trim();
-    if (!quantity && /^[\d,.:\-]+$/.test(s) && /\d{2}/.test(s)) {
-      const q = parseQuantity(s);
-      if (isFinite(q) && q > 0) quantity = q;
-    } else if (!unitMeas) {
-      // Strip trailing punctuation OCR adds (e.g. "LINFT." → "LINFT"), then normalise
-      const stripped = s.replace(/[.,;:]+$/, '');
-      if (/^[A-Za-z0-9]{1,10}$/.test(stripped)) {
-        const u = stripped.toUpperCase();
-        unitMeas = UNIT_NORM[u] || u;
-      }
-    }
-  }
-
-  // FA / LS items are always quantity 1 — default when OCR misses the "1.000" cell
-  if (quantity === null && (unitMeas === 'FA' || unitMeas === 'LS')) quantity = 1;
-
-  // Description: join, strip leading OCR quote artefacts, fix common OCR misreads
-  let description = descTokens.map(t => t.str).join(' ').trim()
-    .replace(/^['"'"\u201c\u2018\s]+/, '');
-  // "INGH" → "INCH" (OCR reads C as G)
-  description = description.replace(/\bINGH\b/g, 'INCH');
-  // "(N-NCH" → "(N-INCH" (OCR drops I from INCH after a digit-dash)
-  description = description.replace(/(\d+)-NCH\b/g, '$1-INCH');
-  if (!description) return null;
-
-  // Unit price = rightmost token in UP column; amount = rightmost token in amount column
-  const unitPrice = upNums.length  ? parsePriceToken(upNums[upNums.length - 1].str)  : null;
-  const itemCost  = amtNums.length ? parsePriceToken(amtNums[amtNums.length - 1].str) : null;
-
-  // Debug: log token coordinates for items with missing/suspect quantities
-  const debugItem = /traffic.control.supervisor|bridge.deck|epoxy|joint.seal|joint.fill/i.test(description) || (quantity === null && unitMeas !== 'FA' && unitMeas !== 'LS') || (quantity !== null && quantity > 9999);
-  if (debugItem) {
-    console.log(`[parseBidItemLine DEBUG] item="${bidItem}" desc="${description}" qty=${quantity} unit="${unitMeas}" unitPrice=${unitPrice} itemCost=${itemCost}`);
-    console.log(`  ALL tokens (x,y,str):`, tokens.map(t=>`"${t.str}"@(${t.x|0},${t.y|0})`).join(' '));
-    console.log(`  qtyTokens:`, qtyTokens.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
-    console.log(`  descTokens:`, descTokens.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
-    console.log(`  upNums:`, upNums.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
-    console.log(`  amtNums:`, amtNums.map(t=>`"${t.str}"@(${t.x|0})`).join(' '));
-  }
-
-  return { bidItem, quantity, unitMeas, description, unitPrice, itemCost };
-}
-
+// ── Import review ──
 function showImportReview(parsed) {
-  const bCount = parsed.breakouts.length;
-  const iCount = parsed.breakouts.reduce((s,b)=>s+(b.items||[]).length,0);
-  document.getElementById('ir_breakoutCount').textContent = bCount;
-  document.getElementById('ir_itemCount').textContent = iCount;
-  const infoEl = document.getElementById('ir_info');
-  const rows = [
-    ['Contract No', parsed.contractNo||'—'],
-    ['Project No', parsed.projectNo||'—'],
-    ['Project ID', parsed.projectId||'—'],
-    ['County', parsed.county||'—'],
-    ['Contractor', parsed.contractor||'—'],
-    ['Designer', parsed.designer||'—'],
-  ];
-  infoEl.innerHTML = rows.map(([l,v])=>`
-    <div class="import-review-row">
-      <span class="import-review-label">${l}</span>
-      <span class="import-review-val">${esc(v)}</span>
-    </div>`).join('');
+  const allItems = parsed.breakouts.flatMap(b => b.items);
+  document.getElementById('ir_breakoutCount').textContent = parsed.breakouts.length;
+  document.getElementById('ir_itemCount').textContent = allItems.length;
+  const rows = [['Contract No', parsed.contractNo], ['Project Name', parsed.location], ['Project No', parsed.projectNo], ['Project EA / ID', parsed.projectId],
+    ['County', parsed.county], ['Contractor', parsed.contractor], ['Designer', parsed.designer]];
+  document.getElementById('ir_info').innerHTML = rows.map(([l, v]) => `
+    <div class="import-review-row"><span class="import-review-label">${l}</span><span class="import-review-val">${esc(v || '—')}</span></div>`).join('');
+  renderImportChecks(parsed);
   document.getElementById('importReviewSheet').classList.add('open');
+}
+function renderImportChecks(parsed) {
+  const all = parsed.breakouts.flatMap(b => b.items);
+  const bad = all.filter(i => i.check === 'mismatch' || i.check === 'incomplete'), fixed = all.filter(i => i.check === 'fixed');
+  const totals = parsed.breakouts.filter(b => b.total != null), totalsBad = totals.filter(b => !b.totalOk);
+  const line = (ok, txt) => `<div class="ir-check ${ok === true ? 'ok' : ok === false ? 'bad' : 'warn'}"><span>${ok === true ? '✓' : ok === false ? '✗' : '⚠'}</span><span>${txt}</span></div>`;
+  let h = '';
+  if (parsed.usedOCR) h += line(null, 'This PDF has no readable text, so it was read with OCR. Check the flagged items.');
+  parsed.warnings.forEach(w => { h += line(null, esc(w)); });
+  h += line(bad.length === 0, bad.length ? `${bad.length} item${bad.length !== 1 ? 's' : ''} need checking (math doesn't add up or a value is missing)` : `All ${all.length} items: quantity × unit price = amount`);
+  if (fixed.length) h += line(null, `${fixed.length} item${fixed.length !== 1 ? 's' : ''} had a misread number or unit corrected (marked in orange) — worth a quick look`);
+  if (totals.length) h += line(totalsBad.length === 0, totalsBad.length ? `${totalsBad.length} of ${totals.length} breakout totals don't match the items read` : `All ${totals.length} breakout totals match the items read`);
+  else h += line(null, 'No breakout totals found to check against');
+  if (parsed.constructionTotal != null) h += line(!!parsed.constructionTotalOk, `Total construction item costs ${fmtMoney(parsed.constructionTotal)} ${parsed.constructionTotalOk ? 'matches' : "doesn't match"} the breakouts`);
+  h += `<div class="ir-list">` + parsed.breakouts.map((b, bi) => {
+    const nBad = b.items.filter(i => i.check === 'mismatch' || i.check === 'incomplete').length;
+    const nFix = b.items.filter(i => i.check === 'fixed').length;
+    const tot = b.total != null ? `<span class="${b.totalOk ? 'ir-ok' : 'ir-bad'}">${fmtMoney(b.itemSum)}${b.totalOk ? ' ✓' : ` ≠ ${fmtMoney(b.total)}`}</span>` : `<span>${fmtMoney(b.itemSum)}</span>`;
+    return `<details class="ir-bk" ${nBad || nFix || (b.total != null && !b.totalOk) ? 'open' : ''}>
+      <summary><b>Breakout ${esc(b.no)}</b> <span class="ir-bkdesc">${esc(b.description || '')}</span><span class="ir-bkmeta">${b.items.length} items · ${tot}${nBad ? ` · <span class="ir-bad">${nBad} to check</span>` : ''}</span></summary>
+      ${b.items.map((it, ii) => `<div class="ir-item ${it.check}" onclick="editImportItem(${bi},${ii})">
+        <div class="ir-item-top"><span class="ir-no">${esc(it.bidItem)}</span><span class="ir-desc">${esc(it.description || '(no description)')}</span></div>
+        <div class="ir-item-nums">${fmtQty(it.quantity)} ${esc(it.unitMeas || '?')} × ${fmtMoney(it.unitPrice)} = ${fmtMoney(it.itemCost)}</div>
+        ${it.importFlag ? `<div class="ir-flag">${esc(it.importFlag)}</div>` : ''}
+      </div>`).join('')}
+    </details>`;
+  }).join('') + `</div><p style="font-size:0.8em;color:var(--text-muted);padding:6px 0 4px;">Tap an item to correct it. Contract details can be edited after import.</p>`;
+  document.getElementById('ir_checks').innerHTML = h;
+}
+let irEdit = null;
+function editImportItem(bi, ii) {
+  const it = pendingImport.breakouts[bi].items[ii]; irEdit = { bi, ii };
+  document.getElementById('itemModalTitle').textContent = 'Correct Imported Item';
+  document.getElementById('im_bidItem').value = it.bidItem || '';
+  document.getElementById('im_unit').value = it.unitMeas || '';
+  document.getElementById('im_desc').value = it.description || '';
+  document.getElementById('im_qty').value = it.quantity ?? '';
+  document.getElementById('im_price').value = it.unitPrice ?? '';
+  document.getElementById('im_cost').value = it.itemCost ?? '';
+  document.getElementById('itemModal').classList.add('open');
+}
+function saveImportItemEdit() {
+  const it = pendingImport.breakouts[irEdit.bi].items[irEdit.ii];
+  it.bidItem = document.getElementById('im_bidItem').value.trim();
+  it.unitMeas = document.getElementById('im_unit').value.trim().toUpperCase();
+  it.description = document.getElementById('im_desc').value.trim();
+  it.quantity = parseNum(document.getElementById('im_qty').value);
+  it.unitPrice = parseNum(document.getElementById('im_price').value);
+  it.itemCost = parseNum(document.getElementById('im_cost').value);
+  const ok = it.quantity != null && it.unitPrice != null && it.itemCost != null && lineMathOk(it.quantity, it.unitPrice, it.itemCost) && it.description && it.unitMeas;
+  it.check = ok ? 'ok' : (it.quantity != null && it.unitPrice != null && it.itemCost != null ? 'mismatch' : 'incomplete');
+  it.importFlag = ok ? '' : 'Still doesn’t add up — check against the PDF';
+  const b = pendingImport.breakouts[irEdit.bi];
+  b.itemSum = Math.round(b.items.reduce((s, i) => s + (i.itemCost || 0), 0) * 100) / 100;
+  if (b.total != null) b.totalOk = Math.abs(b.itemSum - b.total) < 0.05;
+  irEdit = null; closeItemModal(); renderImportChecks(pendingImport);
 }
 
 function cancelImport() {
@@ -1567,7 +1535,10 @@ async function confirmImport() {
     contractor: pendingImport.contractor,
     designer: pendingImport.designer,
     note: '',
-    breakouts: pendingImport.breakouts
+    breakouts: pendingImport.breakouts.map(b => ({ no: b.no, description: b.description, constructionType: b.constructionType,
+      fromStation: b.fromStation, toStation: b.toStation, note: '', total: b.total,
+      items: b.items.map(i => ({ id: i.id, bidItem: i.bidItem, unitMeas: i.unitMeas, description: i.description, quantity: i.quantity,
+        unitPrice: i.unitPrice, itemCost: i.itemCost, note: '', ...((i.check === 'mismatch' || i.check === 'incomplete') ? { importFlag: i.importFlag } : {}) })) }))
   };
   await ftSaveBidContract(c);
   contracts.unshift(c);
@@ -1687,8 +1658,8 @@ async function applyPmSync(bidContract, existingProject) {
     const id = 'proj_' + Date.now() + Math.random().toString(36).slice(2,6);
     const proj = {
       id,
-      projectNumber: bidContract.projectNo || bidContract.contractNo || '',
-      name: '',
+      projectNumber: bidContract.projectNo || '',
+      name: bidContract.location || ('Contract ' + (bidContract.contractNo || '')),
       contractNumber: bidContract.contractNo || '',
       fundingSource: '',
       contractor: bidContract.contractor || '',
