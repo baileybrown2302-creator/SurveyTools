@@ -134,6 +134,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .leaflet-tooltip.ftmap-cplbl{background:rgba(17,24,39,0.82);color:#fff;border:0;box-shadow:none;font:700 11px/1.2 -apple-system,Segoe UI,sans-serif;padding:2px 5px;border-radius:4px;}
 .leaflet-tooltip.ftmap-cplbl::before{display:none;}
 .ftmap-far .ftmap-cplbl{display:none;}
+.ftmap-cpstat{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:6px;}
+.ftmap-cpstat button{padding:6px 4px;border:1.5px solid var(--c);border-radius:7px;background:#fff;color:var(--c);font-weight:700;font-size:11.5px;}
+.ftmap-cpstat button.on{background:var(--c);color:#fff;}
 .ftmap-cpnav{display:block;width:100%;margin-top:6px;padding:7px;border:0;border-radius:7px;background:#2563eb;color:#fff;font-weight:700;font-size:13px;}
 /* full-screen map: keep controls clear of the status bar, notch / Dynamic Island and home indicator.
    Uses the phone's reported safe areas, with minimums in case it reports 0. */

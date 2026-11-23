@@ -223,9 +223,23 @@ const FTMap = (() => {
       `N ${fmtNum(N)} &nbsp;E ${fmtNum(E)}${p.elevation != null && p.elevation !== '' ? ' &nbsp;El ' + fmtNum(p.elevation) : ''}`,
       away != null ? `From you: <b>${away.toFixed(1)} ${u === 'm' ? 'm' : 'ft'}</b>` : '',
       p.note ? `<span style="color:#666">${esc(p.note)}</span>` : '',
+      p.statusDate ? `<span style="color:#666">Status set ${esc(p.statusDate)}</span>` : '',
+      typeof ftSaveControlPoint === 'function' ? `<div class="ftmap-cpstat">${Object.keys(CP_LABELS).filter(k => k !== 'uncategorized').map(k =>
+        `<button data-st="${k}" class="${p.status === k ? 'on' : ''}" style="--c:${CP_COLORS[k]}">${CP_LABELS[k]}</button>`).join('')}</div>` : '',
       typeof window.ftNavigateToGrid === 'function' && w ? `<button class="ftmap-cpnav" data-cp="${esc(p.id)}">➤ Navigate here</button>` : ''
     ].filter(Boolean);
     return `<div style="min-width:180px;max-width:240px;line-height:1.45;font-size:12.5px">${rows.join('<br>')}</div>`;
+  }
+  // Update a control point's status from the map (same as the Control Points tool's quick status)
+  async function setCPStatus(p, status, st) {
+    try {
+      const rec = (typeof ftGetControlPoint === 'function' && await ftGetControlPoint(p.id)) || p;
+      const newStatus = rec.status === status ? 'uncategorized' : status;      // tap the current status again to clear it
+      rec.status = newStatus; if (newStatus !== 'uncategorized') rec.statusDate = new Date().toISOString().split('T')[0];
+      await ftSaveControlPoint(rec);
+      st.m.closePopup(); await cpLoad(true);
+      if (typeof toast === 'function') toast(`${rec.name || 'Control point'}: ${CP_LABELS[newStatus]}`);
+    } catch (err) { if (typeof toast === 'function') toast('Could not save: ' + err.message); }
   }
   function drawCPs(st) {
     if (G.mapCP === false) { if (st.cpKey !== 'off') { st.cpGroup.clearLayers(); st.cpKey = 'off'; } return; }
@@ -239,7 +253,11 @@ const FTMap = (() => {
         html: `<svg viewBox="0 0 22 20" width="22" height="20"><path d="M11 1.5 L20.5 18.5 L1.5 18.5 Z" fill="${col}" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><circle cx="11" cy="12.5" r="2" fill="#fff"/></svg>` }) })
         .bindTooltip(esc(p.name || ''), { permanent: true, direction: 'right', offset: [8, -3], className: 'ftmap-cplbl' })
         .bindPopup(() => cpPopup(p))
-        .on('popupopen', e => { const b = e.popup.getElement().querySelector('.ftmap-cpnav'); if (b) b.onclick = () => { st.m.closePopup(); window.ftNavigateToGrid(parseFloat(p.northing), parseFloat(p.easting), p.name || 'control point'); }; })
+        .on('popupopen', e => {
+          const pe = e.popup.getElement(), b = pe.querySelector('.ftmap-cpnav');
+          if (b) b.onclick = () => { st.m.closePopup(); window.ftNavigateToGrid(parseFloat(p.northing), parseFloat(p.easting), p.name || 'control point'); };
+          pe.querySelectorAll('.ftmap-cpstat button').forEach(sb => sb.onclick = () => setCPStatus(p, sb.dataset.st, st));
+        })
         .addTo(st.cpGroup);
     }
   }

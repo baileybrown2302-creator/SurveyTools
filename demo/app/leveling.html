@@ -278,13 +278,13 @@
         <div><strong>Mobile Gestures:</strong><ul class="list-disc list-inside ml-4"><li><b>Swipe Right</b> → Edit row</li><li><b>Swipe Left</b> → Void/Unvoid</li><li><b>Tap Details</b> → Expand full info</li></ul></div>
         <div><strong>Summary Bar:</strong><ul class="list-disc list-inside ml-4"><li>Shows HI during setup, Elevation between setups.</li><li>FS Target = distance needed to zero stadia (during setup only).</li><li>📏 button → Quick stadia check without recording a point.</li></ul></div>
         <div><strong>Stadia Warnings:</strong><ul class="list-disc list-inside ml-4"><li>Amber: |Pt Stadia| > 10</li><li>Red: |Pt Stadia| > 25</li></ul></div>
-        <div><strong>Misclosure Accuracy:</strong><ul class="list-disc list-inside ml-4"><li>After closing, click "Show Accuracy" to see classification against First/Second/Third Order standards.</li></ul></div>
+        <div><strong>Misclosure Accuracy:</strong><ul class="list-disc list-inside ml-4"><li>After closing, click "Show Accuracy" to compare the misclosure with the FGCC First/Second/Third Order tolerances.</li><li>Pick how the run was made — <b>Closed loop</b> (back to the starting BM by another route: loop table, full length), <b>Out-and-back</b> (same route there and back: section table, one-way length) or <b>BM to BM</b> (closes on a different known BM: loop table, full length). Tap <b>i</b> for details.</li><li>This checks the misclosure only — not the field procedures (equipment, calibration, sight lengths, balancing, etc.) that are also needed to classify a survey to an order.</li></ul></div>
         <div><strong>Turning Points:</strong><ul class="list-disc list-inside ml-4"><li>TP names default to TP1, TP2, etc. but can be changed to any existing point name in the setup modal.</li></ul></div>
         <div><strong>DiNi Line Leveling:</strong><ul class="list-disc list-inside ml-4"><li>Check this on an IP when the instrument reads a delta from the BS point elevation. The app calculates and stores the equivalent rod reading for TBC export, shown in remarks as [Rod: X.XXX].</li></ul></div>
         <div><strong>Stadia Balance Calculator:</strong><ul class="list-disc list-inside ml-4"><li>In the 📏 stadia check, enter the known distance to your next TP to get the ideal instrument setup distance that zeroes total stadia.</li></ul></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-primary);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
             <span style="font-size:0.8em;color:var(--text-muted);">Updated: March 10, 2026 — 20:00</span>
-            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.5 — Changelog</button>
+            <button id="changelogBtn" style="background:none;border:1.5px solid var(--border-secondary);border-radius:6px;padding:3px 10px;font-size:0.78em;font-weight:700;color:var(--text-secondary);cursor:pointer;">v1.0.6 — Changelog</button>
         </div>
     </div>
 </div>
@@ -295,6 +295,18 @@
         <h3 style="margin-bottom:4px;">Changelog</h3>
         <p style="font-size:0.8em;color:var(--text-muted);margin-bottom:16px;">Field Tools — Differential Leveling</p>
         <div style="display:flex;flex-direction:column;gap:14px;font-size:0.88em;">
+            <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span style="font-weight:800;color:var(--text-primary);">v1.0.6</span>
+                    <span style="font-size:0.8em;color:var(--text-muted);">November 23, 2026</span>
+                </div>
+                <ul style="margin-left:16px;color:var(--text-secondary);line-height:1.7;">
+                    <li>Closing on a different BM now uses that BM's known elevation everywhere, including after edits</li>
+                    <li>Run type when closing: Closed loop, Out-and-back or BM to BM — picks the FGCC loop or section tolerance and the right distance (tap i for details)</li>
+                    <li>Results say "misclosure within … tolerance" and note that field procedures aren't checked</li>
+                    <li>Warns when shots have no distance; metric loops show metres; ties at the displayed 0.1 mm no longer fail</li>
+                </ul>
+            </div>
             <div style="padding-bottom:14px;border-bottom:1px solid var(--border-primary);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
                     <span style="font-weight:800;color:var(--text-primary);">v1.0.5</span>
@@ -535,7 +547,7 @@ function createFieldElement(field){
         const la=document.createElement('label');la.htmlFor=field.id;la.style.cssText='font-size:0.9em;color:var(--text-secondary);font-weight:600;';la.textContent=field.checkboxLabel||'';cc.appendChild(la);fg.appendChild(cc);
         if(field.dependentFields){
             const dc=document.createElement('div');dc.id=`${field.id}DependentContainer`;dc.style.cssText='display:'+(inp.checked?'flex':'none')+';flex-direction:column;gap:10px;margin-top:8px;';
-            field.dependentFields.forEach(df=>{const dg=document.createElement('div');const dl=document.createElement('label');dl.htmlFor=df.id;dl.className='label';dl.textContent=df.label;dg.appendChild(dl);const di=document.createElement('input');di.type=df.type;di.id=df.id;di.name=df.name;di.className='input';di.required=df.required!==false&&inp.checked;if(df.type==='number')di.inputMode='decimal';if(df.placeholder)di.placeholder=df.placeholder;if(df.step)di.step=df.step;dg.appendChild(di);dc.appendChild(dg);});
+            field.dependentFields.forEach(df=>{if(df.type==='select'){dc.appendChild(createFieldElement(df));return;}const dg=document.createElement('div');const dl=document.createElement('label');dl.htmlFor=df.id;dl.className='label';dl.textContent=df.label;dg.appendChild(dl);const di=document.createElement('input');di.type=df.type;di.id=df.id;di.name=df.name;di.className='input';di.required=df.required!==false&&inp.checked;if(df.type==='number')di.inputMode='decimal';if(df.placeholder)di.placeholder=df.placeholder;if(df.step)di.step=df.step;dg.appendChild(di);dc.appendChild(dg);});
             fg.appendChild(dc);
             inp.addEventListener('change',(e)=>{dc.style.display=e.target.checked?'flex':'none';field.dependentFields.forEach(df=>{const el=document.getElementById(df.id);if(el)el.required=df.required!==false&&e.target.checked;});});
         }
@@ -784,56 +796,104 @@ function showEditHistory(row){
 }
 
 // --- Accuracy Calculation ---
+// FGCC 1984 / FGCS vertical standards — allowable misclosure (mm) = factor × √(distance in km)
+const RUN_TYPES={
+    loop:{label:'Closed loop',short:'Closed loop — closes back on the starting BM by a different route',
+        table:'loop',distLabel:'Loop length (E)',why:'Loop misclosure table, using the full length of the loop.'},
+    outback:{label:'Out-and-back (double-run)',short:'Out-and-back — runs out and returns on the same route to the starting BM',
+        table:'section',distLabel:'One-way length (D)',why:'Section (forward & backward) table, using the one-way length — half the total distance leveled.'},
+    bm2bm:{label:'BM to BM',short:'BM to BM — starts on one known BM and closes on a different known BM',
+        table:'loop',distLabel:'Line length',why:'Checked like a loop over the full line length. The result also depends on the two published elevations agreeing with each other.'}
+};
+const RUN_TYPE_OPTIONS=Object.entries(RUN_TYPES).map(([value,t])=>({value,text:t.label}));
+const FGCC={
+    section:[{name:'First Order Class I',factor:3},{name:'First Order Class II',factor:4},{name:'Second Order Class I',factor:6},{name:'Second Order Class II',factor:8},{name:'Third Order',factor:12}],
+    loop:[{name:'First Order Class I',factor:4},{name:'First Order Class II',factor:5},{name:'Second Order Class I',factor:6},{name:'Second Order Class II',factor:8},{name:'Third Order',factor:12}]
+};
+const MISCLOSURE_NOTE='This only checks the misclosure against the tolerance for each order. It does not confirm the field procedures (instrument &amp; rod standards and calibration, sight lengths and balance, readings, double-running, etc.) that are also required to classify a survey to that order.';
+// Known elevation of the BM a closing shot was closed on
+function closingKnownElev(row){
+    if(!row)return null;
+    if(row.closingKnownElev!=null&&!isNaN(parseFloat(row.closingKnownElev)))return parseFloat(row.closingKnownElev);
+    // older loops: recover it from the saved misclosure line, else a BM of the same name, else the starting BM
+    const m=(misclosureValue.textContent||'').match(/Known:\s*(-?[\d.]+)/);
+    let v=m?parseFloat(m[1]):null;
+    if(v==null||isNaN(v)){const bm=levelRows.find(r=>r.type==='BM'&&!r.isVoid&&r.pointName===row.pointName)||levelRows.find(r=>r.type==='BM'&&!r.isVoid);v=bm?parseFloat(bm.elevation):null;}
+    if(v!=null&&!isNaN(v))row.closingKnownElev=v;
+    return v;
+}
+function closingRunType(row){
+    if(row&&RUN_TYPES[row.runType])return row.runType;
+    const sb=levelRows.find(r=>r.type==='BM'&&!r.isVoid);
+    return (sb&&row&&row.pointName!==sb.pointName)?'bm2bm':'loop';
+}
 function calculateAccuracy(){
     const vr=levelRows.filter(r=>!r.isVoid);
-    // Sum all BS + FS distances (no IPs)
-    let totalDistUnits=0;
+    const closingRow=[...vr].reverse().find(r=>r.type==='CLOSING_FS');
+    if(!closingRow)return {error:'noClose'};
+    const known=closingKnownElev(closingRow);
+    if(known==null)return {error:'noKnown'};
+    // Sum all BS + FS distances (no IPs); count shots that have no distance
+    let totalDistUnits=0,missing=0;
     vr.forEach(r=>{
-        if(r.type==='SETUP_BS'&&r.bsDist!=null)totalDistUnits+=Math.abs(parseFloat(r.bsDist));
-        if((r.type==='TP_FS'||r.type==='CLOSING_FS')&&r.fsDist!=null)totalDistUnits+=Math.abs(parseFloat(r.fsDist));
+        if(r.type==='SETUP_BS'){const d=parseFloat(r.bsDist);if(isNaN(d))missing++;else totalDistUnits+=Math.abs(d);}
+        if(r.type==='TP_FS'||r.type==='CLOSING_FS'){const d=parseFloat(r.fsDist);if(isNaN(d))missing++;else totalDistUnits+=Math.abs(d);}
     });
-    // Convert to km
-    const unit=projectDetails.units||'ft';
-    let totalDistKm, totalDistFt;
-    if(unit==='m'){totalDistKm=totalDistUnits/1000;totalDistFt=totalDistUnits/0.3048;}
-    else{totalDistFt=totalDistUnits;totalDistKm=totalDistUnits*0.0003048;}
-    // Get misclosure in mm
-    const closingRow=vr.find(r=>r.type==='CLOSING_FS');
-    if(!closingRow)return null;
-    const closingBM=vr.find(r=>r.type==='BM'&&r.pointName===closingRow.pointName&&!r.isVoid);
-    if(!closingBM)return null;
-    const misclosureRaw=closingRow.elevation-closingBM.elevation;
-    let misclosureMM, misclosureFt;
-    if(unit==='m'){misclosureMM=Math.abs(misclosureRaw)*1000;misclosureFt=Math.abs(misclosureRaw)/0.3048;}
-    else{misclosureFt=Math.abs(misclosureRaw);misclosureMM=Math.abs(misclosureRaw)*304.8;}
-    const sqrtK=Math.sqrt(totalDistKm);
-    const specs=[
-        {name:'First Order Class I',factor:3},{name:'First Order Class II',factor:4},
-        {name:'Second Order Class I',factor:6},{name:'Second Order Class II',factor:8},
-        {name:'Third Order',factor:12}
-    ];
-    return {misclosureMM,misclosureFt,totalDistKm,totalDistFt,sqrtK,specs:specs.map(s=>({...s,allowable:s.factor*sqrtK,pass:misclosureMM<=s.factor*sqrtK}))};
+    const unit=projectDetails.units||'ft', toM=unit==='m'?1:0.3048;
+    const runType=closingRunType(closingRow), rt=RUN_TYPES[runType];
+    const totalDistKm=totalDistUnits*toM/1000;
+    const usedDistUnits=runType==='outback'?totalDistUnits/2:totalDistUnits, usedDistKm=usedDistUnits*toM/1000;
+    const misclosureRaw=closingRow.elevation-known;
+    const misclosureUnits=Math.abs(misclosureRaw), misclosureMM=misclosureUnits*toM*1000;
+    const sqrtK=Math.sqrt(usedDistKm);
+    // compare at the 0.1 mm shown on screen so a displayed tie isn't reported as a failure
+    const r1=v=>Math.round(v*10)/10;
+    const specs=FGCC[rt.table].map(sp=>{const allowable=sp.factor*sqrtK;return {...sp,allowable,allowableUnits:allowable/1000/toM,pass:usedDistKm>0&&r1(misclosureMM)<=r1(allowable)};});
+    return {unit,runType,table:rt.table,known,closingName:closingRow.pointName,misclosureSigned:misclosureRaw,misclosureUnits,misclosureMM,
+        totalDistUnits,totalDistKm,usedDistUnits,usedDistKm,sqrtK,missingDistances:missing,specs,
+        misclosureFt:misclosureUnits*toM/0.3048,totalDistFt:totalDistUnits*toM/0.3048};
 }
-
-accuracyDetailBtn.addEventListener('click',()=>{
-    const shown=accuracyDetail.style.display!=='none';
-    if(shown){accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';return;}
+function accuracyHtml(acc){
+    const u=acc.unit==='m'?'m':'ft', d=acc.unit==='m'?3:4, rt=RUN_TYPES[acc.runType];
+    let h=`<div style="margin-bottom:6px;">Misclosure: <b>${acc.misclosureUnits.toFixed(d)} ${u}</b> (<b>${acc.misclosureMM.toFixed(1)} mm</b>) on ${escapeHTML(acc.closingName||'')}</div>`;
+    h+=`<div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">Run type: <select id="accRunType" class="select-input" style="width:auto;display:inline-block;padding:4px 8px;font-size:0.95em;">${RUN_TYPE_OPTIONS.map(o=>`<option value="${o.value}" ${o.value===acc.runType?'selected':''}>${o.text}</option>`).join('')}</select>
+        <button type="button" id="accRunInfoBtn" style="background:none;border:1.5px solid currentColor;border-radius:50%;width:22px;height:22px;font-weight:800;cursor:pointer;color:inherit;line-height:1;padding:0;">i</button></div>`;
+    h+=`<div id="accRunInfo" style="display:none;margin-bottom:8px;padding:8px 10px;border-radius:8px;background:var(--bg-secondary);color:var(--text-secondary);font-size:0.92em;line-height:1.45;">${runTypeInfoHtml()}</div>`;
+    h+=`<div style="margin-bottom:8px;">Total leveled: <b>${acc.totalDistUnits.toFixed(1)} ${u}</b> (${acc.totalDistKm.toFixed(3)} km)`;
+    if(acc.runType==='outback')h+=` · ${rt.distLabel}: <b>${acc.usedDistUnits.toFixed(1)} ${u}</b> (${acc.usedDistKm.toFixed(3)} km)`;
+    h+=` · √K: <b>${acc.sqrtK.toFixed(3)}</b><br><span style="font-size:0.9em;opacity:0.8;">${rt.why}</span></div>`;
+    if(acc.missingDistances)h+=`<div style="margin-bottom:8px;color:var(--accent-red);font-weight:700;">⚠ ${acc.missingDistances} shot${acc.missingDistances!==1?'s have':' has'} no distance, so the distance is short and the allowable values below are too small.</div>`;
+    if(!(acc.usedDistKm>0)){h+=`<div style="font-weight:700;color:var(--accent-red);">No shot distances recorded — can't compare against the standards.</div>`;return h;}
+    h+='<table style="width:100%;font-size:0.85em;border-collapse:collapse;">';
+    h+=`<tr style="border-bottom:1px solid var(--border-primary);"><th style="text-align:left;padding:4px;">Standard (${acc.table==='loop'?'loop':'section'})</th><th style="padding:4px;">Allowable</th><th style="padding:4px;">Misclosure</th></tr>`;
+    acc.specs.forEach(sp=>{h+=`<tr style="border-bottom:1px solid var(--border-primary);"><td style="padding:4px;">${sp.name}<br><span style="font-size:0.8em;opacity:0.7;">${sp.factor} mm √K</span></td><td style="padding:4px;text-align:center;">${sp.allowable.toFixed(1)} mm<br><span style="font-size:0.8em;opacity:0.7;">${sp.allowableUnits.toFixed(d)} ${u}</span></td><td style="padding:4px;text-align:center;" class="${sp.pass?'accuracy-pass':'accuracy-fail'}">${sp.pass?'✓ Within':'✗ Over'}</td></tr>`;});
+    h+='</table>';
+    const best=acc.specs.find(sp=>sp.pass);
+    h+=best?`<div style="margin-top:8px;font-weight:700;">Misclosure is within <span class="accuracy-pass">${best.name}</span> tolerance</div>`
+           :`<div style="margin-top:8px;font-weight:700;"><span class="accuracy-fail">Misclosure exceeds Third Order tolerance</span></div>`;
+    h+=`<div style="margin-top:6px;font-size:0.82em;font-weight:500;opacity:0.85;line-height:1.4;">${MISCLOSURE_NOTE}</div>`;
+    return h;
+}
+function runTypeInfoHtml(){
+    return `<b>Closed loop</b> — leave the starting BM and come back to it by a different route. Uses the FGCC <i>loop</i> tolerance (First I 4, First II 5, Second I 6, Second II 8, Third 12 mm√K) with K = total length of the loop.<br><br>
+    <b>Out-and-back (double-run)</b> — run out to a point and return to the starting BM on the same route. This is a forward &amp; backward run of one section, so it uses the FGCC <i>section</i> tolerance (3, 4, 6, 8, 12 mm√K) with K = the one-way length (half of the total distance leveled).<br><br>
+    <b>BM to BM</b> — start on one known BM and close on a different known BM. Checked like a loop over the full line length. A bad result can also mean the two published elevations don't agree, so confirm the BMs are on the same datum and in good condition.<br><br>
+    K is in kilometres; the distance comes from the BS and FS distances entered (IPs are not counted).`;
+}
+function escapeHTML(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function renderAccuracy(){
     const acc=calculateAccuracy();
-    if(!acc){accuracyDetail.innerHTML='<div>Cannot calculate — no closing shot found.</div>';accuracyDetail.style.display='block';accuracyDetailBtn.textContent='Hide Accuracy';return;}
-    let html=`<div style="margin-bottom:6px;">Misclosure: <b>${acc.misclosureFt.toFixed(4)} ft</b> (<b>${acc.misclosureMM.toFixed(1)} mm</b>)</div>`;
-    html+=`<div style="margin-bottom:8px;">Loop Distance: <b>${acc.totalDistFt.toFixed(1)} ft</b> (<b>${acc.totalDistKm.toFixed(3)} km</b>) | √K: <b>${acc.sqrtK.toFixed(3)}</b></div>`;
-    html+='<table style="width:100%;font-size:0.85em;border-collapse:collapse;">';
-    html+='<tr style="border-bottom:1px solid var(--border-primary);"><th style="text-align:left;padding:4px;">Standard</th><th style="padding:4px;">Allowable</th><th style="padding:4px;">Result</th></tr>';
-    acc.specs.forEach(s=>{
-        const allowFt=s.allowable/304.8; // mm → ft
-        html+=`<tr style="border-bottom:1px solid var(--border-primary);"><td style="padding:4px;">${s.name}</td><td style="padding:4px;text-align:center;">${s.allowable.toFixed(1)} mm<br><span style="font-size:0.8em;opacity:0.7;">${allowFt.toFixed(4)} ft</span></td><td style="padding:4px;text-align:center;" class="${s.pass?'accuracy-pass':'accuracy-fail'}">${s.pass?'✓ PASS':'✗ FAIL'}</td></tr>`;
-    });
-    html+='</table>';
-    // Highest achieved
-    const best=acc.specs.find(s=>s.pass);
-    if(best)html+=`<div style="margin-top:8px;font-weight:700;">Achieved: <span class="accuracy-pass">${best.name}</span></div>`;
-    else html+=`<div style="margin-top:8px;font-weight:700;"><span class="accuracy-fail">Does not meet Third Order</span></div>`;
-    accuracyDetail.innerHTML=html;accuracyDetail.style.display='block';accuracyDetailBtn.textContent='Hide Accuracy';
+    if(acc.error){accuracyDetail.innerHTML=acc.error==='noClose'?'<div>Cannot calculate — no closing shot found.</div>':'<div>Cannot calculate — the closing BM\'s known elevation is missing. Re-enter the closing shot.</div>';}
+    else accuracyDetail.innerHTML=accuracyHtml(acc);
+    accuracyDetail.style.display='block';accuracyDetailBtn.textContent='Hide Accuracy';
+    const sel=document.getElementById('accRunType');
+    if(sel)sel.onchange=()=>{const cr=[...levelRows].reverse().find(r=>r.type==='CLOSING_FS'&&!r.isVoid);if(cr){cr.runType=sel.value;saveStateToLocalStorage();}renderAccuracy();};
+    const ib=document.getElementById('accRunInfoBtn');
+    if(ib)ib.onclick=()=>{const el=document.getElementById('accRunInfo');el.style.display=el.style.display==='none'?'block':'none';};
+}
+accuracyDetailBtn.addEventListener('click',()=>{
+    if(accuracyDetail.style.display!=='none'){accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';return;}
+    renderAccuracy();
 });
 
 
@@ -1091,8 +1151,8 @@ function recalculateFullLoop(){
     updateLastValidPointForLiveCalcs();
     const lv=levelRows.filter(r=>!r.isVoid).pop();
     if(lv&&lv.type==='CLOSING_FS'){
-        const ob=levelRows.find(r=>r.type==='BM'&&!r.isVoid);
-        if(ob){const nm=lv.elevation-ob.elevation;misclosureValue.textContent=`${formatNumber(nm)} (Calc: ${formatNumber(lv.elevation)}, Known: ${formatNumber(ob.elevation)})`;misclosureDisplay.classList.remove('hidden');}
+        const known=closingKnownElev(lv);
+        if(known!=null){const nm=lv.elevation-known;misclosureValue.textContent=`${formatNumber(nm)} (Calc: ${formatNumber(lv.elevation)}, Known: ${formatNumber(known)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';}
     }
 }
 
@@ -1169,7 +1229,7 @@ function handleAddIP(){if(!activeSetupData)return;
 addIPButton.onclick=handleAddIP;addIPButtonMobile.onclick=handleAddIP;addIPButtonPinned.onclick=handleAddIP;
 
 function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.setupTPName;
-    showModal('Add FS / Close',[{id:'tpName',name:'tpName',label:'Turning Point Name:',type:'text',placeholder:`e.g., ${dfpn} or existing point name`,value:dfpn,required:true},{id:'fsReading',name:'fsReading',label:`FS (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'fsDist',name:'fsDist',label:`FS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'fsDistMethod',name:'fsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'fs')},{id:'fsUpperWire',name:'fsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'fsMiddleWire',name:'fsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'fsLowerWire',name:'fsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false},{id:'isClosing',name:'isClosing',label:'',type:'checkbox',checkboxLabel:'Closing shot to known BM',dependentFields:[{id:'closingPointName',name:'closingPointName',label:'Closing BM Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'closingPointKnownElev',name:'closingPointKnownElev',label:`Known Elev (${projectDetails.units}):`,type:'number',step:'0.001',required:true}]}],(data)=>{
+    showModal('Add FS / Close',[{id:'tpName',name:'tpName',label:'Turning Point Name:',type:'text',placeholder:`e.g., ${dfpn} or existing point name`,value:dfpn,required:true},{id:'fsReading',name:'fsReading',label:`FS (HI: ${formatNumber(activeSetupData.hi)}):`,type:'number',step:'0.001',required:true},{id:'fsDist',name:'fsDist',label:`FS Dist (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'fsDistMethod',name:'fsDistMethod',label:'Distance Method:',type:'select',value:'direct',options:[{value:'direct',text:'Direct'},{value:'threeWire',text:'Three-Wire'}],eventListener:(e)=>toggleDistanceFields(document.getElementById('modalFieldsContainer'),e.target.value,'fs')},{id:'fsUpperWire',name:'fsUpperWire',label:'Upper Wire:',type:'number',step:'0.001',required:false},{id:'fsMiddleWire',name:'fsMiddleWire',label:'Middle Wire:',type:'number',step:'0.001',required:false},{id:'fsLowerWire',name:'fsLowerWire',label:'Lower Wire:',type:'number',step:'0.001',required:false},{id:'isClosing',name:'isClosing',label:'',type:'checkbox',checkboxLabel:'Closing shot to known BM',dependentFields:[{id:'closingPointName',name:'closingPointName',label:'Closing BM Name:',type:'text',placeholder:'e.g., BM-100',required:true},{id:'closingPointKnownElev',name:'closingPointKnownElev',label:`Known Elev (${projectDetails.units}):`,type:'number',step:'0.001',required:true},{id:'runType',name:'runType',label:'How was it run?',type:'select',value:'loop',options:RUN_TYPE_OPTIONS}]}],(data)=>{
     let ffr=data.fsReading,ffd=data.fsDist;if(data.fsDistMethod==='threeWire'){if(isNaN(data.fsUpperWire)||isNaN(data.fsMiddleWire)||isNaN(data.fsLowerWire)){alert("Valid three-wire.");return false;}if(!(data.fsUpperWire>data.fsMiddleWire&&data.fsMiddleWire>data.fsLowerWire)){alert("Upper>Middle>Lower.");return false;}const i1=data.fsUpperWire-data.fsMiddleWire,i2=data.fsMiddleWire-data.fsLowerWire;if(Math.abs(i1-i2)>0.02&&!confirm(`Intervals differ. OK?`))return false;ffr=(data.fsUpperWire+data.fsMiddleWire+data.fsLowerWire)/3;ffd=(data.fsUpperWire-data.fsLowerWire)*STADIA_FACTOR;}else{if(isNaN(ffr)||isNaN(ffd)){alert("Valid FS required.");return false;}}
     if(data.isClosing&&(!data.closingPointName||isNaN(data.closingPointKnownElev))){alert("Enter closing BM info.");return false;}
     const tpn=data.isClosing?data.closingPointName:((data.tpName||'').trim()||dfpn);
@@ -1177,7 +1237,7 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
     const isDefaultFSName=/^TP\d+$/.test(tpn);
     const fsTBCName=data.isClosing?tpn:(isDefaultFSName?generateUniqueTPName(tpCounter):tpn);
     const fe=activeSetupData.hi-ffr;const bdf=activeSetupData.bsDist;const psd=(bdf!==null&&ffd!==null)?parseFloat(bdf)-parseFloat(ffd):null;
-    levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
+    levelRows.push({id:`fs-${Date.now()}`,pointName:tpn,uniqueTPName:fsTBCName,fs:ffr,hi:activeSetupData.hi,elevation:fe,fsDist:ffd,bsDist:null,remarks:`FS for ${tpn}${data.isClosing?' (Closing)':''}`,type:data.isClosing?'CLOSING_FS':'TP_FS',...(data.isClosing?{closingKnownElev:data.closingPointKnownElev,runType:RUN_TYPES[data.runType]?data.runType:'loop'}:{}),pointStadia:psd,isVoid:false,isDiNiLineLeveling:false,bsOnPrevForM5:activeSetupData.bsReading,hiFromBSForM5:activeSetupData.hi,bsDistForM5:activeSetupData.bsDist,prevPointNameForM5:activeSetupData.prevPointName,ipsForM5:[...activeSetupData.ips]});
     if(data.isClosing){const mc=fe-data.closingPointKnownElev;misclosureValue.textContent=`${formatNumber(mc)} (Calc: ${formatNumber(fe)}, Known: ${formatNumber(data.closingPointKnownElev)})`;misclosureDisplay.classList.remove('hidden');accuracyDetail.style.display='none';accuracyDetailBtn.textContent='Show Accuracy';currentHI=null;lastCalculatedElevation=null;lastPointNameForBS=null;}else{lastCalculatedElevation=fe;lastPointNameForBS=tpn;currentHI=null;misclosureDisplay.classList.add('hidden');}
     activeSetupData=null;renderTable();saveStateToLocalStorage();
     if(!data.isClosing && !/^TP\d+$/.test(tpn)){syncCPFromLeveling(tpn,fe,'TP');}
@@ -1197,6 +1257,8 @@ function handleAddFS(){if(!activeSetupData)return;const dfpn=activeSetupData.set
             injectCPDatalist(mfc,'closingPointName');
             const cpn=mfc.querySelector('#closingPointName'),cpe=mfc.querySelector('#closingPointKnownElev');
             if(cpn&&cpe){cpn.addEventListener('input',()=>{const match=_cpNames.find(p=>p.name===cpn.value);if(match&&match.elevation!==null&&!cpe.value)cpe.value=match.elevation;});}
+            const rts=mfc.querySelector('#runType');
+            if(cpn&&rts){const sync=()=>{const sb=levelRows.find(r=>r.type==='BM'&&!r.isVoid);const same=sb&&cpn.value.trim()===sb.pointName;if(!same)rts.value='bm2bm';else if(rts.value==='bm2bm')rts.value='loop';};cpn.addEventListener('input',sync);sync();}
         }
     });}
     });}
@@ -1286,13 +1348,16 @@ printViewButton.onclick=()=>{
     if(!misclosureDisplay.classList.contains('hidden')){
         pw.document.write(`<div style="margin-top:12px;padding:8px;border:1px solid #93c5fd;border-radius:4px;font-size:10pt;background:#eff6ff;"><strong>Misclosure:</strong> ${misclosureValue.textContent}</div>`);
         const acc=calculateAccuracy();
-        if(acc){const best=acc.specs.find(s=>s.pass);pw.document.write(`<div style="margin-top:6px;font-size:9pt;">Distance: ${acc.totalDistFt.toFixed(1)} ft (${acc.totalDistKm.toFixed(3)} km) | Misclosure: ${acc.misclosureFt.toFixed(4)} ft (${acc.misclosureMM.toFixed(1)} mm) | ${best?'Achieved: '+best.name:'Does not meet Third Order'}</div>`);}
+        if(!acc.error){const best=acc.specs.find(s=>s.pass),u=acc.unit==='m'?'m':'ft',d=acc.unit==='m'?3:4,rt=RUN_TYPES[acc.runType];
+            const res=!(acc.usedDistKm>0)?'No shot distances recorded':best?`Misclosure within ${best.name} tolerance (${best.factor} mm √K, FGCC ${acc.table} table)`:'Misclosure exceeds Third Order tolerance';
+            pw.document.write(`<div style="margin-top:6px;font-size:9pt;">Run type: ${rt.label} | Total leveled: ${acc.totalDistUnits.toFixed(1)} ${u} (${acc.totalDistKm.toFixed(3)} km)${acc.runType==='outback'?` | One-way: ${acc.usedDistUnits.toFixed(1)} ${u}`:''} | Misclosure: ${acc.misclosureUnits.toFixed(d)} ${u} (${acc.misclosureMM.toFixed(1)} mm) | <b>${res}</b>${acc.missingDistances?` | ⚠ ${acc.missingDistances} shot(s) without distance`:''}</div>`);
+            pw.document.write(`<div style="margin-top:4px;font-size:8pt;color:#444;">${MISCLOSURE_NOTE}</div>`);}
     }
     pw.document.write('</body></html>');pw.document.close();
 };
 
 // JSON Export/Import
-exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccuracy();const a={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent,accuracy:acc?{misclosureMM:acc.misclosureMM,misclosureFt:acc.misclosureFt,totalDistFt:acc.totalDistFt,totalDistKm:acc.totalDistKm,sqrtK:acc.sqrtK,standards:acc.specs.map(s=>({name:s.name,factor:s.factor,allowableMM:s.allowable,pass:s.pass}))}:null};const j=JSON.stringify(a,null,2);const blob=new Blob([j],{type:"application/json"});const now=new Date();const dts=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'LEVELING').replace(/[^a-zA-Z0-9_-]/g,'_');const sd=(projectDetails.description||'DATA').substring(0,5).replace(/[^a-zA-Z0-9_-]/g,'_');const link=document.createElement('a');link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${sd}_${dts}.json`);document.body.appendChild(link);link.click();};
+exportJSONButton.onclick=()=>{saveStateToLocalStorage();const acc=calculateAccuracy();const a={projectDetails,levelRows,tpCounter,lastCalculatedElevation,lastPointNameForBS,misclosureText:misclosureDisplay.classList.contains('hidden')?null:misclosureValue.textContent,accuracy:!acc.error?{runType:acc.runType,table:acc.table,closingBM:acc.closingName,knownElev:acc.known,misclosureMM:acc.misclosureMM,misclosureFt:acc.misclosureFt,totalDistFt:acc.totalDistFt,totalDistKm:acc.totalDistKm,distanceUsedKm:acc.usedDistKm,sqrtK:acc.sqrtK,shotsWithoutDistance:acc.missingDistances,standards:acc.specs.map(s=>({name:s.name,factor:s.factor,allowableMM:s.allowable,withinMisclosureTolerance:s.pass})),note:'Misclosure tolerance only; field-procedure requirements not checked.'}:null};const j=JSON.stringify(a,null,2);const blob=new Blob([j],{type:"application/json"});const now=new Date();const dts=`${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}${now.getSeconds().toString().padStart(2,'0')}`;const sp=(projectDetails.projectNumber||'LEVELING').replace(/[^a-zA-Z0-9_-]/g,'_');const sd=(projectDetails.description||'DATA').substring(0,5).replace(/[^a-zA-Z0-9_-]/g,'_');const link=document.createElement('a');link.setAttribute("href",URL.createObjectURL(blob));link.setAttribute("download",`${sp}_${sd}_${dts}.json`);document.body.appendChild(link);link.click();};
 
 importJSONInput.addEventListener('change',(event)=>{const file=event.target.files[0];if(file){const reader=new FileReader();reader.onload=(e)=>{try{const imp=JSON.parse(e.target.result);if(imp.projectDetails&&Array.isArray(imp.levelRows)){showConfirmModal('Import Data','Overwrite all current data?',()=>{projectDetails=imp.projectDetails||{units:'ft'};levelRows=imp.levelRows||[];tpCounter=imp.tpCounter||0;lastCalculatedElevation=imp.lastCalculatedElevation===undefined?null:imp.lastCalculatedElevation;lastPointNameForBS=imp.lastPointNameForBS===undefined?null:imp.lastPointNameForBS;document.getElementById('date').value=projectDetails.date||new Date().toISOString().split('T')[0];document.getElementById('projectNumber').value=projectDetails.projectNumber||'';document.getElementById('description').value=projectDetails.description||'';document.getElementById('operator').value=projectDetails.operator||'';document.getElementById('recorder').value=projectDetails.recorder||'';document.getElementById('instrument').value=projectDetails.instrument||'';const srt=projectDetails.rodType||'Philly Rod';const so=Array.from(rodTypeSelect.options).map(o=>o.value);if(so.includes(srt)){rodTypeSelect.value=srt;rodTypeOtherInput.classList.add('hidden');}else{rodTypeSelect.value='Other';rodTypeOtherInput.value=srt;rodTypeOtherInput.classList.remove('hidden');}unitsSelect.value=projectDetails.units||'ft';if(imp.misclosureText){misclosureValue.textContent=imp.misclosureText;misclosureDisplay.classList.remove('hidden');}else misclosureDisplay.classList.add('hidden');levelRows.forEach(r=>{if(r.isVoid===undefined)r.isVoid=false;if(r.isDiNiLineLeveling===undefined)r.isDiNiLineLeveling=false;if(r.type==='IP'&&r.isDiNiLineLeveling&&r.diNiRodReading==null&&r.hi!=null&&r.elevation!=null)r.diNiRodReading=parseFloat(r.hi)-parseFloat(r.elevation);});activeSetupData=null;currentHI=null;saveStateToLocalStorage();renderTable();
 // Identify named points and TPs — supports both current format (IP rows in levelRows)
