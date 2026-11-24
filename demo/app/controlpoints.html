@@ -1208,7 +1208,7 @@ function renderPlanChecks(res, pts) {
     if (bad) h += line('bad', '✗', `${bad} point${bad !== 1 ? "s don't" : " doesn't"} match — check them against the sheet (red); they'll be marked "⚠ check"`);
     if (noc) h += line('warn', '–', `${noc} point${noc !== 1 ? 's' : ''} couldn't be checked (no station / offset or alignment)`);
   } else if (pts.length) h += line('warn', '–', 'No Project Alignment sheet in these pages, so points couldn&#39;t be checked. Add the alignment sheet pages to check them and build the alignment.');
-  if (res.info && (res.info.datum || res.info.gridFactor)) h += line('', 'ℹ', `Sheets say: ${[res.info.datum, res.info.zone && res.info.zone + ' Zone', res.info.gridFactor && 'grid factor ' + res.info.gridFactor].filter(Boolean).join(', ')} — set these in Station / Offset → Setup if they aren't already.`);
+  if (res.info && (res.info.datum || res.info.gridFactor)) h += `<div id="planInfoLine">${line('', 'ℹ', `Sheets say: ${[res.info.datum, res.info.zone && res.info.zone + ' Zone', res.info.gridFactor && 'grid factor ' + res.info.gridFactor].filter(Boolean).join(', ')} — set these in Station / Offset → Setup if they aren't already.`)}</div><div id="planCfOffer"></div>`;
   for (const a of res.alignments) {
     const iss = a.issues.filter(i => !i.fixed), fx = a.issues.filter(i => i.fixed);
     h += `<div class="plan-align"><label><input type="checkbox" class="plan-al-cb" data-name="${escHtml(a.name)}" checked onchange="updateImportLabel()"> Alignment "${escHtml(a.name)}"</label>
@@ -1218,6 +1218,31 @@ function renderPlanChecks(res, pts) {
   }
   if (res.alignments.length) h += `<div style="font-size:0.75em;color:var(--text-muted);margin-top:6px;">Checked alignments are added to this project for Station / Offset and Station Photos (one with the same name is replaced).</div>`;
   el.innerHTML = h; el.classList.remove('hidden');
+  offerGridFactor(res.info && res.info.gridFactor);
+}
+// Optional: use the sheet's combined factor for this project — only offered while the project has none set
+async function offerGridFactor(gf) {
+  const box = document.getElementById('planCfOffer'); if (!box) return;
+  box.innerHTML = '';
+  if (!(gf > 0.9 && gf < 1.1)) return;
+  const projId = _loisTargetProjectId || currentProjectId;
+  const set = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
+  const cur = set.p && set.p[projId] && +set.p[projId].cf;
+  if (cur && Math.abs(cur - 1) > 1e-9) {
+    if (Math.abs(cur - gf) > 1e-9) box.innerHTML = `<div class="plan-check"><b class="warn">⚠</b><span>This project's factor in Setup is ${cur}, the sheets say ${gf}. Left as is — change it in Station / Offset → Setup if the sheets are right.</span></div>`;
+    return;
+  }
+  box.innerHTML = `<button class="btn btn-secondary btn-full" style="margin-top:6px;" onclick="applyGridFactor(${gf})">Use grid factor ${gf} for this project</button>
+    <div style="font-size:0.75em;color:var(--text-muted);margin-top:4px;">The project has no factor set yet. This only changes the factor in Station / Offset → Setup — the coordinates stay as printed.</div>`;
+}
+async function applyGridFactor(gf) {
+  const projId = _loisTargetProjectId || currentProjectId;
+  const set = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
+  set.p = set.p || {}; set.p[projId] = set.p[projId] || {};
+  set.p[projId].cf = gf;
+  await ftSetSetting('ftStationing', set);
+  document.getElementById('planCfOffer').innerHTML = `<div class="plan-check"><b class="ok">✓</b><span>Grid factor ${gf} set for this project.</span></div>`;
+  showToast('Grid factor set');
 }
 function updateImportLabel() {
   const n = [...document.querySelectorAll('.plan-al-cb')].filter(c => c.checked).length;
