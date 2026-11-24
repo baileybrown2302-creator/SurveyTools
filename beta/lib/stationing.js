@@ -385,7 +385,7 @@ function onSetupChange() {
   if (unitsChanged) {
     const k = UNIT_M[oldUnits] / UNIT_M[ps.units];
     ps.shiftN *= k; ps.shiftE *= k; ps.baseN *= k; ps.baseE *= k;
-    (ps.stakeList || []).forEach(p => { p.sta *= k; p.off *= k; });
+    (ps.stakeList || []).concat(...(ps.stakeLists || []).map(l => l.points || [])).forEach(p => { p.sta *= k; p.off *= k; });
     if (ps.target) { ps.target.sta *= k; ps.target.off *= k; }
     if ($('csBaseN')) { $('csBaseN').value = ps.baseN || ''; $('csBaseE').value = ps.baseE || ''; }
   }

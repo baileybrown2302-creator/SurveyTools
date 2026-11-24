@@ -138,6 +138,11 @@
 
   <div class="card">
     <div class="card-title">Stakeout List <span id="stakeProgress" style="text-transform:none;letter-spacing:0;"></span></div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <select class="input" id="stakeListSel" style="flex:1;min-width:0;" onchange="switchStakeList(this.value)" aria-label="Stakeout list"></select>
+      <button class="btn btn-secondary btn-sm" style="flex:0 0 auto;" onclick="newStakeList()" title="New list">＋ New</button>
+      <button class="btn btn-secondary btn-sm" style="flex:0 0 auto;" onclick="renameStakeList()" title="Rename list">✎</button>
+    </div>
     <div class="btn-row" style="margin-top:0;flex-wrap:wrap;">
       <button class="btn btn-secondary btn-sm" style="flex:1" onclick="addTargetToList()">＋ Add target</button>
       <button class="btn btn-secondary btn-sm" style="flex:1" onclick="$('stakeCsv').click()">⬆ CSV</button>
@@ -313,6 +318,52 @@ function renderNav() {
 
 // ───────── stakeout list (saved per project) ─────────
 const SL = () => (PS().stakeList = PS().stakeList || []);
+function stakeLists() {
+  const ps = PS();
+  if (!Array.isArray(ps.stakeLists) || !ps.stakeLists.length) { ps.stakeLists = [{ id: uid(), name: 'List 1' }]; ps.stakeListId = ps.stakeLists[0].id; }
+  if (!ps.stakeLists.find(l => l.id === ps.stakeListId)) ps.stakeListId = ps.stakeLists[0].id;
+  return ps.stakeLists;
+}
+const curStakeList = () => stakeLists().find(l => l.id === PS().stakeListId);
+function renderStakeListSel() {
+  const ls = stakeLists(), cur = PS().stakeListId;
+  $('stakeListSel').innerHTML = ls.map(l => { const n = l.id === cur ? SL().length : (l.points || []).length, d = l.id === cur ? SL().filter(p => p.done).length : (l.points || []).filter(p => p.done).length;
+    return `<option value="${l.id}" ${l.id === cur ? 'selected' : ''}>${esc(l.name)} (${n ? `${d}/${n}` : 'empty'})</option>`; }).join('');
+}
+function switchStakeList(id) {
+  const ps = PS(), cur = curStakeList(), next = stakeLists().find(l => l.id === id);
+  if (!next || next === cur) return;
+  cur.points = SL(); ps.stakeList = next.points || []; delete next.points;
+  ps.stakeListId = id; ps.stakeActive = ''; saveSettings(); renderStakeList(); notify(); toast('Opened ' + next.name);
+}
+function nameSheet(title, value, onSave, extra = '') {
+  openSheet(`<div class="sheet-title">${esc(title)} <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="field-group"><label class="label">Name</label><input class="input" id="nmIn" value="${esc(value)}" autocomplete="off"></div>${extra}
+    <div class="btn-row"><button class="btn btn-secondary" onclick="closeSheet()">Cancel</button><button class="btn btn-primary" id="nmOk">Save</button></div>`);
+  const i = $('nmIn'); i.focus(); i.select();
+  const go = () => { const v = i.value.trim(); if (!v) return toast('Enter a name'); onSave(v); };
+  $('nmOk').onclick = go; i.onkeydown = e => { if (e.key === 'Enter') go(); };
+}
+function newStakeList() {
+  const ls = stakeLists();
+  nameSheet('New stakeout list', 'List ' + (ls.length + 1), name => {
+    const ps = PS(); curStakeList().points = SL();
+    const l = { id: uid(), name }; ls.push(l); ps.stakeList = []; ps.stakeListId = l.id; ps.stakeActive = '';
+    saveSettings(); closeSheet(); renderStakeList(); notify(); toast('Created ' + name);
+  });
+}
+function renameStakeList() {
+  const l = curStakeList();
+  nameSheet('Rename list', l.name, name => { l.name = name; saveSettings(); closeSheet(); renderStakeList(); });
+}
+function deleteStakeList() {
+  const ls = stakeLists(), l = curStakeList(), n = SL().length;
+  if (!confirm(`Delete the list "${l.name}"${n ? ` and its ${n} point${n !== 1 ? 's' : ''}` : ''}?`)) return;
+  const ps = PS(); ls.splice(ls.indexOf(l), 1);
+  if (!ls.length) ls.push({ id: uid(), name: 'List 1' });
+  const next = ls[0]; ps.stakeList = next.points || []; delete next.points; ps.stakeListId = next.id; ps.stakeActive = '';
+  saveSettings(); closeSheet(); renderStakeList(); notify(); toast('Deleted ' + l.name);
+}
 const activeStake = () => PS().stakeActive && SL().find(p => p.id === PS().stakeActive);
 function stakeMarks(al) {
   if (!al) return null;
@@ -320,6 +371,7 @@ function stakeMarks(al) {
 }
 function renderStakeList() {
   const L = SL(), el = $('stakeList');
+  renderStakeListSel();
   const done = L.filter(p => p.done).length;
   $('stakeProgress').textContent = L.length ? `${done} of ${L.length} done` : '';
   if (!L.length) { el.innerHTML = '<div class="hint" style="font-size:0.85em;">No points yet. Add the current target, import a CSV, or generate stations at an interval.</div>'; return; }
@@ -331,7 +383,8 @@ function renderStakeList() {
       <div class="al-info"><div class="al-name">${esc(p.name || '—')} <span style="font-weight:600;color:var(--text-secondary);font-variant-numeric:tabular-nums;">· ${fmtSta(p.sta, u)}${sideTxt(p.side)} · ${fmtOff(p.off, u)}</span></div>
       <div class="al-meta">${esc([al ? al.name : '⚠ alignment missing', p.desc].filter(Boolean).join(' · '))} ${st}</div>
       ${p.id === PS().stakeActive ? '<div id="stakeLive" style="font-weight:800;color:var(--result-text);font-variant-numeric:tabular-nums;margin-top:2px;"></div>' : ''}</div>
-      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')">✕</button></div>`;
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();editStake('${p.id}')" title="Rename">✎</button>
+      <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();removeStake('${p.id}')" title="Remove">✕</button></div>`;
   }).join('');
 }
 // Navigate to a grid point (control point from the map): station/offset on the nearest alignment
@@ -373,16 +426,26 @@ function toggleDone(id) { const p = SL().find(x => x.id === id); p.done = !p.don
 function removeStake(id) { const L = SL(), i = L.findIndex(x => x.id === id); L.splice(i, 1); if (PS().stakeActive === id) PS().stakeActive = ''; saveSettings(); renderStakeList(); notify(); }
 function addTargetToList() {
   const t = PS().target; if (!t) return toast('Enter a target station first');
-  const L = SL(), name = 'P' + (L.length + 1);
-  const p = { id: uid(), name, alignId: t.alignId, sta: t.sta, side: t.side || '', off: t.off, desc: '', done: false };
-  L.push(p); PS().stakeActive = p.id; saveSettings(); renderStakeList(); notify(); toast('Added ' + name);
+  const L = SL(), al = aligns.find(a => a.id === t.alignId), u = unitsOf(al);
+  let n = L.length + 1; while (L.some(p => p.name === 'P' + n)) n++;
+  nameSheet('Add to "' + curStakeList().name + '"', 'P' + n, name => {
+    const p = { id: uid(), name, alignId: t.alignId, sta: t.sta, side: t.side || '', off: t.off, desc: $('nmDesc').value.trim(), done: false };
+    L.push(p); PS().stakeActive = p.id; saveSettings(); closeSheet(); renderStakeList(); notify(); toast('Added ' + name);
+  }, `<div class="field-group"><label class="label">Description <span style="font-weight:500;color:var(--text-muted)">(optional)</span></label><input class="input" id="nmDesc" placeholder="e.g. Drop inlet grate" autocomplete="off"></div>
+    <div class="hint">${esc(al ? al.name : '')} · STA ${fmtSta(t.sta, u)}${sideTxt(t.side)} · ${fmtOff(t.off, u)}</div>`);
+}
+function editStake(id) {
+  const p = SL().find(x => x.id === id); if (!p) return;
+  nameSheet('Edit point', p.name || '', name => { p.name = name; p.desc = $('nmDesc').value.trim(); saveSettings(); closeSheet(); renderStakeList(); notify(); },
+    `<div class="field-group"><label class="label">Description</label><input class="input" id="nmDesc" value="${esc(p.desc || '')}" autocomplete="off"></div>`);
 }
 function stakeMenu() {
-  openSheet(`<div class="sheet-title">Stakeout List <button class="sheet-close" onclick="closeSheet()">×</button></div>
+  openSheet(`<div class="sheet-title">${esc(curStakeList().name)} <button class="sheet-close" onclick="closeSheet()">×</button></div>
     <button class="btn btn-secondary" onclick="closeSheet();exportStakeCSV()">⬇ Export list with done / not done (CSV)</button>
     <button class="btn btn-secondary" style="margin-top:10px;" onclick="sortStakes()">↕ Sort by alignment, station, offset</button>
     <button class="btn btn-secondary" style="margin-top:10px;" onclick="resetStakes()">↺ Clear all check marks</button>
-    <button class="btn btn-red" style="margin-top:10px;" onclick="clearStakes()">🗑 Delete all points</button>
+    <button class="btn btn-red" style="margin-top:10px;" onclick="clearStakes()">🗑 Delete all points in this list</button>
+    <button class="btn btn-red" style="margin-top:10px;" onclick="deleteStakeList()">🗑 Delete this list</button>
     <div class="hint" style="margin-top:12px;">CSV columns (header optional): <b>Name, Station, Offset, Description, Alignment</b>. Offsets: negative = left, or write 12.5 LT / 12.5 RT. Stations: 145+32.10 or 14532.10; where an equation repeats stations add the zone, e.g. 119+00:3.</div>`);
 }
 function sortStakes() { const order = a => aligns.findIndex(x => x.id === a.alignId); SL().sort((a, b) => order(a) - order(b) || a.sta - b.sta || a.off - b.off); saveSettings(); closeSheet(); renderStakeList(); }
@@ -512,7 +575,7 @@ function exportStakeCSV() {
       d ? d.y.toFixed(3) : '', d ? d.x.toFixed(3) : '', p.done ? 'Y' : '', s ? new Date(s.t).toLocaleString('en-US') : '', s ? s.N.toFixed(3) : '', s ? s.E.toFixed(3) : '',
       s ? s.dist.toFixed(2) : '', s ? (-s.dSta).toFixed(2) : '', s ? (-s.dOff).toFixed(2) : '', s && s.acc != null ? s.acc.toFixed(1) : ''].map(cell).join(',');
   });
-  const name = `PointList_${(projectTitle() || 'list').replace(/[^A-Za-z0-9]+/g, '-')}_${new Date().toISOString().slice(0, 10)}.csv`;
+  const name = `PointList_${[projectTitle(), curStakeList().name].filter(Boolean).join(' ').replace(/[^A-Za-z0-9]+/g, '-')}_${new Date().toISOString().slice(0, 10)}.csv`;
   const f = new File([[head.join(','), ...rows].join('\r\n')], name, { type: 'text/csv' });
   if (navigator.canShare && navigator.canShare({ files: [f] })) navigator.share({ files: [f], title: name }).catch(() => {});
   else { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = name; a.click(); }

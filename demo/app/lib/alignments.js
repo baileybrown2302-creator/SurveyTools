@@ -450,7 +450,7 @@ async function setProjectUnits(projId, units) {
   if (old !== units) {
     const k = UNIT_M[old] / UNIT_M[units];
     ['shiftN', 'shiftE', 'baseN', 'baseE'].forEach(f => { if (isFinite(ps[f])) ps[f] *= k; });
-    (ps.stakeList || []).forEach(p => { p.sta *= k; p.off *= k; });
+    (ps.stakeList || []).concat(...(ps.stakeLists || []).map(l => l.points || [])).forEach(p => { p.sta *= k; p.off *= k; });
     if (ps.target) { ps.target.sta *= k; ps.target.off *= k; }
   }
   ps.units = units; await ftSetSetting('ftStationing', s);
