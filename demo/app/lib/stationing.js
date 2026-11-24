@@ -167,15 +167,39 @@ let _notifyPending = false;
 function notify() { if (_notifyPending) return; _notifyPending = true; requestAnimationFrame(() => { _notifyPending = false; renderChips(); hook('onStationUpdate'); }); }
 
 // ═════════ GPS ═════════
+let gpsWatchId = null, gpsDenied = false;
 function startGPS() {
   if (!('geolocation' in navigator)) { const c = $('gpsChip'); if (c) { c.textContent = 'GPS not available'; c.className = 'chip bad'; } return; }
-  navigator.geolocation.watchPosition(p => {
+  if (gpsWatchId != null) { navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; }
+  gpsWatchId = navigator.geolocation.watchPosition(p => {
+    gpsDenied = false;
     fix = { lat: p.coords.latitude, lon: p.coords.longitude, acc: p.coords.accuracy, alt: p.coords.altitude, time: p.timestamp };
     gpsCourse = (p.coords.speed != null && p.coords.speed > 0.7 && p.coords.heading != null && !isNaN(p.coords.heading)) ? p.coords.heading : null;
     pos = projectLL(fix.lat, fix.lon);
     computeAll(); notify();
-  }, err => { const c = $('gpsChip'); if (c) { c.textContent = err.code === 1 ? 'GPS: permission denied' : 'GPS: ' + (err.message || 'error'); c.className = 'chip bad'; } },
+  }, err => {
+    if (err.code === 1) gpsDenied = true;
+    const c = $('gpsChip'); if (c) { c.textContent = err.code === 1 ? 'GPS: denied — tap to retry' : 'GPS: ' + (err.code === 3 ? 'no fix yet' : (err.message || 'error')) + ' — tap to retry'; c.className = 'chip bad'; }
+    if (err.code === 1 && retryingGPS) { retryingGPS = false; gpsHelp(); }
+  },
   { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+}
+
+// Tap the GPS chip: ask again (the phone only re-prompts if access isn't blocked in its settings)
+let retryingGPS = false;
+function retryGPS() {
+  const c = $('gpsChip'); if (c) { c.textContent = 'GPS: asking…'; c.className = 'chip'; }
+  retryingGPS = true; startGPS();
+  setTimeout(() => { retryingGPS = false; }, 8000);
+}
+function gpsHelp() {
+  const android = /Android/i.test(navigator.userAgent);
+  openSheet(`<div class="sheet-title">Location is blocked <button class="sheet-close" onclick="closeSheet()">×</button></div>
+    <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:12px;">The phone is blocking location for this app, so it can't ask again from here. Turn it back on in the phone's settings, then tap the GPS bubble again.</div>
+    <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:14px;">${android
+      ? '<b>Android (Chrome):</b> tap ⋮ → <b>Settings</b> → <b>Site settings</b> → <b>Location</b>, find this site under Blocked and set it to <b>Allow</b>. Also check phone <b>Settings → Location</b> is on, and that Chrome is allowed location (Settings → Apps → Chrome → Permissions → Location).'
+      : '<b>iPhone:</b> Settings → <b>Privacy &amp; Security → Location Services</b> must be on. Then scroll to <b>Safari Websites</b> and set it to <b>While Using the App</b> (and Precise Location on). If it still won\'t ask, close the app fully and reopen it.'}</div>
+    <button class="btn btn-primary" onclick="closeSheet();retryGPS()">Try again</button>`);
 }
 
 // ═════════ COMPASS ═════════
@@ -199,19 +223,28 @@ const onOrientAbs = e => { if (e.alpha != null && e.beta != null) feedHeading(he
 // requestPermission but may answer "denied" without asking — so it is never used there).
 const hasAbsolute = () => 'ondeviceorientationabsolute' in window;
 const needsCompassTap = () => !hasAbsolute() && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
-async function enableCompass() {
-  if (compassOn) return;
+function stopCompass() {
+  window.removeEventListener('deviceorientationabsolute', onOrientAbs);
+  window.removeEventListener('deviceorientation', onOrientIOS);
+  if (onOrientAny) window.removeEventListener('deviceorientation', onOrientAny);
+  compassOn = false; hx = hy = null; lastHeadingAt = 0; heading = null;
+}
+let onOrientAny = null;
+async function enableCompass(restart) {
+  if (compassOn && !restart) return;
+  if (compassOn) stopCompass();
+  const cc = $('compassChip'); if (cc) { cc.textContent = '🧭 asking…'; cc.className = 'chip'; }
   try {
     if (hasAbsolute()) window.addEventListener('deviceorientationabsolute', onOrientAbs);
     else if (needsCompassTap()) {
       const r = await DeviceOrientationEvent.requestPermission();
-      if (r !== 'granted') { compassHelp(true); return; }
+      if (r !== 'granted') { if (cc) { cc.textContent = '🧭 Denied — tap to retry'; cc.className = 'chip btnchip bad'; } compassHelp(true); return; }
       window.addEventListener('deviceorientation', onOrientIOS);
-    } else window.addEventListener('deviceorientation', e => { if (e.webkitCompassHeading != null) onOrientIOS(e); else if (e.absolute) onOrientAbs(e); });
+    } else { onOrientAny = e => { if (e.webkitCompassHeading != null) onOrientIOS(e); else if (e.absolute) onOrientAbs(e); }; window.addEventListener('deviceorientation', onOrientAny); }
     compassOn = true; G.compass = true; saveSettings();
     setTimeout(() => { if (!lastHeadingAt) compassHelp(false); notify(); }, 3000);
     notify();
-  } catch (err) { compassHelp(true, err.message); }
+  } catch (err) { if (cc) { cc.textContent = '🧭 Tap to enable compass'; cc.className = 'chip btnchip bad'; } compassHelp(true, err.message); }
 }
 function compassHelp(denied, msg) {
   const android = /Android/i.test(navigator.userAgent);
@@ -219,9 +252,9 @@ function compassHelp(denied, msg) {
     <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:12px;">${denied ? 'The phone blocked access to the motion sensors.' : 'No compass readings are coming from this phone.'}${msg ? ' (' + esc(msg) + ')' : ''}</div>
     <div class="hint" style="font-size:0.88em;line-height:1.5;margin-bottom:14px;">${android
       ? '<b>Android (Chrome):</b> tap ⋮ → <b>Settings</b> → <b>Site settings</b> → <b>Motion sensors</b>, and make sure it is <b>allowed</b> (and this site is not in the Blocked list). Then close and reopen the app.'
-      : '<b>iPhone:</b> close the app fully, reopen it, tap <b>Enable compass</b> and choose <b>Allow</b>. If it never asks, check Settings → Privacy &amp; Security → Location Services → Safari Websites / Field Tools.'}
+      : '<b>iPhone:</b> once you tap Don\'t Allow, iOS won\'t ask again until the app is restarted. Swipe the app away to close it fully, reopen it, tap the compass bubble and choose <b>Allow</b>. If it still never asks: Settings → <b>Apps → Safari → Advanced → Website Data</b>, delete this site\'s data (clears its permissions — export your projects first), or check Settings → Privacy &amp; Security → <b>Motion &amp; Fitness</b> is on.'}
     <br><br>Without a compass, Navigate still points the arrow using your GPS direction once you start walking.</div>
-    <button class="btn btn-primary" onclick="closeSheet()">OK</button>`);
+    <div class="btn-row"><button class="btn btn-secondary" onclick="closeSheet()">OK</button><button class="btn btn-primary" onclick="closeSheet();enableCompass(true)">Try again</button></div>`);
 }
 const DIRS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 const fmtHdg = h => h == null ? '—' : DIRS[Math.round(h / 45) % 8] + ' ' + Math.round(h) + '°';
@@ -229,11 +262,12 @@ const headingNow = () => (heading != null && Date.now() - lastHeadingAt < 5000) 
 
 function renderChips() {
   const gc = $('gpsChip');
-  if (gc && fix) { gc.textContent = `GPS ±${Math.round(fix.acc / UNIT_M[PS().units])} ${uLbl()}`; gc.className = 'chip ' + (fix.acc <= 10 ? 'ok' : fix.acc > 30 ? 'bad' : ''); }
+  if (gc) gc.onclick = () => { if (gpsDenied && navigator.permissions) navigator.permissions.query({ name: 'geolocation' }).then(st => st.state === 'denied' ? gpsHelp() : retryGPS()).catch(retryGPS); else retryGPS(); };
+  if (gc && fix && !gpsDenied) { gc.textContent = `GPS ±${Math.round(fix.acc / UNIT_M[PS().units])} ${uLbl()}`; gc.className = 'chip ' + (fix.acc <= 10 ? 'ok' : fix.acc > 30 ? 'bad' : ''); }
   const cc = $('compassChip');
   if (cc) {
-    if (compassOn) { cc.textContent = '🧭 ' + (headingNow() != null ? fmtHdg(headingNow()) : 'no data'); cc.className = 'chip ' + (headingNow() != null ? 'ok' : ''); }
-    cc.onclick = () => enableCompass();
+    if (compassOn) { cc.textContent = '🧭 ' + (headingNow() != null ? fmtHdg(headingNow()) : 'no data — tap'); cc.className = 'chip ' + (headingNow() != null ? 'ok' : 'bad'); }
+    cc.onclick = () => enableCompass(true);   // tap again any time to restart / re-ask
   }
 }
 

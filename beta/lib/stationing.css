@@ -46,6 +46,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-
 .chip.ok{border-color:#16a34a;color:#16a34a;}
 .chip.bad{border-color:var(--accent-red);color:var(--accent-red);}
 .chip.btnchip{cursor:pointer;border-color:var(--accent-blue);color:var(--accent-blue);}
+#gpsChip,#compassChip{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none;}
+#gpsChip:active,#compassChip:active{transform:scale(0.96);}
 .other-list{font-size:0.8em;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
 .other-list div{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border-primary);}
 .other-list div:last-child{border-bottom:none;}
