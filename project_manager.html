@@ -464,6 +464,7 @@ async function init() {
         applyThemeBtns(true);
     }
     await renderProjectList();
+    if (location.hash === '#restore') openBackupRestore();
 }
 
 // ---- Render project list ----
@@ -1226,12 +1227,10 @@ async function confirmBackupExport() {
     try {
         const pkg = await ftExportSelected(sel);
         const dateStr = new Date().toISOString().slice(0, 10);
-        const a = document.createElement('a');
-        a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(pkg, null, 2));
-        a.download = `surveytoolsbackup_${dateStr}.json`;
-        a.click();
+        const saved = await ftSaveBackupFile(pkg, `surveytoolsbackup_${dateStr}.json`);
+        if (saved === false) return;
         closeModal('backupExportModal');
-        showToast('Backup downloaded.');
+        showToast('Backup saved.');
     } finally { btn.disabled = false; btn.textContent = 'Download'; }
 }
 

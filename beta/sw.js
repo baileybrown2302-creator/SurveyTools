@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-beta-v14';
+const CACHE_NAME = 'survey-tool-beta-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -37,6 +37,7 @@ const ASSETS = [
   './lib/printpdf.js',
   './lib/jspdf.umd.min.js',
   './lib/html2canvas.min.js',
+  './lib/plansheets.js',
   './lib/pdfjs/pdf.min.js',
   './lib/pdfjs/pdf.worker.min.js'
 ];

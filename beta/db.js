@@ -527,6 +527,42 @@ async function ftImportSelected(pkg, selProjects) {
   return summary;
 }
 
+// --- One-tap full backup + reminder ---
+const FT_BACKUP_DAYS = 7;
+// Everything in the app, as a Project Manager backup file (all projects, archived included)
+async function ftBackupEverything() {
+  const projects = await ftGetAllProjects(), sel = [];
+  for (const p of projects) {
+    const m = await ftGetProjectManifest(p.id), ids = a => (a || []).map(r => r.id);
+    sel.push({ projectId: p.id, levelLoops: ids(m.levelLoops), controlPoints: ids(m.controlPoints), stakeSessions: ids(m.stakeSessions),
+      materialIndices: m.materials ? (m.materials.materials || []).map((_, i) => i) : [], compactionTests: ids(m.compactionTests), soilTests: ids(m.soilTests),
+      bidContracts: ids(m.bidContracts), alignments: ids(m.alignments) });
+  }
+  const pkg = await ftExportSelected(sel);
+  // stake lists / coordinate settings are kept for every project, even ones without alignments
+  for (const pd of pkg.projects) if (!pd.stationingSettings && typeof ftGetStationingSettings === 'function') pd.stationingSettings = await ftGetStationingSettings(pd.project.id);
+  return pkg;
+}
+// Save a backup: share sheet on phones (Save to Files / OneDrive / Mail), download elsewhere
+async function ftSaveBackupFile(pkg, name) {
+  name = name || `fieldtools-backup_${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify(pkg, null, 1)], { type: 'application/json' });
+  const file = new File([blob], name, { type: 'application/json' });
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); }
+    catch (e) { if (e && e.name === 'AbortError') return false; throw e; }
+  } else {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  await ftMarkBackedUp();
+  return true;
+}
+async function ftMarkBackedUp() { const t = Date.now(); try { localStorage.setItem('ftLastBackup', t); } catch (e) {} await ftSetSetting('ftLastBackup', t); }
+async function ftLastBackup() { const v = await ftGetSetting('ftLastBackup', null); return v || +(localStorage.getItem('ftLastBackup') || 0) || null; }
+
 // --- Persistent storage request ---
 async function ftRequestPersistentStorage() {
   if (navigator.storage && navigator.storage.persist) {

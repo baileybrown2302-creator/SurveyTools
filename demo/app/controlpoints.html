@@ -13,6 +13,8 @@
   <link rel="icon" type="image/png" href="icon.png">
   <link rel="apple-touch-icon" href="icon.png">
   <script src="db.js"></script>
+  <script src="lib/alignments.js"></script>
+  <script src="lib/plansheets.js"></script>
   <title>Control Points — Field Tools</title>
   <style>
     :root {
@@ -138,6 +140,15 @@
     .drop-zone-sub{font-size:0.78em;margin-top:4px;}
 
     /* Preview table */
+    .plan-check{display:flex;gap:8px;font-size:0.84em;font-weight:600;padding:3px 0;line-height:1.35;color:var(--text-primary);}
+    .plan-check b.ok{color:#16a34a;} .plan-check b.warn{color:#d97706;} .plan-check b.bad{color:#dc2626;}
+    .plan-align{background:var(--bg-tertiary);border:1.5px solid var(--border-primary);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:0.84em;}
+    .plan-align label{display:flex;gap:8px;align-items:center;font-weight:700;color:var(--text-primary);}
+    .plan-align .meta{color:var(--text-secondary);margin-top:3px;font-weight:500;}
+    .plan-align .iss{color:#d97706;margin-top:4px;font-size:0.92em;}
+    tr.pv-fixed td{background:rgba(245,158,11,0.10);} tr.pv-bad td{background:rgba(239,68,68,0.10);}
+    .pv-flag{white-space:normal;color:var(--text-secondary);font-size:0.92em;}
+    .import-flag{display:inline-block;margin-left:6px;color:#dc2626;font-weight:800;font-size:0.8em;}
     .preview-scroll{overflow-x:auto;margin-top:12px;border-radius:8px;border:1.5px solid var(--border-primary);}
     .preview-table{border-collapse:collapse;width:100%;font-size:0.78em;white-space:nowrap;}
     .preview-table th{background:var(--bg-tertiary);padding:7px 10px;font-weight:700;text-align:left;border-bottom:1.5px solid var(--border-primary);color:var(--text-secondary);}
@@ -428,13 +439,15 @@
       <div class="pdf-info-bar">
         <strong id="pdfFileName"></strong> — <span id="pdfPageCount"></span> pages loaded
       </div>
+      <div id="pdfScanStatus" class="pdf-info-bar" style="margin-top:10px;"></div>
       <div class="field-group" style="margin-top:12px;">
-        <label class="label">Page number(s) with Location Control Sheet</label>
+        <label class="label">Location Control page(s) — control tables and Project Alignment sheets</label>
         <input class="input" id="pdfPageInput" type="text" placeholder="e.g. 24 or 24, 35 or 40-42"
                oninput="clearPreview()">
         <div style="font-size:0.75em;color:var(--text-muted);margin-top:4px;">Separate multiple pages with commas; use ranges like 40-42</div>
       </div>
-      <button class="btn btn-primary btn-full" onclick="parsePdfPages()">Parse Pages</button>
+      <button class="btn btn-primary btn-full" id="pdfParseBtn" onclick="parsePdfPages()">Read Pages</button>
+      <button class="btn btn-secondary btn-full hidden" id="pdfOcrSearchBtn" style="margin-top:8px;" onclick="searchScannedPages()">🔍 Search all pages for "Location Control" (slow)</button>
     </div>
 
     <!-- Step 2b: Generic CSV -->
@@ -506,18 +519,19 @@
       <div class="pdf-info-bar" style="margin-top:12px;">
         Found <strong id="previewCount">0</strong> points
       </div>
+      <div id="planChecks" class="hidden" style="margin-top:10px;"></div>
       <div class="preview-scroll">
         <table class="preview-table">
           <thead>
             <tr>
-              <th>Name</th><th>Station</th><th>Dist</th><th>Note</th><th>N</th><th>E</th><th>Elev</th>
+              <th></th><th>Name</th><th>Station</th><th>Dist</th><th>Note</th><th>N</th><th>E</th><th>Elev</th>
             </tr>
           </thead>
           <tbody id="previewBody"></tbody>
         </table>
       </div>
       <div class="modal-actions" style="margin-top:14px;">
-        <button class="btn btn-success btn-full" onclick="importPoints()">Import <span id="importCountLabel">0</span> Points</button>
+        <button class="btn btn-success btn-full" onclick="importPoints()">Import <span id="importCountLabel">0</span> Points<span id="importAlignLabel"></span></button>
         <button class="btn btn-secondary" onclick="closeImportModal()">Cancel</button>
       </div>
     </div>
@@ -825,6 +839,7 @@ function pointCardHtml(pt) {
       <div class="point-name-row">
         <span class="point-name">${escHtml(pt.name||'—')}</span>
         <span class="record-badge ${sc.cls}">${escHtml(sc.label)}</span>
+        ${pt.importFlag ? `<span class="import-flag" title="${escHtml(pt.importFlag)}">⚠ check</span>` : ''}
       </div>
       ${stationParts.length ? `<div class="point-station">${stationParts.join(' &nbsp;·&nbsp; ')}</div>` : ''}
       ${pt.note ? `<div class="point-note">${escHtml(pt.note)}</div>` : ''}
@@ -1047,7 +1062,7 @@ function confirmDeletePoint() {
 
 // ── Import Modal ──────────────────────────────────────────────────────────────
 function openImportModal() {
-  _pdfDoc = null; _parsedPoints = []; _csvRaw = null; _loisRows = []; _loisTargetProjectId = null;
+  _pdfDoc = null; _parsedPoints = []; _csvRaw = null; _loisRows = []; _loisTargetProjectId = null; _planAligns = [];
   document.getElementById('fileInput').value = '';
   resetImportModal();
   document.getElementById('importModal').classList.add('open');
@@ -1092,36 +1107,136 @@ async function ensurePdfJs() {
 
 async function loadPdf(file) {
   try {
-    await ensurePdfJs();
+    const lib = await FTPlans.loadPdfJs();
     const arrayBuffer = await file.arrayBuffer();
-    _pdfDoc = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    _pdfDoc = await lib.getDocument({ data: arrayBuffer }).promise;
     document.getElementById('pdfFileName').textContent = file.name;
     document.getElementById('pdfPageCount').textContent = _pdfDoc.numPages;
     document.getElementById('pdfPageInput').value = '';
     document.getElementById('importStep1').classList.add('hidden');
     document.getElementById('importStep2').classList.remove('hidden');
+    document.getElementById('pdfOcrSearchBtn').classList.add('hidden');
+    const st = document.getElementById('pdfScanStatus'), btn = document.getElementById('pdfParseBtn');
+    btn.disabled = true;
+    try {
+      const doc = _pdfDoc, found = await FTPlans.findPages(doc, t => { st.textContent = t; });
+      if (doc !== _pdfDoc) return;
+      if (found.pages.length) {
+        document.getElementById('pdfPageInput').value = pageRangesText(found.pages.map(p => p.page));
+        const nc = found.pages.filter(p => p.control).length, na = found.pages.filter(p => p.alignment).length;
+        st.innerHTML = `✓ Found <b>${found.pages.length}</b> Location Control page${found.pages.length !== 1 ? 's' : ''}: ${nc} control table${nc !== 1 ? 's' : ''}${na ? `, ${na} Project Alignment sheet${na !== 1 ? 's' : ''}` : ''}. Check the pages, then tap Read Pages.`;
+      } else if (found.scanned) {
+        st.innerHTML = '📷 This plan set is scanned, so pages can\'t be searched quickly. Enter the Location Control page numbers (the LC sheets are listed in the index on the title sheet), or search every page below. Scanned pages are read with OCR — about 10–30 s a page, and corrected using the alignment checks.';
+        document.getElementById('pdfOcrSearchBtn').classList.remove('hidden');
+      } else st.textContent = 'No Location Control sheets found automatically. Enter the page numbers.';
+    } catch (e) { st.textContent = 'Enter the page numbers of the Location Control sheets.'; }
+    btn.disabled = false;
   } catch (err) {
     showToast('Error loading PDF: ' + err.message);
   }
 }
 
+function pageRangesText(nums) {
+  const n = [...new Set(nums)].sort((a, b) => a - b), out = [];
+  for (let i = 0; i < n.length; i++) { let j = i; while (j + 1 < n.length && n[j + 1] === n[j] + 1) j++; out.push(j > i ? `${n[i]}-${n[j]}` : `${n[i]}`); i = j; }
+  return out.join(', ');
+}
+let _ocrSearchCancel = false;
+async function searchScannedPages() {
+  const st = document.getElementById('pdfScanStatus'), b = document.getElementById('pdfOcrSearchBtn');
+  if (b.dataset.busy) { _ocrSearchCancel = true; b.textContent = 'Stopping…'; return; }
+  b.dataset.busy = '1'; _ocrSearchCancel = false; b.textContent = '■ Stop search';
+  try {
+    const found = await FTPlans.findPagesOCR(_pdfDoc, t => { st.textContent = t; }, () => _ocrSearchCancel);
+    if (found.length) { document.getElementById('pdfPageInput').value = pageRangesText(found.map(f => f.page)); st.innerHTML = `✓ Found Location Control on page${found.length !== 1 ? 's' : ''} <b>${pageRangesText(found.map(f => f.page))}</b>. Tap Read Pages.`; }
+    else st.textContent = _ocrSearchCancel ? 'Search stopped.' : 'No pages titled "Location Control" were found. Enter the page numbers.';
+  } catch (e) { st.textContent = e.message; }
+  delete b.dataset.busy; b.textContent = '🔍 Search all pages for "Location Control" (slow)';
+}
+let _planAligns = [];
 async function parsePdfPages() {
   if (!_pdfDoc) return;
   const input = document.getElementById('pdfPageInput').value;
   const pages = parsePageRanges(input).filter(p => p >= 1 && p <= _pdfDoc.numPages);
   if (!pages.length) { showToast('Enter valid page number(s)'); return; }
+  const st = document.getElementById('pdfScanStatus'), btn = document.getElementById('pdfParseBtn');
+  btn.disabled = true; clearPreview();
   try {
-    _parsedPoints = [];
-    for (const pageNum of pages) {
-      const page = await _pdfDoc.getPage(pageNum);
-      const pts = await parseLocationControlPage(page);
-      _parsedPoints.push(...pts);
+    const res = await FTPlans.readPages(_pdfDoc, pages, t => { st.textContent = t; });
+    let pts = res.points.map(planPointToRecord);
+    // pages the new reader couldn't use: fall back to the older table reader (rotated / transposed tables)
+    if (!pts.length) {
+      for (const pageNum of pages) { const page = await _pdfDoc.getPage(pageNum); pts.push(...await parseLocationControlPage(page)); }
     }
-    showPreview(_parsedPoints);
+    _planAligns = res.alignments;
+    st.textContent = `Read ${pages.length} page${pages.length !== 1 ? 's' : ''}${res.usedOCR ? ' with OCR' : ''}.`;
+    _parsedPoints = pts;
+    renderPlanChecks(res, pts);
+    showPreview(pts);
   } catch (err) {
-    showToast('Parse error: ' + err.message);
+    showToast('Read error: ' + err.message);
+    st.textContent = 'Error: ' + err.message;
     console.error(err);
   }
+  btn.disabled = false;
+}
+function planPointToRecord(p) {
+  const staTxt = s => s ? `${s.align ? `"${s.align}" ` : ''}${FTPlans.fmtStation(s.sta)}${s.type ? ' ' + s.type : ''}` : '';
+  const c = p.check || {};
+  const flag = c.status === 'mismatch' ? `Station/offset and coordinates don't agree (coordinates fall at ${c.calc || '?'}) — check the sheet`
+    : c.status === 'nocheck' ? 'Could not be checked against an alignment' : '';
+  return {
+    id: uid(), projectId: currentProjectId, name: p.name,
+    northing: p.northing, easting: p.easting, elevation: p.elevation,
+    oldStation: staTxt(p.oldSta), equation: p.equation || '', distanceOld: p.distanceOld,
+    newStation: staTxt(p.newSta), distanceNew: p.distanceNew,
+    note: p.note || '', status: 'uncategorized', statusNote: '', statusDate: '', created: isoDate(),
+    ...(flag ? { importFlag: flag } : {}),
+    _check: c
+  };
+}
+function renderPlanChecks(res, pts) {
+  const el = document.getElementById('planChecks');
+  const n = s => pts.filter(p => p._check && p._check.status === s).length;
+  const ok = n('ok'), fixed = n('fixed'), bad = n('mismatch'), noc = pts.length - ok - fixed - bad;
+  const line = (cls, icon, txt) => `<div class="plan-check"><b class="${cls}">${icon}</b><span>${txt}</span></div>`;
+  let h = '';
+  if (res.usedOCR) h += line('warn', '⚠', 'Scanned sheets were read with OCR. Values were checked against the alignment and corrected where the check proves it; still look over anything flagged.');
+  if (res.alignments.length) {
+    h += line(bad ? 'bad' : 'ok', bad ? '✗' : '✓', `${ok} of ${pts.length} points: coordinates match their station &amp; offset on the alignment (within 0.15')`);
+    if (fixed) h += line('warn', '⚠', `${fixed} point${fixed !== 1 ? 's had a misread value' : ' had a misread value'} corrected (orange) — the corrected values match the alignment`);
+    if (bad) h += line('bad', '✗', `${bad} point${bad !== 1 ? "s don't" : " doesn't"} match — check them against the sheet (red); they'll be marked "⚠ check"`);
+    if (noc) h += line('warn', '–', `${noc} point${noc !== 1 ? 's' : ''} couldn't be checked (no station / offset or alignment)`);
+  } else if (pts.length) h += line('warn', '–', 'No Project Alignment sheet in these pages, so points couldn&#39;t be checked. Add the alignment sheet pages to check them and build the alignment.');
+  if (res.info && (res.info.datum || res.info.gridFactor)) h += line('', 'ℹ', `Sheets say: ${[res.info.datum, res.info.zone && res.info.zone + ' Zone', res.info.gridFactor && 'grid factor ' + res.info.gridFactor].filter(Boolean).join(', ')} — set these in Station / Offset → Setup if they aren't already.`);
+  for (const a of res.alignments) {
+    const iss = a.issues.filter(i => !i.fixed), fx = a.issues.filter(i => i.fixed);
+    h += `<div class="plan-align"><label><input type="checkbox" class="plan-al-cb" data-name="${escHtml(a.name)}" checked onchange="updateImportLabel()"> Alignment "${escHtml(a.name)}"</label>
+      <div class="meta">${FTPlans.fmtStation(a.start)} to ${FTPlans.fmtStation(a.end)} · ${a.els.length} pieces${a.eqs.length ? ` · ${a.eqs.length} station equation${a.eqs.length !== 1 ? 's' : ''}` : ''} · ${iss.length ? `<span style="color:#d97706;font-weight:700">${iss.length} check${iss.length !== 1 ? 's' : ''} failed</span>` : '<span style="color:#16a34a;font-weight:700">all lengths, bearings &amp; curves check</span>'}</div>
+      ${fx.map(i => `<div class="iss" style="color:var(--text-secondary)">↻ ${escHtml(i.at)}: ${escHtml(i.msg)}</div>`).join('')}
+      ${iss.slice(0, 6).map(i => `<div class="iss">⚠ ${escHtml(i.at)}: ${escHtml(i.msg)}</div>`).join('')}${iss.length > 6 ? `<div class="iss">… ${iss.length - 6} more</div>` : ''}</div>`;
+  }
+  if (res.alignments.length) h += `<div style="font-size:0.75em;color:var(--text-muted);margin-top:6px;">Checked alignments are added to this project for Station / Offset and Station Photos (one with the same name is replaced).</div>`;
+  el.innerHTML = h; el.classList.remove('hidden');
+}
+function updateImportLabel() {
+  const n = [...document.querySelectorAll('.plan-al-cb')].filter(c => c.checked).length;
+  document.getElementById('importAlignLabel').textContent = n ? ` + ${n} Alignment${n !== 1 ? 's' : ''}` : '';
+}
+async function savePlanAlignments(projId) {
+  const want = new Set([...document.querySelectorAll('.plan-al-cb')].filter(c => c.checked).map(c => c.dataset.name));
+  const aligns = _planAligns.filter(a => want.has(a.name)); if (!aligns.length) return 0;
+  const set = (await ftGetSetting('ftStationing', null)) || { g: {}, p: {} };
+  const units = (set.p && set.p[projId] && set.p[projId].units) || 'usft';
+  const existing = await FTAlign.getForProject(projId);
+  for (const a of aligns) {
+    let rec = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8), projId, name: a.name, file: 'Location Control sheets', units: 'usft', staStart: a.staStart, els: a.els, eqs: a.eqs, visible: true, imported: Date.now() };
+    rec = FTAlign.convertAlign(rec, units);
+    const dup = existing.find(x => x.name.trim().toLowerCase() === a.name.trim().toLowerCase());
+    if (dup) { rec.id = dup.id; rec.visible = dup.visible; }
+    await FTAlign.apPut('alignments', rec);
+  }
+  return aligns.length;
 }
 
 async function parseLocationControlPage(page) {
@@ -1393,6 +1508,8 @@ function parseCoord(val) {
 }
 
 function clearPreview() {
+  const pc = document.getElementById('planChecks'); if (pc) { pc.classList.add('hidden'); pc.innerHTML = ''; }
+  const al = document.getElementById('importAlignLabel'); if (al) al.textContent = '';
   document.getElementById('importStep3').classList.add('hidden');
 }
 
@@ -1655,12 +1772,19 @@ function showPreview(points) {
   }
 
   const tbody = document.getElementById('previewBody');
-  tbody.innerHTML = points.slice(0, 20).map(pt => {
+  const rank = p => ({ mismatch: 0, fixed: 1, nocheck: 2 }[p._check && p._check.status] ?? 3);
+  const shown = points.some(p => p._check) ? [...points].sort((a, b) => rank(a) - rank(b)) : points;
+  const limit = points.some(p => p._check) ? 400 : 20;
+  tbody.innerHTML = shown.slice(0, limit).map(pt => {
     const isDupe = existingNames.has(pt.name.toLowerCase());
     const sta = pt.newStation || pt.oldStation || '—';
     const dist = pt.distanceNew ?? pt.distanceOld ?? '—';
-    return `<tr${isDupe?' style="opacity:0.45;text-decoration:line-through"':''}>
-      <td>${escHtml(pt.name)}</td>
+    const c = pt._check || {}, cls = c.status === 'mismatch' ? 'pv-bad' : c.status === 'fixed' ? 'pv-fixed' : '';
+    const icon = c.status === 'ok' ? '<span style="color:#16a34a;font-weight:800">✓</span>' : c.status === 'fixed' ? '<span style="color:#d97706;font-weight:800">↻</span>' : c.status === 'mismatch' ? '<span style="color:#dc2626;font-weight:800">✗</span>' : '';
+    const msg = c.fix || (c.status === 'mismatch' ? pt.importFlag : '');
+    return `<tr class="${cls}"${isDupe?' style="opacity:0.45;text-decoration:line-through"':''}>
+      <td>${icon}</td>
+      <td>${escHtml(pt.name)}${msg ? `<div class="pv-flag">${escHtml(msg)}</div>` : ''}</td>
       <td>${escHtml(sta)}</td>
       <td>${dist}</td>
       <td>${escHtml(pt.note)}</td>
@@ -1669,11 +1793,12 @@ function showPreview(points) {
       <td>${pt.elevation??'—'}</td>
     </tr>`;
   }).join('');
-  if (points.length > 20) {
-    tbody.innerHTML += `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);font-style:italic;">… and ${points.length-20} more</td></tr>`;
+  if (points.length > limit) {
+    tbody.innerHTML += `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);font-style:italic;">… and ${points.length-20} more</td></tr>`;
   }
 
   document.getElementById('importStep3').classList.remove('hidden');
+  updateImportLabel();
 }
 
 async function importPoints() {
@@ -1700,12 +1825,14 @@ async function importPoints() {
       merged++;
     } else if (!existing) {
       // Strip internal marker before saving
-      const { _loisObs: _l, ...clean } = pt;
+      const { _loisObs: _l, _check: _c, ...clean } = pt;
       clean.projectId = targetId;
       await ftSaveControlPoint(clean);
       created++;
     }
   }
+  let nAl = 0;
+  try { if (_planAligns.length && document.querySelector('.plan-al-cb')) nAl = await savePlanAlignments(targetId); } catch (e) { showToast('Alignments not saved: ' + e.message); }
   currentPoints = await ftGetControlPointsByProject(currentProjectId);
   closeImportModal();
   renderFilterBar();
@@ -1713,6 +1840,7 @@ async function importPoints() {
   const parts = [];
   if (created) parts.push(`${created} added`);
   if (merged)  parts.push(`${merged} merged`);
+  if (nAl) parts.push(`${nAl} alignment${nAl !== 1 ? 's' : ''} added to the project`);
   showToast(parts.length ? parts.join(', ') : 'Nothing new to import');
 }
 

@@ -56,6 +56,12 @@
         .sections { width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; }
         /* ── Footer / changelog ── */
         .home-footer { width: 100%; max-width: 420px; margin-top: 36px; }
+        .backup-row { width:100%; max-width:420px; display:flex; align-items:center; gap:10px; margin-top:10px; padding:10px 12px; border-radius:12px; border:1.5px solid var(--border-primary); background:var(--bg-secondary); box-sizing:border-box; }
+        .backup-row.due { border-color:#f59e0b; background:rgba(245,158,11,0.10); }
+        .backup-text { flex:1; min-width:0; display:flex; flex-direction:column; font-size:0.82em; line-height:1.35; color:var(--text-secondary); }
+        .backup-text b { color:var(--text-primary); font-size:1.05em; }
+        .backup-btn { flex-shrink:0; border:1.5px solid var(--accent-blue); background:var(--accent-blue); color:#fff; font-weight:700; font-size:0.85em; padding:9px 12px; border-radius:10px; cursor:pointer; }
+        .backup-row:not(.due) .backup-btn { background:transparent; color:var(--accent-blue); }
         .update-row { display:flex; gap:8px; justify-content:center; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
         .update-btn { background:var(--bg-secondary); border:1.5px solid var(--border-secondary); color:var(--text-secondary); border-radius:9px; padding:7px 12px; font-weight:700; font-size:0.78em; cursor:pointer; font-family:inherit; }
         .update-ver { font-size:0.7em; color:var(--text-muted); }
@@ -156,6 +162,10 @@
                 <span class="section-arrow">›</span>
             </a>
         </div>
+        <div class="backup-row hidden" id="backupRow">
+            <div class="backup-text"><b id="backupTitle">Back up your data</b><span id="backupSub"></span></div>
+            <button class="backup-btn" id="backupBtn" onclick="backupNow()">⬆ Back up now</button>
+        </div>
         <div style="width:100%;max-width:420px;height:1px;background:var(--border-primary);margin:16px 0 4px;"></div>
         <div class="sections">
             <a href="stationing.html" class="section-card" style="text-decoration:none;color:inherit;">
@@ -238,6 +248,9 @@
                         <li>Bid Items: older-style Agreement Estimates (CONTRACT NO / UNIT OF WORK / TOTAL COST layout) import too, including contingency and contract subtotal checks</li>
                         <li>Station / Offset: multiple named stakeout lists per project (＋ New, ✎ rename, switch from the drop-down); points added by hand get a name and description; ✎ on any point to rename it</li>
                         <li>Station / Offset & Station Photos: tap the GPS or compass bubble to ask for access again; if the phone has it blocked, it shows how to turn it back on</li>
+                        <li>Control Points PDF import rebuilt: finds the Location Control pages by itself, reads text and scanned plan sets, checks every point's station &amp; offset against the alignment and fixes OCR misreads it can prove</li>
+                        <li>Control Points: builds the project alignments (tangents, curves, station equations) from the Project Alignment sheets and adds them to the project</li>
+                        <li>Home: backup reminder every 7 days with one-tap "Back up now" (Files / OneDrive on phones); Restore link</li>
                     </ul>
                 </div>
 
@@ -437,6 +450,32 @@
             }
         }
         init();
+
+        // ── Backup reminder ──
+        async function renderBackupRow() {
+            const row = document.getElementById('backupRow'); if (!row || typeof ftLastBackup !== 'function') return;
+            let projects = [];
+            try { projects = await ftGetAllProjects(); } catch (e) {}
+            const last = await ftLastBackup();
+            if (!projects.length && !last) { row.classList.add('hidden'); return; }
+            const days = last ? Math.floor((Date.now() - last) / 86400000) : null, due = !last || days >= FT_BACKUP_DAYS;
+            document.getElementById('backupTitle').textContent = !last ? 'Not backed up yet' : days === 0 ? 'Backed up today' : days === 1 ? 'Backed up yesterday' : `Last backup ${days} days ago`;
+            document.getElementById('backupSub').innerHTML = due
+                ? 'Removing the app from the home screen deletes everything in it. Save a backup to Files or OneDrive. <a href="project_manager.html#restore" style="color:inherit;">Restore</a>'
+                : `Next reminder in ${FT_BACKUP_DAYS - days} day${FT_BACKUP_DAYS - days !== 1 ? 's' : ''} · <a href="project_manager.html#restore" style="color:inherit;">Restore</a>`;
+            row.classList.toggle('due', due); row.classList.remove('hidden');
+        }
+        async function backupNow() {
+            const b = document.getElementById('backupBtn'); b.disabled = true; const t = b.textContent; b.textContent = 'Preparing…';
+            try {
+                const pkg = await ftBackupEverything();
+                const ok = await ftSaveBackupFile(pkg);
+                if (ok) { b.textContent = '✓ Saved'; setTimeout(() => { b.textContent = t; }, 2500); } else b.textContent = t;
+            } catch (e) { alert('Backup failed: ' + e.message); b.textContent = t; }
+            b.disabled = false; renderBackupRow();
+        }
+        renderBackupRow();
+        document.addEventListener('visibilitychange', () => { if (!document.hidden) renderBackupRow(); });
 
         // ── Section definitions ──
         const sections = {
