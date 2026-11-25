@@ -185,7 +185,7 @@
         <span class="collapsible-arrow" id="colMapArrow">▶</span>
       </div>
       <div class="collapsible-body" id="colMapBody">
-        <div style="font-size:0.78em;color:var(--text-muted);margin-bottom:10px;">
+        <div id="colMapInfo" style="font-size:0.78em;color:var(--text-muted);margin-bottom:10px;line-height:1.45;">
           Auto-detected from header row. Adjust if needed (0-indexed column numbers).
         </div>
         <div class="col-map-grid" id="colMapGrid"></div>
@@ -309,17 +309,22 @@ const COL_LABELS = {
   geoLon: 'Longitude (Col U)',
   geoHt: 'Ellip Height (Col V)',
 };
+// Header names per field, best first. Headers are compared without case, spaces, punctuation or a
+// table prefix ("Points_Northing" → "northing", "LPN_ConversionFactor" → "conversionfactor").
+// Exact names are tried first; then longer names contained in a header (never 1–2 letter names).
 const HEADER_ALIASES = {
-  pointName: ['point name','name','pt name','pt','identifier','id'],
-  lpn: ['lpn','local point number','local point','lp number'],
-  gridN: ['grid north','grid n','northing','north','n','y'],
-  gridE: ['grid east','grid e','easting','east','e','x'],
-  gridElev: ['grid elev','grid elevation','elevation','elev','el','z'],
-  scaleFactor: ['scale factor','scale','sf','k'],
-  geoLat: ['latitude','lat','geodetic north','geo north','geodetic n','geo n'],
-  geoLon: ['longitude','lon','long','geodetic east','geo east','geodetic e','geo e'],
-  geoHt: ['ellipsoid height','ellip height','ellip ht','geo elev','geo elevation','h','ht'],
+  pointName:   ['pointname', 'name', 'ptname', 'point', 'pointid', 'ptid', 'pt', 'identifier'],
+  lpn:         ['lpnname', 'lpn', 'lpnnumber', 'localpointnumber', 'localpoint', 'lpnum'],
+  gridN:       ['gridnorthing', 'northing', 'gridnorth', 'gridn', 'north', 'n', 'y'],
+  gridE:       ['grideasting', 'easting', 'grideast', 'gride', 'east', 'e', 'x'],
+  gridElev:    ['gridelevation', 'elevation', 'gridelev', 'elev', 'el', 'z'],
+  scaleFactor: ['conversionfactor', 'scalefactor', 'combinedfactor', 'combgridfactor', 'combinedscalefactor', 'scale', 'sf', 'k'],
+  geoLat:      ['latitude', 'lat', 'geodeticnorth', 'geonorth', 'geodeticn', 'geon'],
+  geoLon:      ['longitude', 'lon', 'long', 'geodeticeast', 'geoeast', 'geodetice', 'geoe'],
+  geoHt:       ['ellipsoidheight', 'ellipsoidht', 'ellipheight', 'ellipht', 'geoelevation', 'geoelev', 'h', 'ht'],
 };
+const normHeader = h => String(h || '').replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+const headerKeys = h => { const n = normHeader(h), parts = n.split('_').filter(Boolean); return [...new Set([n.replace(/_/g, ''), parts[parts.length - 1] || ''])]; };
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let rawRows = [];       // all parsed CSV rows (arrays of strings)
@@ -345,7 +350,7 @@ function loadFile(file) {
   reader.readAsText(file);
 }
 function parseFile(text, filename) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
   rawRows = lines.map(csvSplitLine);
   if (!rawRows.length) { showToast('File is empty'); return; }
 
@@ -353,7 +358,7 @@ function parseFile(text, filename) {
   const first = rawRows[0];
   const isHeader = first.some(cell => /[a-zA-Z]/.test(cell) && isNaN(parseFloat(cell.trim())));
   if (isHeader) {
-    headerRow = first.map(s => s.trim().toLowerCase());
+    headerRow = first.map(s => s.replace(/^\uFEFF/, '').trim());
     autoDetectColumns();
   } else {
     headerRow = null;
@@ -368,17 +373,27 @@ function parseFile(text, filename) {
   showStep(2);
 }
 
+let detectInfo = { found: [], missing: [] };
 function autoDetectColumns() {
-  Object.keys(colMap).forEach(field => {
-    const aliases = HEADER_ALIASES[field] || [];
-    for (let i = 0; i < headerRow.length; i++) {
-      const cell = headerRow[i];
-      if (aliases.some(a => cell.includes(a))) {
-        colMap[field] = i;
-        break;
+  const keys = headerRow.map(headerKeys), used = new Set(), found = {};
+  const fields = Object.keys(HEADER_ALIASES);
+  // pass 1: exact names (alias order = preference); pass 2: a long alias inside a header
+  for (const pass of [1, 2]) {
+    for (const field of fields) {
+      if (found[field] != null) continue;
+      for (const a of HEADER_ALIASES[field]) {
+        if (pass === 2 && a.length < 5) continue;
+        const i = keys.findIndex((k, idx) => !used.has(idx) && (pass === 1 ? k.includes(a) : k.some(x => x.includes(a))));
+        if (i >= 0) { found[field] = i; used.add(i); break; }
       }
     }
-  });
+  }
+  colMap = { ...DEFAULT_COLS };
+  detectInfo = { found: [], missing: [] };
+  for (const field of fields) {
+    if (found[field] != null) { colMap[field] = found[field]; detectInfo.found.push(field); }
+    else detectInfo.missing.push(field);
+  }
 }
 
 function csvSplitLine(line) {
@@ -399,7 +414,7 @@ function buildColMapUI() {
   const dataRows = headerRow ? rawRows.slice(1) : rawRows;
   const maxCols = Math.max(...dataRows.slice(0,5).map(r => r.length));
   const colOptions = Array.from({length: maxCols}, (_,i) => {
-    const hint = headerRow ? ` — ${headerRow[i] || ''}` : '';
+    const hint = headerRow ? ` — ${escHtml(headerRow[i] || '')}` : '';
     return `<option value="${i}">${i}${hint}</option>`;
   }).join('');
 
@@ -416,7 +431,15 @@ function buildColMapUI() {
   Object.entries(colMap).forEach(([field, idx]) => {
     const sel = document.getElementById(`cmap_${field}`);
     if (sel) sel.value = idx;
+    if (sel && headerRow && detectInfo.missing.includes(field)) sel.style.borderColor = '#f59e0b';
   });
+  const info = document.getElementById('colMapInfo'), lbl = f => escHtml(COL_LABELS[f].split('(')[0].trim());
+  if (!headerRow) info.innerHTML = 'No header row — using the standard LOIS column positions. Adjust if needed (0-indexed column numbers).';
+  else if (!detectInfo.missing.length) info.innerHTML = `✓ All ${detectInfo.found.length} columns found by their header names: ${detectInfo.found.map(f => `${lbl(f)} = <b>${escHtml(headerRow[colMap[f]])}</b>`).join(', ')}.`;
+  else {
+    info.innerHTML = `<span style="color:#d97706;font-weight:700">⚠ Not found by header: ${detectInfo.missing.map(lbl).join(', ')}</span> — using the standard column position; check below.<br>Found: ${detectInfo.found.map(f => `${lbl(f)} = <b>${escHtml(headerRow[colMap[f]])}</b>`).join(', ')}.`;
+    const body = document.getElementById('colMapBody'); if (body && !body.classList.contains('open')) toggleCollapsible('colMap');
+  }
 }
 
 function reprocessWithMapping() {
