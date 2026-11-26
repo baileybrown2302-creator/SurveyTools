@@ -7,7 +7,7 @@
 'use strict';
 const D2R = Math.PI / 180;
 // ───────── local DB (alignments + photos), shared by both apps ─────────
-const AP_DB = 'FieldToolsDemoStationPhotos';
+const AP_DB = 'FieldToolsDemoStationPhotos';  // Beta keeps its own data
 let _apdb;
 function apDB() {
   if (_apdb) return Promise.resolve(_apdb);

@@ -1,7 +1,11 @@
 // db.js — Field Tools IndexedDB layer
 'use strict';
 
+// The Beta build (/beta/) keeps its own data so testing never touches the crew's real projects.
+const FT_IS_BETA = typeof location !== 'undefined' && /\/beta\//.test(location.pathname);
 const FT_DB_NAME = 'FieldToolsDemoDB';
+const FT_AP_DB_NAME = 'FieldToolsDemoStationPhotos';
+const FT_BACKUP_LS = FT_IS_BETA ? 'ftLastBackupBeta' : 'ftLastBackup';
 const FT_DB_VERSION = 6;
 let _dbPromise = null;
 
@@ -302,7 +306,7 @@ async function ftSetStakeContext(ctx) { return ftPut('stakeContext', ctx, 'activ
 // --- Alignments (stored by Station / Offset & Station Photos in their own IndexedDB) ---
 function _ftAlignDB() {
   return new Promise((res, rej) => {
-    const r = indexedDB.open('FieldToolsDemoStationPhotos', 1);
+    const r = indexedDB.open(FT_AP_DB_NAME, 1);
     r.onupgradeneeded = () => {
       const db = r.result;
       ['alignments', 'photos'].forEach(n => { if (!db.objectStoreNames.contains(n)) db.createObjectStore(n, { keyPath: 'id' }); });
@@ -560,8 +564,8 @@ async function ftSaveBackupFile(pkg, name) {
   await ftMarkBackedUp();
   return true;
 }
-async function ftMarkBackedUp() { const t = Date.now(); try { localStorage.setItem('ftLastBackup', t); } catch (e) {} await ftSetSetting('ftLastBackup', t); }
-async function ftLastBackup() { const v = await ftGetSetting('ftLastBackup', null); return v || +(localStorage.getItem('ftLastBackup') || 0) || null; }
+async function ftMarkBackedUp() { const t = Date.now(); try { localStorage.setItem(FT_BACKUP_LS, t); } catch (e) {} await ftSetSetting('ftLastBackup', t); }
+async function ftLastBackup() { const v = await ftGetSetting('ftLastBackup', null); return v || +(localStorage.getItem(FT_BACKUP_LS) || 0) || null; }
 
 // --- Persistent storage request ---
 async function ftRequestPersistentStorage() {

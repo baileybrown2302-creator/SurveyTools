@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-beta-v18';
+const CACHE_NAME = 'survey-tool-beta-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -27,6 +27,8 @@ const ASSETS = [
   './lib/alignments.js',
   './lib/desktop.css',
   './lib/desktop.js',
+  './lib/betaseed.js',
+  './lib/sample_alignment.xml',
   './lib/stationfield.js',
   './lib/stationmap.js',
   './lib/leaflet/leaflet.js',

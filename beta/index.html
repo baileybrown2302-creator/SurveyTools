@@ -11,7 +11,7 @@
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/png" href="./icon.png">
     <link rel="apple-touch-icon" href="./icon.png">
-    <script src="db.js"></script>
+    <script src="db.js"></script><script src="lib/betaseed.js"></script>
     <title>Field Tools</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -222,6 +222,7 @@
                 <button class="update-btn" id="updBtn" onclick="checkForUpdates()">⟳ Check for updates</button>
                 <span class="update-ver" id="updVer"></span>
                 <a href="#" class="update-ver" style="color:var(--text-muted);" onclick="event.preventDefault();forceRefresh()">force refresh</a>
+                <a href="#" class="update-ver" style="color:var(--text-muted);" onclick="event.preventDefault();resetBetaSample()">reset test project</a>
             </div>
             <button class="changelog-toggle" onclick="toggleChangelog()">
                 <span id="clToggleLabel">▸ View Changelog</span>
@@ -232,6 +233,8 @@
                     <div class="cl-date">Nov 25, 2026</div>
                     <div class="cl-title">Desktop layout (beta)</div>
                     <ul class="cl-items">
+                        <li>Beta now keeps its own data, separate from the main app, so testing never touches real projects (use Backup in the main app and Restore in Beta to bring projects over)</li>
+                        <li>Beta starts with a sample project, "TEST – Beta Sample": alignment, two stakeout lists, control points, a closed level loop and a bid items contract. "reset test project" at the bottom of the home page puts it back</li>
                         <li>On a computer or wide screen (1024px+) pages use the space: phones look the same as before</li>
                         <li>Station / Offset and Station Photos: controls on the left, a big map on the right; Setup spreads into two columns</li>
                         <li>Control Points: sortable table (point, station, offset, N/E/elev, description, status) with a quick filter; Card view still available</li>
@@ -482,7 +485,11 @@
                 : `Next reminder in ${FT_BACKUP_DAYS - days} day${FT_BACKUP_DAYS - days !== 1 ? 's' : ''} · <a href="project_manager.html#restore" style="color:inherit;">Restore</a>`;
             row.classList.toggle('due', due); row.classList.remove('hidden');
         }
-        async function backupNow() {
+        async function resetBetaSample() {
+        if (!confirm('Reset the test project?\n\nThis puts "TEST \u2013 Beta Sample" back to its original sample data (alignment, stakeout lists, control points, level loop and bid items). Changes and photos in the test project are removed. Your other Beta projects are not touched.')) return;
+        try { await ftBetaSeed(true); alert('Test project reset.'); } catch (e) { alert('Could not reset the test project: ' + e.message); }
+    }
+    async function backupNow() {
             const b = document.getElementById('backupBtn'); b.disabled = true; const t = b.textContent; b.textContent = 'Preparing…';
             try {
                 const pkg = await ftBackupEverything();

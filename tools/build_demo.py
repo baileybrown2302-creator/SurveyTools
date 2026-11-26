@@ -42,11 +42,11 @@ def main():
             f.write(t)
 
     patch('db.js', lambda t, p: edit(edit(edit(t,
-        "const FT_DB_NAME = 'FieldToolsDB';", "const FT_DB_NAME = 'FieldToolsDemoDB';", p),
-        "indexedDB.open('FieldToolsStationPhotos', 1)", "indexedDB.open('FieldToolsDemoStationPhotos', 1)", p),
+        "const FT_DB_NAME = FT_IS_BETA ? 'FieldToolsBetaDB' : 'FieldToolsDB';", "const FT_DB_NAME = 'FieldToolsDemoDB';", p),
+        "const FT_AP_DB_NAME = FT_IS_BETA ? 'FieldToolsBetaStationPhotos' : 'FieldToolsStationPhotos';", "const FT_AP_DB_NAME = 'FieldToolsDemoStationPhotos';", p),
         "if ('serviceWorker' in navigator && location.protocol !== 'file:') {", "if (false) { // demo: no service worker", p))
     patch('lib/alignments.js', lambda t, p: edit(t,
-        "const AP_DB = 'FieldToolsStationPhotos';", "const AP_DB = 'FieldToolsDemoStationPhotos';", p))
+        "const AP_DB = (typeof location !== 'undefined' && /\\/beta\\//.test(location.pathname)) ? 'FieldToolsBetaStationPhotos' : 'FieldToolsStationPhotos';", "const AP_DB = 'FieldToolsDemoStationPhotos';", p))
 
     for name in os.listdir(OUT):
         if name.endswith('.html'):
