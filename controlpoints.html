@@ -858,6 +858,19 @@ function pointCardHtml(pt) {
 // ── Export CSV ────────────────────────────────────────────────────────────────
 // Points in the current filter tab. Status (with its date and note) is only filled in once it has been
 // changed from the default "Uncategorized", so untouched points leave those columns blank.
+// Fallback if an older saved copy of db.js is still loaded (service worker served it before the update arrived)
+async function cpSaveTextFile(text, name, type = 'text/csv') {
+  const blob = new Blob([text], { type }), file = new File([blob], name, { type });
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); } catch (e) { if (e && e.name === 'AbortError') return false; throw e; }
+  } else {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  return true;
+}
 async function exportPointsCsv() {
   const pts = filteredPoints().map(p => { const c = { ...p }; applyPreferences(c); return c; })
     .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }));
@@ -873,7 +886,7 @@ async function exportPointsCsv() {
   const base = (projectLabel(proj) || 'project').replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '');
   const tag = activeFilter === 'all' ? '' : '_' + (STATUS_CONFIG[activeFilter]?.label || activeFilter).replace(/\W+/g, '');
   const name = `${base}_control_points${tag}_${new Date().toLocaleDateString('en-CA')}.csv`;
-  try { if (await ftSaveTextFile('\uFEFF' + lines.join('\r\n') + '\r\n', name)) showToast(`Exported ${pts.length} point${pts.length !== 1 ? 's' : ''}`); }
+  try { if (await (typeof ftSaveTextFile === 'function' ? ftSaveTextFile : cpSaveTextFile)('\uFEFF' + lines.join('\r\n') + '\r\n', name)) showToast(`Exported ${pts.length} point${pts.length !== 1 ? 's' : ''}`); }
   catch (e) { showToast('Export failed: ' + e.message); }
 }
 async function quickUpdateStatus(pointId, status) {

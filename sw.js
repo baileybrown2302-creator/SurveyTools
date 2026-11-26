@@ -1,4 +1,4 @@
-const CACHE_NAME = 'survey-tool-v61';
+const CACHE_NAME = 'survey-tool-v62';
 const ASSETS = [
   './',
   './index.html',
@@ -43,7 +43,7 @@ const ASSETS = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(ASSETS))
+      .then(cache => cache.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))  // skip the browser's HTTP cache so a new version never saves old files
       .then(() => self.skipWaiting())
   );
 });
