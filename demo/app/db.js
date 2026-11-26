@@ -564,6 +564,20 @@ async function ftSaveBackupFile(pkg, name) {
   await ftMarkBackedUp();
   return true;
 }
+// Save any text file (CSV etc.): share sheet on phones, download elsewhere. Returns false if the share was cancelled.
+async function ftSaveTextFile(text, name, type = 'text/csv') {
+  const blob = new Blob([text], { type }), file = new File([blob], name, { type });
+  const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (mobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: name }); }
+    catch (e) { if (e && e.name === 'AbortError') return false; throw e; }
+  } else {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  return true;
+}
 async function ftMarkBackedUp() { const t = Date.now(); try { localStorage.setItem(FT_BACKUP_LS, t); } catch (e) {} await ftSetSetting('ftLastBackup', t); }
 async function ftLastBackup() { const v = await ftGetSetting('ftLastBackup', null); return v || +(localStorage.getItem(FT_BACKUP_LS) || 0) || null; }
 

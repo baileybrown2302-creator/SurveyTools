@@ -236,6 +236,7 @@
       <span class="section-title" id="pointListSubtitle">Points</span>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-secondary btn-small" onclick="openImportModal()">⤴ Import</button>
+        <button class="btn btn-secondary btn-small" onclick="exportPointsCsv()" title="Export the points shown (current filter) as a CSV">⤓ Export</button>
         <button class="btn btn-primary btn-small" onclick="openNewPointEditor()">+ Add</button>
       </div>
     </div>
@@ -890,6 +891,27 @@ function pointCardHtml(pt) {
       </select>
     </div>
   </div>`;
+}
+// ── Export CSV ────────────────────────────────────────────────────────────────
+// Points in the current filter tab. Status (with its date and note) is only filled in once it has been
+// changed from the default "Uncategorized", so untouched points leave those columns blank.
+async function exportPointsCsv() {
+  const pts = filteredPoints().map(p => { const c = { ...p }; applyPreferences(c); return c; })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true }));
+  if (!pts.length) { showToast('No points to export'); return; }
+  const q = v => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const head = ['Point', 'Northing', 'Easting', 'Elevation', 'Station', 'Offset', 'Old Station', 'Old Offset', 'Equation', 'Description', 'Status', 'Status Date', 'Status Note'];
+  const lines = [head.join(',')].concat(pts.map(p => {
+    const changed = p.status && p.status !== 'uncategorized';
+    return [p.name, p.northing, p.easting, p.elevation, p.newStation, p.distanceNew, p.oldStation, p.distanceOld, p.equation, p.note,
+      changed ? (STATUS_CONFIG[p.status]?.label || p.status) : '', changed ? p.statusDate : '', changed ? p.statusNote : ''].map(q).join(',');
+  }));
+  const proj = allProjects.find(p => p.id === currentProjectId) || {};
+  const base = (projectLabel(proj) || 'project').replace(/[^\w\-]+/g, '_').replace(/^_+|_+$/g, '');
+  const tag = activeFilter === 'all' ? '' : '_' + (STATUS_CONFIG[activeFilter]?.label || activeFilter).replace(/\W+/g, '');
+  const name = `${base}_control_points${tag}_${new Date().toLocaleDateString('en-CA')}.csv`;
+  try { if (await ftSaveTextFile('\uFEFF' + lines.join('\r\n') + '\r\n', name)) showToast(`Exported ${pts.length} point${pts.length !== 1 ? 's' : ''}`); }
+  catch (e) { showToast('Export failed: ' + e.message); }
 }
 async function quickUpdateStatus(pointId, status) {
   const pt = currentPoints.find(p => p.id === pointId);
