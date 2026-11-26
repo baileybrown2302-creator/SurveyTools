@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ftd-width="1280">
 <head>
 <script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
   <meta charset="UTF-8">
@@ -202,6 +202,8 @@
     .lpn-checkbox-list{display:flex;flex-wrap:wrap;gap:8px;max-height:120px;overflow-y:auto;padding:4px 0;}
     .lpn-checkbox-list label{display:flex;align-items:center;gap:5px;font-size:0.82em;background:var(--bg-tertiary);border:1px solid var(--border-secondary);border-radius:6px;padding:4px 8px;cursor:pointer;}
   </style>
+<link rel="stylesheet" href="lib/desktop.css">
+<script src="lib/desktop.js"></script>
 </head>
 <body>
 
@@ -416,7 +418,7 @@
 
 <!-- ═══ IMPORT MODAL ═══ -->
 <div class="modal-overlay" id="importModal">
-  <div class="modal-sheet">
+  <div class="modal-sheet ftd-wide-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Import Control Points</div>
 
@@ -427,7 +429,7 @@
            ondragleave="this.classList.remove('drag-over')"
            ondrop="handleFileDrop(event)">
         <div class="drop-zone-icon">📄</div>
-        <div class="drop-zone-text">Tap to select file</div>
+        <div class="drop-zone-text"><span class="ftd-hide">Tap to select file</span><span class="ftd-only">Click to choose a file, or drag a PDF / CSV here</span></div>
         <div class="drop-zone-sub">PDF plan set or CSV — accepts .pdf, .csv, .txt</div>
       </div>
       <input type="file" id="fileInput" accept=".pdf,.csv,.txt" style="display:none" onchange="handleFileSelect(event)">
@@ -819,8 +821,43 @@ function renderPointList() {
       : `<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No ${STATUS_CONFIG[activeFilter]?.label||activeFilter} points</div></div>`;
     return;
   }
-  el.innerHTML = pts.map(pt => pointCardHtml(pt)).join('');
+  if (window.ftIsDesktop && ftIsDesktop() && cpView !== 'cards') { el.innerHTML = pointTableHtml(pts); return; }
+  el.innerHTML = (window.ftIsDesktop && ftIsDesktop() ? `<div class="cp-tools"><button class="cp-view" onclick="setCpView('table')">☰ Table view</button></div>` : '') + pts.map(pt => pointCardHtml(pt)).join('');
 }
+// Desktop: sortable table with a quick filter
+let cpView = (() => { try { return localStorage.getItem('ftCpView') || 'table'; } catch (e) { return 'table'; } })();
+let cpSort = { key: 'name', dir: 1 }, cpQuery = '';
+function setCpView(v) { cpView = v; try { localStorage.setItem('ftCpView', v); } catch (e) {} renderPointList(); }
+function cpStaNum(s) { const m = String(s || '').replace(/[^\d+.\-]/g, '').match(/^(-?\d*)\+?(\d*\.?\d*)$/); if (!m) return NaN; const v = String(s).includes('+') ? (+m[1] || 0) * 100 + (+m[2] || 0) : parseFloat(String(s).replace(/[^\d.\-]/g, '')); return isNaN(v) ? NaN : v; }
+function cpSortBy(k) { cpSort = { key: k, dir: cpSort.key === k ? -cpSort.dir : 1 }; renderPointList(); }
+function cpFilter(v) { cpQuery = v; renderPointList(); const i = document.getElementById('cpQuery'); if (i) { i.focus(); i.setSelectionRange(v.length, v.length); } }
+function pointTableHtml(pts) {
+  const q = cpQuery.trim().toLowerCase();
+  if (q) pts = pts.filter(p => [p.name, p.note, p.newStation, p.oldStation, p.statusNote].some(v => String(v || '').toLowerCase().includes(q)));
+  const val = (p, k) => k === 'sta' ? cpStaNum(p.newStation || p.oldStation) : k === 'off' ? +(p.distanceNew ?? p.distanceOld) : k === 'name' || k === 'note' || k === 'status' ? String(p[k] || '').toLowerCase() : +p[k];
+  const k = cpSort.key, d = cpSort.dir;
+  pts.sort((a, b) => { const x = val(a, k), y = val(b, k);
+    if (typeof x === 'string') return x.localeCompare(y, undefined, { numeric: true }) * d;
+    const xn = isNaN(x), yn = isNaN(y); if (xn || yn) return xn - yn; return (x - y) * d; });
+  const th = (key, label, cls) => `<th class="${cls || ''}" data-sort="${key}" onclick="cpSortBy('${key}')">${label}${cpSort.key === key ? (cpSort.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  const fmt = (v, n) => v == null || v === '' || isNaN(+v) ? '' : (+v).toFixed(n);
+  const rows = pts.map(pt => {
+    const id = escHtml(pt.id), dist = pt.distanceNew ?? pt.distanceOld;
+    return `<tr class="cp-row" onclick="openEditor('${id}')">
+      <td class="cp-name">${escHtml(pt.name || '—')}${pt.importFlag ? ` <span class="import-flag" title="${escHtml(pt.importFlag)}">⚠ check</span>` : ''}</td>
+      <td class="num">${escHtml(pt.newStation || pt.oldStation || '')}</td>
+      <td class="num">${dist != null && dist !== '' ? escHtml(String(dist)) : ''}</td>
+      <td class="num">${fmt(pt.northing, 3)}</td><td class="num">${fmt(pt.easting, 3)}</td><td class="num">${fmt(pt.elevation, 3)}</td>
+      <td class="cp-note" title="${escHtml(pt.note || '')}">${escHtml(pt.note || '')}</td>
+      <td onclick="event.stopPropagation()"><select onchange="quickUpdateStatus('${id}', this.value)">${Object.entries(STATUS_CONFIG).map(([k, v]) => `<option value="${k}"${pt.status === k ? ' selected' : ''}>${v.label}</option>`).join('')}</select></td>
+    </tr>`; }).join('');
+  return `<div class="cp-tools"><input id="cpQuery" type="search" placeholder="Filter by name, station or note…" value="${escHtml(cpQuery)}" oninput="cpFilter(this.value)">
+      ${q ? `<span style="font-size:0.8em;color:var(--text-muted)">${pts.length} shown</span>` : ''}
+      <button class="cp-view" onclick="setCpView('cards')">▦ Card view</button></div>
+    <table class="cp-table"><thead><tr>${th('name', 'Point')}${th('sta', 'Station', 'num')}${th('off', 'Offset', 'num')}${th('northing', 'Northing', 'num')}${th('easting', 'Easting', 'num')}${th('elevation', 'Elev', 'num')}${th('note', 'Description')}${th('status', 'Status')}</tr></thead>
+    <tbody>${rows || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:20px">No points match</td></tr>'}</tbody></table>`;
+}
+window.addEventListener('ftdesktopchange', () => { if (currentProjectId) renderPointList(); });
 function pointCardHtml(pt) {
   const sc = STATUS_CONFIG[pt.status] || STATUS_CONFIG.uncategorized;
   const stationParts = [];

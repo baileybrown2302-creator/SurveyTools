@@ -1,0 +1,87 @@
+/* Field Tools — desktop layout (screens 1024px and wider; see lib/desktop.js). Phones never get class "ftd". */
+.ftd-only { display: none !important; }
+html.ftd .ftd-only { display: revert !important; }
+html.ftd .ftd-hide { display: none !important; }
+
+/* ── Centred column with a full-width header bar ── */
+html.ftd body { padding-left: var(--ftd-pad, 0px) !important; padding-right: var(--ftd-pad, 0px) !important; }
+html.ftd :is(.top-nav, .detail-nav, #filterBar, .search-bar-wrap) {
+  margin-left: calc(-1 * var(--ftd-pad, 0px)); margin-right: calc(-1 * var(--ftd-pad, 0px));
+  padding-left: calc(var(--ftd-pad, 0px) + 24px); padding-right: calc(var(--ftd-pad, 0px) + 24px);
+}
+html.ftd .nav-title { font-size: 1.1em; }
+
+/* Mouse niceties */
+@media (hover: hover) {
+  html.ftd :is(.section-card, .contract-card, .project-card, .point-card, .item-row, .breakout-header, .pick-item, .ph-item, .stake-row, .cp-row):hover { border-color: var(--accent-blue); }
+  html.ftd :is(.item-row, .cp-row):hover { background: var(--bg-tertiary); }
+  html.ftd :is(button, .btn, .mode-tab, .filter-tab, select, [onclick]) { cursor: pointer; }
+}
+
+/* ── Bottom sheets become centred dialogs ── */
+html.ftd :is(.overlay, .modal-overlay, .modal, .select-modal) { align-items: center !important; justify-content: center !important; padding: 24px; }
+html.ftd :is(.sheet, .modal-sheet) { border-radius: 18px !important; max-width: 640px; width: 100%; max-height: 88vh; padding-bottom: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.35); }
+html.ftd :is(.sheet, .modal-sheet).ftd-wide-sheet { max-width: min(1180px, 100%); }
+
+/* ── Home ── */
+html.ftd #homeView .sections { max-width: 880px; display: grid; grid-template-columns: 1fr 1fr; }
+html.ftd #homeView :is(.backup-row, .home-footer) { max-width: 880px; }
+html.ftd #homeView > div[style*="max-width:420px"] { max-width: 880px !important; }
+html.ftd :is(#surveyView, #inspectionView, #testingView, .section-view) .sections { max-width: 880px; display: grid; grid-template-columns: 1fr 1fr; }
+
+/* ── Split: controls on the left, map fixed on the right (Station / Offset, Station Photos) ── */
+html.ftd[data-ftd="split"] body > :is(.proj-bar, .mode-tabs, .chips, .card, #needCard) { margin-right: calc(100% - 470px); }
+html.ftd[data-ftd="split"] body > :is(#tab-cur, #tab-nav, #tab-live) { margin-right: calc(100% - 486px); }
+html.ftd[data-ftd="split"] .map-card {
+  position: fixed; left: 486px; right: 16px; top: calc(var(--ftd-top, 58px) + 14px); bottom: 16px; margin: 0;
+  display: flex; flex-direction: column; z-index: 5;
+}
+html.ftd[data-ftd="split"] .map-card .ftmap { flex: 1; height: auto !important; min-height: 0; }
+html.ftd[data-ftd="split"] :is(#tab-setup, #tab-photos) { max-width: 1240px; columns: 2 470px; column-gap: 0; }
+html.ftd[data-ftd="split"] :is(#tab-setup, #tab-photos) :is(.card, #setupPanel > *, #setupAdvanced > *) { break-inside: avoid; }
+html.ftd[data-ftd="split"] #tab-photos { columns: auto; }
+html.ftd[data-ftd="split"] #photoList { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 0 12px; }
+html.ftd[data-ftd="split"] .ro-sta, html.ftd[data-ftd="split"] .ro-off { font-size: 2.2em; }
+
+/* ── Project Manager ── */
+html.ftd #projectsList { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 12px; align-items: start; }
+html.ftd #projectsList > .project-card { margin-bottom: 0; }
+html.ftd #projectsList > .empty-state { grid-column: 1 / -1; }
+
+/* ── Bid Items ── */
+html.ftd #contractList { display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 12px; align-items: start; }
+html.ftd #contractList > * { margin: 0 !important; }
+html.ftd #contractList > .empty-state { grid-column: 1 / -1; }
+html.ftd .item-row { display: grid !important; grid-template-columns: 110px minmax(0, 1fr) 150px 120px 130px 22px; gap: 14px; align-items: center; }
+html.ftd .item-desc { white-space: normal; }
+html.ftd .item-qty, html.ftd .item-price, html.ftd .item-cost { text-align: right; }
+html.ftd .item-price, html.ftd .item-cost { font-size: 0.78em; font-variant-numeric: tabular-nums; color: var(--text-secondary); white-space: nowrap; }
+html.ftd .item-cost { font-weight: 700; color: var(--text-primary); }
+html.ftd .item-note-text { grid-column: 2 / -1; font-size: 0.75em; color: var(--text-muted); margin-top: -8px; }
+html.ftd .item-head { display: grid !important; grid-template-columns: 110px minmax(0, 1fr) 150px 120px 130px 22px; gap: 14px; padding: 8px 14px; font-size: 0.68em; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-primary); background: var(--bg-tertiary); }
+html.ftd .item-head > :nth-child(n+3) { text-align: right; }
+html.ftd .item-row .ftd-only .item-note-dot { display: inline-block; }
+html.ftd .breakout-total { font-size: 0.8em; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; margin-right: 8px; white-space: nowrap; }
+
+/* ── Control Points table ── */
+html.ftd #pointList { overflow-x: auto; }
+.cp-table { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--bg-secondary); border: 1.5px solid var(--border-primary); border-radius: 12px; overflow: hidden; font-size: 0.86em; }
+.cp-table th { text-align: left; font-size: 0.74em; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-tertiary); padding: 9px 10px; border-bottom: 1.5px solid var(--border-primary); white-space: nowrap; user-select: none; position: sticky; top: 0; }
+.cp-table th[data-sort] { cursor: pointer; }
+.cp-table th[data-sort]:hover { color: var(--accent-blue); }
+.cp-table th.num, .cp-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.cp-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-primary); vertical-align: middle; color: var(--text-primary); }
+.cp-table tr:last-child td { border-bottom: none; }
+.cp-table .cp-row { cursor: pointer; }
+.cp-table .cp-name { font-weight: 800; white-space: nowrap; }
+.cp-table .cp-note { color: var(--text-secondary); max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-table select { padding: 5px 6px; border-radius: 7px; border: 1.5px solid var(--border-secondary); background: var(--input-bg, var(--bg-secondary)); color: var(--text-primary); font-size: 0.95em; font-weight: 600; }
+.cp-tools { display: flex; gap: 8px; align-items: center; margin: 0 0 10px; }
+.cp-tools input { flex: 0 1 320px; padding: 8px 12px; border-radius: 9px; border: 1.5px solid var(--border-secondary); background: var(--input-bg, var(--bg-secondary)); color: var(--text-primary); font-size: 0.9em; }
+.cp-tools .cp-view { margin-left: auto; font-size: 0.8em; font-weight: 700; color: var(--accent-blue); background: none; border: none; cursor: pointer; }
+html.ftd #projectList { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 12px; align-items: start; }
+html.ftd #projectList > * { margin: 0 !important; }
+html.ftd #projectList > .empty-state { grid-column: 1 / -1; }
+html.ftd .modal-handle { display: none; }
+body.ftd-dragging::after { content: 'Drop the PDF to import it'; position: fixed; inset: 12px; border: 3px dashed var(--accent-blue); border-radius: 18px; background: rgba(59,130,246,0.08); display: flex; align-items: center; justify-content: center; font-size: 1.3em; font-weight: 800; color: var(--accent-blue); z-index: 900; pointer-events: none; }
+html.ftd[data-ftd="split"] #photoList > .empty { grid-column: 1 / -1; }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ftd="split">
 <head>
 <script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
 <meta charset="UTF-8">
@@ -19,6 +19,8 @@
 <script src="lib/leaflet/leaflet.js"></script>
 <script src="lib/stationmap.js"></script>
 <title>Station / Offset — Field Tools</title>
+<link rel="stylesheet" href="lib/desktop.css">
+<script src="lib/desktop.js"></script>
 </head>
 <body>
 <div class="top-nav">
@@ -68,7 +70,7 @@
   <div class="card" style="padding:12px 16px;">
     <button class="btn btn-secondary" onclick="navHere()">➤ Navigate from here…</button>
   </div>
-  <div class="card">
+  <div class="card map-card">
     <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
     <div id="planCur" class="ftmap"></div>
   </div>
@@ -152,7 +154,7 @@
     <div id="stakeList" style="margin-top:10px;"></div>
   </div>
 
-  <div class="card">
+  <div class="card map-card">
     <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
     <div id="planNav" class="ftmap"></div>
   </div>

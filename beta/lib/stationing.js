@@ -222,6 +222,8 @@ const onOrientAbs = e => { if (e.alpha != null && e.beta != null) feedHeading(he
 // Android Chrome: has deviceorientationabsolute and needs no prompt (newer Chrome also exposes
 // requestPermission but may answer "denied" without asking — so it is never used there).
 const hasAbsolute = () => 'ondeviceorientationabsolute' in window;
+// A computer with no touch screen has no compass: don't pop up help on its own there
+const noCompassDevice = () => !(navigator.maxTouchPoints > 0) && !/Android|iPhone|iPad/i.test(navigator.userAgent);
 const needsCompassTap = () => !hasAbsolute() && typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
 function stopCompass() {
   window.removeEventListener('deviceorientationabsolute', onOrientAbs);
@@ -242,7 +244,7 @@ async function enableCompass(restart) {
       window.addEventListener('deviceorientation', onOrientIOS);
     } else { onOrientAny = e => { if (e.webkitCompassHeading != null) onOrientIOS(e); else if (e.absolute) onOrientAbs(e); }; window.addEventListener('deviceorientation', onOrientAny); }
     compassOn = true; G.compass = true; saveSettings();
-    setTimeout(() => { if (!lastHeadingAt) compassHelp(false); notify(); }, 3000);
+    setTimeout(() => { if (!lastHeadingAt && (restart || !noCompassDevice())) compassHelp(false); notify(); }, 3000);
     notify();
   } catch (err) { if (cc) { cc.textContent = '🧭 Tap to enable compass'; cc.className = 'chip btnchip bad'; } compassHelp(true, err.message); }
 }
@@ -266,7 +268,7 @@ function renderChips() {
   if (gc && fix && !gpsDenied) { gc.textContent = `GPS ±${Math.round(fix.acc / UNIT_M[PS().units])} ${uLbl()}`; gc.className = 'chip ' + (fix.acc <= 10 ? 'ok' : fix.acc > 30 ? 'bad' : ''); }
   const cc = $('compassChip');
   if (cc) {
-    if (compassOn) { cc.textContent = '🧭 ' + (headingNow() != null ? fmtHdg(headingNow()) : 'no data — tap'); cc.className = 'chip ' + (headingNow() != null ? 'ok' : 'bad'); }
+    if (compassOn) { cc.textContent = '🧭 ' + (headingNow() != null ? fmtHdg(headingNow()) : (noCompassDevice() ? 'none on this computer' : 'no data — tap')); cc.className = 'chip ' + (headingNow() != null ? 'ok' : 'bad'); }
     cc.onclick = () => enableCompass(true);   // tap again any time to restart / re-ask
   }
 }

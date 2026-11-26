@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ftd="split">
 <head>
 <script>if(localStorage.getItem('ft_theme')==='high-contrast')document.documentElement.setAttribute('data-theme','high-contrast');</script>
 <meta charset="UTF-8">
@@ -20,6 +20,8 @@
 <script src="lib/leaflet/leaflet.js"></script>
 <script src="lib/stationmap.js"></script>
 <title>Station Photos — Field Tools</title>
+<link rel="stylesheet" href="lib/desktop.css">
+<script src="lib/desktop.js"></script>
 </head>
 <body>
 <div class="top-nav">
@@ -71,7 +73,7 @@
     <div class="hint">Live Camera shows station &amp; offset while you frame the shot. Phone Camera uses your normal camera for full resolution — position is recorded when you tap the button.</div>
   </div>
 
-  <div class="card">
+  <div class="card map-card">
     <div class="card-title">Map <span style="text-transform:none;letter-spacing:0;font-weight:600;">◎ follow · ⤢ full screen · layers ↗</span></div>
     <div id="planCanvas" class="ftmap"></div>
   </div>
